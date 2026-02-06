@@ -1,11 +1,11 @@
 # ZKP Privacy Airdrop
 
-A privacy-preserving ERC20 token airdrop system using zero-knowledge proofs. Allows 65M qualified Ethereum accounts to claim ZKP tokens without revealing their identity.
+A privacy-preserving ERC20 token airdrop system using zero-knowledge proofs. Allows 65,000,000 qualified Ethereum accounts to claim ZKP tokens without revealing their identity.
 
 ## Features
 
 - **Privacy**: Claim without revealing which address is in the qualified list
-- **Scalable**: Supports 65 million qualified accounts
+- **Scalable**: Supports 65,000,000 qualified accounts
 - **Decentralized**: Multiple relayers can participate
 - **Secure**: Formally verified circuits and audited contracts
 - **User-friendly**: Simple Rust CLI for proof generation
@@ -29,7 +29,7 @@ zkp-airdrop generate-proof \
   --private-key $PRIVATE_KEY \
   --recipient $RECIPIENT_ADDRESS \
   --merkle-tree https://api.merkle-tree.io/tree.bin \
-  --format binary
+  --output proof.json
 
 # Submit claim via relayer
 zkp-airdrop submit \
@@ -51,11 +51,13 @@ docker-compose up -d
 
 ## Documentation
 
+- [Unified Specification](docs/00-specification.md) - Single source of truth for all technical details
 - [Project Overview](docs/01-overview.md)
 - [Technical Specification](docs/02-technical-specification.md)
 - [Implementation Roadmap](docs/03-implementation-roadmap.md)
 - [API Reference](docs/04-api-reference.md)
 - [Security & Privacy](docs/05-security-privacy.md)
+- [Privacy Analysis & Limitations](docs/06-privacy-analysis.md)
 
 ## Project Structure
 

@@ -2,7 +2,7 @@
 
 ## Project Summary
 
-A privacy-preserving token airdrop system that allows 65M qualified Ethereum accounts to claim ZKP tokens without revealing their identity on-chain. The system uses zero-knowledge proofs (ZKPs) to verify claim eligibility while maintaining complete anonymity.
+A privacy-preserving token airdrop system that allows 65,000,000 qualified Ethereum accounts to claim ZKP tokens without revealing their identity on-chain. The system uses zero-knowledge proofs (ZKPs) to verify claim eligibility while maintaining complete anonymity.
 
 ## Key Components
 
@@ -18,10 +18,12 @@ A privacy-preserving token airdrop system that allows 65M qualified Ethereum acc
 
 ### 3. Web Relayer Service
 - Accepts ZK proofs from claimants
-- Validates proofs off-chain
+- Validates proofs off-chain before submission
 - Submits valid proofs to the airdrop contract (pays gas)
-- Accepts donations to fund gas costs
+- Accepts donations to fund gas costs (community-funded)
+- Multiple independent relayers for redundancy
 - Rate limiting and anti-spam measures
+- Anyone can run a relayer - no central authority
 
 ### 4. Merkle Tree Infrastructure
 - 65M account Merkle tree
@@ -55,7 +57,7 @@ A privacy-preserving token airdrop system that allows 65M qualified Ethereum acc
 
 - **Token Name**: ZKP
 - **Token Type**: ERC20 (18 decimals)
-- **Total Supply**: 65,249,064,000 ZKP (65M accounts × 1000 ZKP each)
+- **Total Supply**: 65,000,000,000 ZKP (65,000,000 accounts × 1000 ZKP each)
 - **Claim Amount**: 1000 ZKP per qualified account
 - **Distribution Method**: Privacy-preserving claim
 - **Claim Period**: 90 days from deployment
@@ -66,5 +68,5 @@ A privacy-preserving token airdrop system that allows 65M qualified Ethereum acc
 2. Relayer successfully validates and submits proofs
 3. Tokens are minted to recipient addresses
 4. No correlation possible between qualified list and claim transactions
-5. System scales to handle 65M potential claimants
-6. Relayer remains funded through donations
+5. System scales to handle 65,000,000 potential claimants
+6. Relayer ecosystem remains funded through community donations

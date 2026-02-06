@@ -33,6 +33,7 @@
 - [ ] Implement RelayerRegistry contract
 - [ ] Write comprehensive unit tests
 - [ ] Deploy to testnet
+- [ ] Generate and verify Merkle tree with sample data
 
 **Deliverables**:
 - `contracts/ZKPToken.sol`
@@ -69,11 +70,13 @@
 - CLI documentation
 
 ### Week 6: Merkle Tree Infrastructure
-- [ ] Build 65M account Merkle tree
-- [ ] Optimize tree storage format
+- [ ] Build 65,000,000 account Merkle tree (requires significant compute resources)
+- [ ] Optimize tree storage format for distribution
 - [ ] Implement tree querying API
-- [ ] Set up tree distribution (IPFS, torrent, API)
+- [ ] Set up tree distribution (IPFS, torrent, CDN)
 - [ ] Create tree integrity verification tools
+- [ ] Generate Merkle tree root hash for contract deployment
+- [ ] Create tree generation audit trail for community verification
 
 **Deliverables**:
 - Generated Merkle tree (~2GB)
@@ -123,10 +126,12 @@
 
 ### Week 10: End-to-End Integration
 - [ ] Integrate CLI with relayer API
-- [ ] Test complete claim flow
-- [ ] Implement retry logic
-- [ ] Add progress indicators
+- [ ] Test complete claim flow with 1000+ simulated users
+- [ ] Implement retry logic and error handling
+- [ ] Add progress indicators and user feedback
 - [ ] Create integration test suite
+- [ ] Load test with 10,000 concurrent claims
+- [ ] Test network partition and recovery scenarios
 
 **Deliverables**:
 - Working end-to-end system
@@ -145,11 +150,13 @@
 - Refactored and reviewed code
 - Audit preparation checklist
 
-### Week 12: Security Audit
-- [ ] Third-party smart contract audit
-- [ ] Circuit security review
+### Week 12: Security Audit & Trusted Setup
+- [ ] Third-party smart contract audit (2+ firms)
+- [ ] Circuit security review and formal verification
 - [ ] Relayer penetration testing
 - [ ] CLI security assessment
+- [ ] Coordinate multi-party trusted setup ceremony (10+ participants)
+- [ ] Generate and verify proving/verification keys
 - [ ] Address audit findings
 
 **Deliverables**:
@@ -220,12 +227,15 @@
   - Monitoring stack
 
 ### Costs (Estimated)
-- **Development**: $250k-350k (4.5 FTE × 14 weeks)
-- **Infrastructure**: $2k/month (production)
-- **Security Audit**: $50k-100k
-- **Trusted Setup**: $10k-20k
-- **Gas Costs**: Variable (funded by donations)
-- **Total**: $350k-500k
+- **Development**: $500k-700k (4.5 FTE × 14 weeks at market rates)
+- **Infrastructure**: $3k-5k/month (production with redundancy)
+- **Security Audit**: $75k-150k (multiple firms)
+- **Trusted Setup**: $20k-40k (MPC ceremony coordination)
+- **Gas Costs**: Variable (community-funded via donations)
+- **Legal/Compliance**: $50k-100k
+- **Community/Outreach**: $50k-100k
+- **Contingency**: $100k-200k
+- **Total**: $800k-1.4M
 
 ## Risk Management
 

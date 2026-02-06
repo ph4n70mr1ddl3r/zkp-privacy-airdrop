@@ -46,25 +46,28 @@ for i in 0..25:
         current_hash = poseidon_hash(merkle_path[i], current_hash)
 assert(current_hash == merkle_root)
 
-// 6. Compute nullifier
-nullifier_input = private_key || recipient  // 52 bytes concatenation
+// 6. Compute nullifier (private_key || recipient padded to 64 bytes)
+nullifier_input = private_key || recipient || [0x00; 12]  // 64 bytes total
 computed_nullifier = poseidon_hash(nullifier_input)
 assert(computed_nullifier == nullifier)
 ```
 
 **Circuit Statistics**:
 - **Constraints**: ~500,000
-- **Proof Size**: ~200 bytes
+- **Proof Size**: ~200 bytes (Groth16 proof only)
 - **Verification Time**: ~3ms on-chain
 - **Trusted Setup**: Phase 2 ceremony required
-- **Hash Functions**: Poseidon (for Merkle tree), Keccak256 (for address derivation)
+- **Hash Functions**: Poseidon (for Merkle tree and nullifier), Keccak256 (for address derivation)
 - **Curve**: BN128 (Ethereum compatible)
-1. public_key = ecdsa_private_to_public(private_key)  // Secp256k1 scalar multiplication
-2. address = keccak256(public_key)[12:32]            // Derive Ethereum address (last 20 bytes)
-3. leaf = poseidon_hash(address)                     // Hash address for Merkle tree leaf
-4. Verify(leaf, merkle_path, merkle_path_indices, merkle_root)  // Merkle proof verification
-5. nullifier = poseidon_hash(private_key || recipient)  // Deterministic nullifier (64 bytes input)
-```
+
+**Poseidon Hash Parameters**:
+- **Prime Field**: BN128 scalar field (modulus: 21888242871839275222246405745257275088548364400416034343698204186575808495617)
+- **Width**: 3 (capacity 2, rate 1)
+- **Full Rounds**: 8
+- **Partial Rounds**: 57
+- **Alpha**: 5
+- **Security Level**: 128 bits
+- **MDS Matrix**: Precomputed for BN128 field
 
 ### 1.2 Proof System Selection
 
@@ -84,9 +87,42 @@ assert(computed_nullifier == nullifier)
 **Phase 2**: Circuit-specific trusted setup
 
 **Security Considerations**:
-- Multi-party computation for Phase 2
-- At least 10 independent participants
-- Publicly verifiable transcripts
+- Multi-party computation for Phase 2 with at least 10 independent participants
+- Publicly verifiable ceremony transcripts
+- Secure parameter generation with distributed key generation
+- Toxic waste destruction ceremony
+
+### 1.4 Field Element Encoding
+
+All field elements in the BN128 scalar field must be encoded as:
+
+1. **Field Element Representation**: Integer in range `[0, p-1]` where `p = 21888242871839275222246405745257275088548364400416034343698204186575808495617`
+2. **Byte Encoding**: Big-endian 32-byte representation
+3. **Validation**: Must be less than field modulus `p`
+4. **Zero Padding**: For inputs smaller than 32 bytes, left-pad with zeros
+5. **Address Encoding**: Ethereum addresses (20 bytes) are padded to 32 bytes with 12 leading zeros
+
+**Example**:
+```
+address = 0x1234... (20 bytes)
+padded_address = 0x0000000000000000000000001234... (32 bytes)
+field_element = BigInt(padded_address) mod p
+```
+
+### 1.5 Proof Verification Flow
+
+1. **Off-chain verification** (optional, by relayer):
+   - Validate proof structure and field elements
+   - Check public signals match expected format
+   - Verify nullifier hasn't been used
+   - Estimate gas cost
+
+2. **On-chain verification** (required, by contract):
+   - Verify Groth16 proof using verifier contract
+   - Check `nullifierHashes[nullifierHash] == false`
+   - Check `block.timestamp < claimDeadline`
+   - Transfer tokens to recipient
+   - Emit `Claimed` event
 
 ## 2. Merkle Tree Specifications
 
@@ -109,10 +145,10 @@ root = tree.root()
 
 ### 2.3 Storage Requirements
 
-- **Number of Nodes**: 2^27 - 1 ≈ 134,217,727 nodes
-- **Full Tree**: ~4.3GB (134,217,727 nodes * 32 bytes)
-- **Compressed (pruned)**: ~8.3MB (65,249,064 leaves * 128 bytes for path data)
-- **Proof Size**: 26 * 32 bytes = 832 bytes per path
+- **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
+- **Full Tree**: ~4.3GB (134,217,727 nodes × 32 bytes)
+- **Compressed (pruned)**: ~8.3GB (65,000,000 leaves × 128 bytes for path data)
+- **Proof Size**: 26 × 32 bytes = 832 bytes per path
 
 ### 2.4 Distribution Strategy
 
@@ -132,7 +168,7 @@ struct TreeHeader {
     version: u8,           // Format version (1)
     height: u8,            // Tree height (26)
     reserved: [u8; 2],     // Reserved for future use
-    num_leaves: u32,       // Number of leaves (65,249,064)
+    num_leaves: u32,       // Number of leaves (65,000,000)
     root_hash: [u8; 32],   // Merkle root
 }
 
@@ -143,11 +179,11 @@ struct LeafData {
 
 // Complete file format:
 // [TreeHeader][LeafData 0][LeafData 1]...[LeafData N]
-// Total size: 16 + (65,249,064 * 20) ≈ 1.3GB
+// Total size: 16 + (65,000,000 * 20) ≈ 1.3GB
 
 // Alternative: Pruned tree with only hashes
 // [TreeHeader][LeafHash 0][LeafHash 1]...[LeafHash N]
-// Total size: 16 + (65,249,064 * 32) ≈ 2.1GB
+// Total size: 16 + (65,000,000 * 32) ≈ 2.1GB
 ```
 
 #### Merkle Tree JSON Format (API)
@@ -155,7 +191,7 @@ struct LeafData {
 {
   "version": 1,
   "height": 26,
-  "num_leaves": 65249064,
+  "num_leaves": 65000000,
   "root": "0x1234...",
   "leaves": [
     {
@@ -196,14 +232,14 @@ contract ZKPToken is ERC20, Ownable {
 ```solidity
 contract PrivacyAirdrop {
     // State variables
-    bytes32 public merkleRoot;
+    bytes32 public immutable merkleRoot;
     mapping(bytes32 => bool) public nullifierHashes;
-    IERC20 public token;
-    uint256 public claimAmount = 1000 * 10**18; // 1000 ZKP tokens (18 decimals)
-    uint256 public claimDeadline;
+    IERC20 public immutable token;
+    uint256 public immutable claimAmount;
+    uint256 public immutable claimDeadline;
     
     // Groth16 verifier contract
-    IVerifier public verifier;
+    IVerifier public immutable verifier;
     
     // Events
     event Claimed(bytes32 indexed nullifierHash, address indexed recipient);
@@ -218,11 +254,13 @@ contract PrivacyAirdrop {
     constructor(
         address _token,
         bytes32 _merkleRoot,
+        uint256 _claimAmount,
         uint256 _claimDeadline,
         address _verifier
     ) {
         token = IERC20(_token);
         merkleRoot = _merkleRoot;
+        claimAmount = _claimAmount;
         claimDeadline = _claimDeadline;
         verifier = IVerifier(_verifier);
     }
@@ -253,9 +291,19 @@ contract PrivacyAirdrop {
         nullifierHashes[nullifierHash] = true;
         
         // Transfer tokens
-        token.transfer(recipient, claimAmount);
+        require(token.transfer(recipient, claimAmount), "Token transfer failed");
         
         emit Claimed(nullifierHash, recipient);
+    }
+    
+    function estimateClaimGas(
+        Proof calldata proof,
+        bytes32 nullifierHash,
+        address recipient
+    ) external view returns (uint256) {
+        // Gas estimation for claim transaction
+        // This is approximate and may vary based on network conditions
+        return 500000; // Base gas estimate
     }
 }
 ```
@@ -603,11 +651,13 @@ merkle_tree:
 
 ### 7.3 Relayer Security
 
-- **Private key management**: Use AWS KMS or HashiCorp Vault
-- **DDoS protection**: Cloudflare or equivalent
-- **API authentication**: API keys for monitoring endpoints
-- **Request validation**: Strict input validation
-- **Logging**: No sensitive data in logs
+- **Private key management**: Use AWS KMS, HashiCorp Vault, or hardware security modules
+- **DDoS protection**: Cloudflare, AWS Shield, or equivalent
+- **API authentication**: API keys for monitoring endpoints only (claim submission is permissionless)
+- **Request validation**: Strict input validation and sanitization
+- **Logging**: No sensitive data in logs (private keys, addresses, proof data)
+- **Open source**: All relayer code is publicly auditable
+- **Multi-relayer ecosystem**: No single point of failure, users can choose any relayer
 
 ### 7.4 Privacy Considerations
 

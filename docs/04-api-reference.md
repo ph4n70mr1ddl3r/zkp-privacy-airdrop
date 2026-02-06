@@ -15,7 +15,7 @@ Authorization: Bearer <API_KEY>
 
 #### Submit Claim
 
-Submits a zero-knowledge proof to claim tokens.
+Submits a zero-knowledge proof to claim tokens. The relayer validates the proof off-chain before submitting to the contract to save gas costs.
 
 ```http
 POST /api/v1/submit-claim
@@ -189,7 +189,7 @@ Content-Type: application/json
 }
 ```
 
-**Note**: Actual donation is done by sending ETH to the donation address. This endpoint is for recording donation intent.
+**Note**: Donations can be sent directly to the relayer's Ethereum address. This endpoint provides the donation address and tracks donation intents for transparency.
 
 **Response** (200 OK):
 ```json
@@ -311,10 +311,15 @@ GET /api/v1/merkle-path/{address}
 
 ### Rate Limits
 
-- **General**: 100 requests per minute per IP
-- **Submit Claim**: 1 request per minute per nullifier hash
-- **Check Status**: 10 requests per minute per nullifier hash
-- **Merkle Path**: 60 requests per minute per IP
+Rate limits are applied per endpoint to prevent abuse while maintaining service availability:
+
+- **Submit Claim**: 1 request per 60 seconds per nullifier hash
+- **Check Claim Status**: 10 requests per 60 seconds per nullifier hash  
+- **Get Merkle Path**: 60 requests per 60 seconds per IP address
+- **General API**: 100 requests per 60 seconds per IP address
+- **Burst Allowance**: 2x limit for 10 seconds
+
+All rate limits are shared across all relayers in the ecosystem. Exceeding limits returns HTTP 429 with `Retry-After` header.
 
 ### Error Codes
 
@@ -374,10 +379,14 @@ zkp-airdrop generate-proof \
   - Can also use env var: `PRIVATE_KEY`
   - Or read from file: `--private-key-file <PATH>`
   - Or read from stdin: `--private-key-stdin`
-- `--recipient <ADDRESS>`: Address to receive tokens
+- `--recipient <ADDRESS>`: Address to receive tokens (must be valid Ethereum address)
 - `--merkle-tree <SOURCE>`: Path to Merkle tree file or API URL
+  - Supports: local file path, HTTP/HTTPS URL, IPFS hash
 - `--output <FILE>`: Output file for proof JSON [default: proof.json]
-- `--format <FORMAT>`: Output format (json, hex) [default: json]
+- `--format <FORMAT>`: Output format (json, hex, raw) [default: json]
+  - `json`: JSON format with proof and public signals
+  - `hex`: Hexadecimal strings for smart contract calls
+  - `raw`: Binary format for direct submission
 
 **Example**:
 ```bash
@@ -454,7 +463,7 @@ zkp-airdrop submit \
 
 **Arguments**:
 - `--proof <FILE>`: Path to proof JSON file
-- `--relayer-url <URL>`: Relayer endpoint URL
+- `--relayer-url <URL>`: Relayer endpoint URL (e.g., https://relayer.zkp-airdrop.io)
 - `--recipient <ADDRESS>`: Recipient address (must match proof)
 - `--wait`: Wait for transaction confirmation
 - `--timeout <SECONDS>`: Timeout for confirmation [default: 120]
