@@ -31,7 +31,7 @@
 - [ ] **Hashes-only file**: 1.945 GiB (header + 65,249,064 × 32 bytes)
 - [ ] **Proof data per claim**: 832 bytes (26 × 32 bytes for Merkle path)
 - [ ] **Groth16 proof size**: ~200 bytes
-- [ ] **Total proof package**: ~1,032 bytes
+- [ ] **Total proof package**: ~1,032 bytes (Groth16 proof: ~200 bytes + Merkle path: 832 bytes)
 
 ### 4. Gas Estimates
 - [ ] **Proof verification**: 300,000 gas
@@ -144,6 +144,18 @@ Consider implementing:
 - Version compatibility validation
 
 ## Version History
+
+### v1.5.0 (2026-02-07)
+- **Fixed storage unit inconsistencies**: Standardized all storage sizes to GiB (removed GB references)
+- **Clarified proof size composition**: Added breakdown of 1,032 bytes total (200 bytes Groth16 proof + 832 bytes Merkle path)
+- **Enhanced field element encoding guidance**: Added specific format usage for APIs, contracts, CLI, and storage
+- **Improved error handling documentation**: Added retry strategies and recovery procedures
+- **Added hardware requirements**: Specified hardware for performance targets (<5s proof gen on 8-core/16GB, <100ms API on 4 vCPU/8GB)
+- **Fixed rate limit documentation**: Clarified per_nullifier as "minimum seconds between requests" (1 request per 60 seconds)
+- **Added test vectors section**: Expanded testing requirements with specific test vector categories
+- **Updated implementation status notes**: Added clear indication that documents are specifications, not implementations
+- **Enhanced byte-level examples**: Added concrete byte-level nullifier calculation example
+- **Clarified checksum publication**: Updated to show exact command for accounts.csv verification
 
 ### v1.4.0 (2026-02-07)
 - **Migrated to Optimism**: Changed deployment from Ethereum mainnet to Optimism L2

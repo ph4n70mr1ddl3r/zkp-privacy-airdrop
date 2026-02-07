@@ -1,10 +1,12 @@
 # API Reference
 
-**Version**: 1.0.0  
+**Version**: 1.1.0  
 **Last Updated**: 2026-02-07  
 **Based on**: [Unified Specification](../docs/00-specification.md)
 
 > **Note**: All data formats and constants are defined in the [Unified Specification](../docs/00-specification.md).
+> 
+> **Implementation Status**: This is a specification document. Implementation timeline is detailed in the [Implementation Roadmap](./03-implementation-roadmap.md).
 
 ## Relayer API
 
@@ -353,6 +355,31 @@ All rate limits are shared across all relayers in the ecosystem. Exceeding limit
 | `NETWORK_ERROR` | Ethereum network error |
 | `INTERNAL_ERROR` | Internal server error |
 | `ADDRESS_NOT_FOUND` | Address not in Merkle tree |
+
+### Error Handling & Recovery
+
+#### Retry Strategies
+- **Rate Limit Errors (429)**: Wait for the duration specified in `Retry-After` header
+- **Network Errors**: Retry with exponential backoff (1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s)
+- **Temporary Failures** (insufficient funds, contract errors): Retry after 1 minute
+- **Permanent Failures** (invalid proof, already claimed): Do not retry
+
+#### Recovery Procedures
+1. **Proof Generation Failures**:
+   - Regenerate proof with same inputs
+   - Verify private key and recipient address format
+   - Check Merkle tree file integrity
+
+2. **Submission Failures**:
+   - For relayer submission: Try alternative relayer or submit directly
+   - For direct submission: Check gas price, nonce, and network connectivity
+   - Verify contract address and chain ID
+
+3. **Common Issues**:
+   - **Gas Price Too High**: Wait for lower network congestion
+   - **Nonce Issues**: Reset transaction nonce
+   - **Insufficient Balance**: Add ETH to relayer or user wallet
+   - **Network Congestion**: Increase gas price or wait
 
 ## CLI Reference
 

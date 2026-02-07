@@ -82,7 +82,7 @@
 - [ ] Create tree generation audit trail for community verification
 
 **Deliverables**:
-- Generated Merkle tree (~2GB)
+- Generated Merkle tree (~2 GiB)
 - Tree distribution system
 - Query API documentation
 

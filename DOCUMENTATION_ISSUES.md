@@ -176,23 +176,30 @@ The documentation is comprehensive but has several inconsistencies, ambiguities,
 
 ## 7. Recommendations
 
-### High Priority (Fix Immediately):
-1. Standardize nullifier calculation with test vectors
-2. Clarify gas estimation logic
-3. Fix storage size unit inconsistencies
-4. Add checksum for accounts.csv
+### ✅ Fixed Issues (2026-02-07):
+1. **Nullifier calculation**: Standardized across all documents with byte-level example
+2. **Gas estimation logic**: Clarified 300K + 200K = 500K base + 200K buffer = 700K estimated
+3. **Storage size units**: Standardized to GiB throughout all documents
+4. **Proof size composition**: Clarified 1,032 bytes = ~200B Groth16 + 832B Merkle path
+5. **Field element encoding**: Added guidance on when to use decimal vs hex formats
+6. **Implementation status**: Added notes to technical specifications
+7. **Byte-level examples**: Added concrete nullifier calculation example
+8. **Error handling**: Added retry strategies and recovery procedures
+9. **Hardware requirements**: Added specifications for performance targets
+10. **Rate limit documentation**: Clarified per_nullifier as "minimum seconds between requests"
+11. **Checksum publication**: Updated to show exact command for verification
 
 ### Medium Priority (Next Documentation Update):
-5. Add implementation status indicators
-6. Create data flow diagrams
-7. Add complete examples
-8. Standardize terminology
+1. Create data flow diagrams
+2. Add more comprehensive test vectors
+3. Standardize terminology across privacy documents
+4. Add migration guides for future upgrades
 
 ### Low Priority (Future):
-9. Implement documentation linter
-10. Add automated consistency checking
-11. Create migration guides
-12. Improve cross-referencing
+1. Implement documentation linter
+2. Add automated consistency checking
+3. Improve cross-referencing between documents
+4. Add visual diagrams for system architecture
 
 ## 8. Consistency Checklist Updates
 

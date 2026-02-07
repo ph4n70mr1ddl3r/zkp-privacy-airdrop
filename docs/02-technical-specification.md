@@ -1,10 +1,12 @@
 # Technical Specification
 
-**Version**: 1.0.0  
+**Version**: 1.1.0  
 **Last Updated**: 2026-02-07  
 **Based on**: [Unified Specification](../docs/00-specification.md)
 
 > **Note**: This document provides detailed technical specifications. For authoritative constants and interfaces, refer to the [Unified Specification](../docs/00-specification.md).
+> 
+> **Implementation Status**: This is a specification document. Implementation timeline is detailed in the [Implementation Roadmap](./03-implementation-roadmap.md).
 
 ## Claimant Workflow
 
@@ -239,11 +241,11 @@ struct LeafData {
 
 // Complete file format:
 // [TreeHeader][LeafData 0][LeafData 1]...[LeafData N]
-// Total size: 16 + (65,249,064 * 20) = 1.216 GiB (1.30 GB)
+// Total size: 16 + (65,249,064 * 20) = 1.216 GiB
 
 // Alternative: Pruned tree with only hashes
 // [TreeHeader][LeafHash 0][LeafHash 1]...[LeafHash N]
-// Total size: 16 + (65,249,064 * 32) = 1.945 GiB (1.94 GB)
+// Total size: 16 + (65,249,064 * 32) = 1.945 GiB
 ```
 
 #### Merkle Tree JSON Format (API)
@@ -698,9 +700,9 @@ relayer:
   max_gas_price: "100000000"  # 0.1 gwei cap (Optimism gas is much cheaper than Ethereum)
   
 rate_limit:
-  per_nullifier: 60  # seconds between requests for same nullifier
-  per_ip: 100  # requests per 60 seconds per IP
-  global: 1000  # requests per 60 seconds across all IPs
+  per_nullifier: 60  # minimum seconds between requests for same nullifier (1 request per 60 seconds)
+  per_ip: 100  # maximum requests per 60 seconds per IP
+  global: 1000  # maximum requests per 60 seconds across all IPs
   burst_factor: 2.0  # allow 2x limit for 10 seconds
   burst_window: 10  # seconds
   

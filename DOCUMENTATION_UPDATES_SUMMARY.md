@@ -85,16 +85,25 @@ Updated documentation to clearly reflect the claimant perspective, accounts qual
 - Unified terminology across documents
 - Updated version numbers where appropriate
 
-## Remaining Issues (From Previous Review)
-The following issues from the documentation review still need attention:
+## Technical Consistency Updates (2026-02-07)
+The following technical inconsistencies have been resolved:
 
-1. **Nullifier hash calculation inconsistency** - Different descriptions in spec vs API vs code
-2. **Gas estimates mismatch** - Hardcoded 700,000 vs documented breakdown
-3. **Storage size unit confusion** - GiB vs GB inconsistencies
-4. **Proof size composition** - Unclear what makes 1,032 bytes total
-5. **Field element encoding ambiguity** - No clear decimal vs hex guidance
+1. **✅ Nullifier hash calculation** - Standardized across all documents: `Poseidon(private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes of zeros))`
+2. **✅ Gas estimates clarified** - All documents now consistently show: 300K verification + 200K storage/transfer = 500K base + 200K buffer = 700K estimated, 1M max
+3. **✅ Storage size units standardized** - All references now use GiB (gibibytes) consistently, removed GB confusion
+4. **✅ Proof size composition clarified** - 1,032 bytes = ~200 bytes Groth16 proof + 832 bytes Merkle path
+5. **✅ Field element encoding guidance** - Added specific format usage: decimal strings for API, uint256 for contracts, both for CLI
+6. **✅ Rate limit documentation** - Clarified per_nullifier as "minimum seconds between requests" (1 request per 60 seconds)
+7. **✅ Added hardware requirements** - Specified hardware for performance targets
+8. **✅ Enhanced error handling** - Added retry strategies and recovery procedures
+9. **✅ Added test vectors section** - Expanded testing requirements
+10. **✅ Added implementation status notes** - Clear indication that documents are specifications
 
-These will be addressed in a future documentation update focusing on technical consistency.
+### Additional Fixes:
+- **Byte-level examples**: Added concrete nullifier calculation example with actual byte values
+- **Checksum clarification**: Updated to show exact command for accounts.csv verification
+- **Implementation status**: Added notes to technical specifications
+- **Rate limit config**: Enhanced comments for clarity
 
 ## Additional Update: Relayer as API Service (Not Web App)
 

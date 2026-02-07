@@ -1,6 +1,6 @@
 # ZKP Privacy Airdrop - Unified Specification
 
-## Version: 1.4.0
+## Version: 1.5.0
 ## Date: 2026-02-07
 
 This document provides a single source of truth for all technical specifications, constants, and interfaces for the ZKP Privacy Airdrop system.
@@ -37,7 +37,7 @@ This document provides a single source of truth for all technical specifications
 - **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
 - **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path siblings)
 - **Groth16 Proof Size**: ~200 bytes
-- **Total Proof Package**: ~1,032 bytes (proof + public signals)
+- **Total Proof Package**: ~1,032 bytes (Groth16 proof: ~200 bytes + Merkle path: 832 bytes)
 - **Precomputed Proofs Storage**: 56.88 GiB (65,249,064 leaves × 936 bytes per leaf including Merkle path siblings (832 bytes), leaf hash (32 bytes), and path indices (104 bytes))
 - **Merkle Tree File Size**:
   - Binary format with addresses only: 1.216 GiB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,280 bytes)
@@ -50,7 +50,7 @@ This document provides a single source of truth for all technical specifications
 - List of 65,249,064 Ethereum addresses (20 bytes each) from accounts.csv
   - **Source**: https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing
   - **Download Command**: `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`
-- Total input size: 65,249,064 × 20 bytes = 1.216 GiB (1.304 GB)
+- Total input size: 65,249,064 × 20 bytes = 1.216 GiB
 
 **Generation Steps**:
 1. **Hashing**: Compute Poseidon hash for each address → 65,249,064 leaves (32 bytes each)
@@ -67,7 +67,7 @@ This document provides a single source of truth for all technical specifications
 
 **Verification & Audit**:
 - **Input Data**: Available at https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing (download with `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`)
-- **Checksum**: SHA256 of sorted address list (to be published with final tree generation)
+- **Checksum**: SHA256 of sorted address list (will be published with final tree generation: `sha256sum accounts.csv`)
 - **Independent Verification**: Multiple parties recompute tree from same input
 - **Proof of Correctness**: Provide sample proofs for random leaves
 - **Transparency**: Publish generation script and input checksum
@@ -148,6 +148,10 @@ All field elements are encoded as:
 - **BN128 Field**: Integers modulo `p = 21888242871839275222246405745257275088548364400416034343698204186575808495617`
 - **Serialization**: Big-endian 32-byte representation
 - **Validation**: Must be `0 <= x < p`
+- **API Format**: Decimal strings (primary)
+- **Contract Format**: uint256 (big-endian bytes)
+- **CLI Format**: Accepts both decimal and hex (with 0x prefix)
+- **Storage**: Hex strings for readability, decimal strings for API transmission
 
 ## 3. Smart Contract Interfaces
 
@@ -338,6 +342,15 @@ input = private_key || recipient || padding  // 64 bytes total
 nullifier = poseidon_hash(input)  // 32 bytes
 ```
 
+**Byte-Level Example**:
+```
+private_key = 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef (32 bytes)
+recipient = 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 (20 bytes)
+padding = 0x000000000000000000000000 (12 bytes)
+input = 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeff39fd6e51aad88f6f4ce6ab8827279cfffb92266000000000000000000000000 (64 bytes)
+nullifier = poseidon_hash(input)  # Result: 32-byte hash
+```
+
 ## 5. System Architecture
 
 ### 5.1 Component Specifications
@@ -458,10 +471,10 @@ nullifier = poseidon_hash(input)  // 32 bytes
 - **Security Tests**: Formal verification + third-party audits
 
 ### 7.2 Performance Targets
-- **Proof Generation**: < 5 seconds (95th percentile)
-- **Claim Processing**: < 30 seconds end-to-end (submission to confirmation)
-- **API Response**: < 100ms (p95) for all endpoints
-- **Database Queries**: < 10ms (p95) for read queries, < 50ms for writes
+- **Proof Generation**: < 5 seconds (95th percentile) on modern hardware (8-core CPU, 16GB RAM)
+- **Claim Processing**: < 30 seconds end-to-end (submission to confirmation) including blockchain confirmation
+- **API Response**: < 100ms (p95) for all endpoints on typical cloud infrastructure (4 vCPU, 8GB RAM)
+- **Database Queries**: < 10ms (p95) for read queries, < 50ms for writes on PostgreSQL with SSDs
 
 ### 7.3 Detailed Testing Requirements
 
@@ -493,7 +506,14 @@ nullifier = poseidon_hash(input)  // 32 bytes
 - **User experience**: CLI tool usability, error messages, help text
 - **Compatibility**: Test with different Ethereum clients and node versions
 
-#### 7.3.5 Security Testing
+#### 7.3.5 Test Vectors
+- **Valid proofs**: 100+ test vectors with known inputs/outputs
+- **Edge cases**: Zero/null values, maximum field elements, boundary conditions
+- **Invalid proofs**: Malformed inputs, wrong signatures, incorrect Merkle paths
+- **Integration test vectors**: Complete claim transactions with known outcomes
+- **Performance test vectors**: Large batch processing for load testing
+
+#### 7.3.6 Security Testing
 - **Third-party audits**: Minimum 2 independent security firms
 - **Bug bounty program**: Public program with substantial rewards
 - **Code review**: Internal and external review of all critical code
