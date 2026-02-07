@@ -4,15 +4,18 @@
 
 This is a comprehensive documentation suite for the ZKP Privacy Airdrop project - a privacy-preserving token distribution system using zero-knowledge proofs.
 
+**Important**: [00-specification.md](00-specification.md) is the single source of truth for all technical constants, specifications, and data formats. Other documents reference and elaborate on these specifications.
+
 ## Quick Start
 
-1. **Read the Overview**: [01-overview.md](01-overview.md)
-2. **Technical Details**: [02-technical-specification.md](02-technical-specification.md)
-3. **Implementation Plan**: [03-implementation-roadmap.md](03-implementation-roadmap.md)
-4. **API Reference**: [04-api-reference.md](04-api-reference.md)
-5. **Security & Privacy**: [05-security-privacy.md](05-security-privacy.md)
-6. **Privacy Analysis**: [06-privacy-analysis.md](06-privacy-analysis.md)
-7. **Consistency Guide**: [07-consistency-checklist.md](07-consistency-checklist.md)
+1. **Read the Unified Specification**: [00-specification.md](00-specification.md) - **Start here for authoritative constants and interfaces**
+2. **Read the Overview**: [01-overview.md](01-overview.md)
+3. **Technical Details**: [02-technical-specification.md](02-technical-specification.md)
+4. **Implementation Plan**: [03-implementation-roadmap.md](03-implementation-roadmap.md)
+5. **API Reference**: [04-api-reference.md](04-api-reference.md)
+6. **Security & Privacy**: [05-security-privacy.md](05-security-privacy.md)
+7. **Privacy Analysis**: [06-privacy-analysis.md](06-privacy-analysis.md)
+8. **Consistency Guide**: [07-consistency-checklist.md](07-consistency-checklist.md)
 
 ## Project Structure
 

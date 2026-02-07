@@ -52,16 +52,16 @@ for i in 0..25:
         current_hash = poseidon_hash(merkle_path[i], current_hash)
 assert(current_hash == merkle_root)
 
-// 6. Compute nullifier (private_key || recipient padded to 64 bytes)
-nullifier_input = private_key || recipient || [0x00; 12]  // 64 bytes total
-computed_nullifier = poseidon_hash(nullifier_input)
-assert(computed_nullifier == nullifier)
+// 6. Compute nullifier (private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes of zeros))
+    nullifier_input = private_key || recipient || [0x00; 12]  // 64 bytes total
+    computed_nullifier = poseidon_hash(nullifier_input)
+    assert(computed_nullifier == nullifier)
 ```
 
 **Circuit Statistics**:
-- **Constraints**: ~500,000
+- **Constraints**: ~500,000 (estimated, requires actual circuit compilation)
 - **Proof Size**: ~200 bytes (Groth16 proof only)
-- **Verification Time**: ~3ms on-chain
+- **Verification Time**: ~3ms on-chain (estimated)
 - **Trusted Setup**: Phase 2 ceremony required
 - **Hash Functions**: Poseidon (for Merkle tree and nullifier), Keccak256 (for address derivation)
 - **Curve**: BN128 (Ethereum compatible)
@@ -156,13 +156,13 @@ root = tree.root()
 ### 2.3 Storage Requirements
 
 - **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
-- **Full Tree Storage**: 4.00 GB (134,217,727 nodes × 32 bytes)
+- **Full Tree Storage**: 4.00 GB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
 - **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path)
 - **Precomputed Proofs Storage**: 56.88 GB (65,249,064 leaves × 936 bytes per leaf including Merkle path, leaf hash, and index)
 - **Merkle Tree File Sizes**:
-  - Binary format with addresses only: 1.30 GB (16 byte header + 65,249,064 × 20 bytes)
-  - Binary format with hashes only: 1.94 GB (16 byte header + 65,249,064 × 32 bytes)
-  - Full tree for local generation: 4.00 GB (all 134,217,727 nodes × 32 bytes)
+  - Binary format with addresses only: 1.30 GB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,296 bytes ≈ 1.216 GB)
+  - Binary format with hashes only: 1.94 GB (16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes ≈ 1.945 GB)
+  - Full tree for local generation: 4.00 GB (all 134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
 
 ### 2.4 Distribution Strategy
 
@@ -319,12 +319,15 @@ contract PrivacyAirdrop {
         // Gas estimation for claim transaction
         // This is approximate and may vary based on network conditions
         // Returns maximum expected gas usage to ensure relayers have sufficient balance
-        return 1_000_000; // Maximum gas estimate (verification + storage + transfer + buffer)
+        // Based on: 300K verification + 150K storage + 50K transfer = 500K base + 200K buffer
+        return 700_000; // Conservative estimate with buffer (verification + storage + transfer + buffer)
     }
 }
 ```
 
-### 3.3 Relayer Registry Contract
+### 3.3 Relayer Registry Contract (Optional)
+
+**Note**: The main PrivacyAirdrop contract allows anyone to submit claims directly. This RelayerRegistry is an optional contract for relayers who want to accept donations and track balances. Users can always submit claims directly to the PrivacyAirdrop contract if they prefer.
 
 ```solidity
 contract RelayerRegistry {
@@ -432,10 +435,10 @@ pub fn generate_proof(
     // 3. Find Merkle path
     let (path, indices) = merkle_tree.get_path(&leaf)?;
     
-    // 4. Generate nullifier (Poseidon hash of private_key || recipient || padding)
-    let mut nullifier_input = private_key.to_vec();
-    nullifier_input.extend_from_slice(recipient.as_bytes());
-    nullifier_input.extend_from_slice(&[0u8; 12]); // 12 bytes of padding
+    // 4. Generate nullifier (Poseidon hash of private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes of zeros))
+    let mut nullifier_input = private_key.to_vec();  // 32 bytes
+    nullifier_input.extend_from_slice(recipient.as_bytes());  // 20 bytes
+    nullifier_input.extend_from_slice(&[0u8; 12]); // 12 bytes of padding (64 bytes total)
     let nullifier = poseidon_hash(&nullifier_input);
     
     // 5. Build circuit inputs

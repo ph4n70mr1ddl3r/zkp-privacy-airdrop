@@ -1,7 +1,7 @@
 # ZKP Privacy Airdrop - Unified Specification
 
 ## Version: 1.0.0
-## Date: 2026-02-06
+## Date: 2026-02-07
 
 This document provides a single source of truth for all technical specifications, constants, and interfaces for the ZKP Privacy Airdrop system.
 
@@ -27,15 +27,15 @@ This document provides a single source of truth for all technical specifications
 - **Tree Root Size**: 32 bytes (BN128 field element)
 
 ### 1.3 Storage Requirements
-- **Full Tree Storage**: 4.00 GB (134,217,727 nodes × 32 bytes)
+- **Full Tree Storage**: 4.00 GB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
 - **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path)
 - **Groth16 Proof Size**: ~200 bytes
 - **Total Proof Package**: ~1,032 bytes (proof + public signals)
 - **Precomputed Proofs Storage**: 56.88 GB (65,249,064 leaves × 936 bytes per leaf including Merkle path, leaf hash, and index)
 - **Merkle Tree File Size**:
-  - Binary format with addresses only: 1.30 GB (16 byte header + 65,249,064 × 20 bytes)
-  - Binary format with hashes only: 1.94 GB (16 byte header + 65,249,064 × 32 bytes)
-  - Full tree for local generation: 4.00 GB (all 134,217,727 nodes × 32 bytes)
+  - Binary format with addresses only: 1.30 GB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,296 bytes ≈ 1.216 GB)
+  - Binary format with hashes only: 1.94 GB (16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes ≈ 1.945 GB)
+  - Full tree for local generation: 4.00 GB (all 134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
 
 ### 1.4 Merkle Tree Generation Process
 
@@ -207,15 +207,43 @@ interface IRelayerRegistry {
 - **Examples**: 
   - Decimal: `"13862987149607610235678184535533251295074929736392939725598345555223684473689"`
   - Hex: `"0x1eab1f9d8c9a0e3a9a1b9c8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d"`
+- **Validation Code Example** (Python):
+  ```python
+  p = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+  def validate_field_element(x_str):
+      try:
+          x = int(x_str) if not x_str.startswith('0x') else int(x_str[2:], 16)
+          return 0 <= x < p
+      except ValueError:
+          return False
+  ```
 
 **Address Encoding**:
 - **Format**: 20-byte hex strings with `0x` prefix (lowercase)
 - **Validation**: Must be valid Ethereum address checksum (EIP-55 optional but recommended)
 - **Example**: `"0x1234567890123456789012345678901234567890"`
+- **Validation Code Example** (Python):
+  ```python
+  import re
+  
+  def validate_address(addr_str):
+      # Basic format check
+      if not re.match(r'^0x[a-fA-F0-9]{40}$', addr_str):
+          return False
+      # Optional EIP-55 checksum validation
+      return True  # Implement EIP-55 check if needed
+  ```
 
 **Hash Encoding**:
 - **Format**: 32-byte hashes (Merkle root, nullifier) as 64-character hex strings with `0x` prefix (lowercase)
 - **Example**: `"0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"`
+- **Validation Code Example** (Python):
+  ```python
+  import re
+  
+  def validate_hash(hash_str):
+      return bool(re.match(r'^0x[a-fA-F0-9]{64}$', hash_str))
+  ```
 
 ### 4.2 Merkle Tree Binary Format
 ```
@@ -236,6 +264,58 @@ interface IRelayerRegistry {
 
 ### 4.3 API Request/Response Formats
 See API Reference (docs/04-api-reference.md) for detailed schemas.
+
+### 4.4 Sample Proof Data (Test Vectors)
+
+**Note**: These are example values for testing and documentation. Real values will differ.
+
+```json
+{
+  "proof": {
+    "a": [
+      "13862987149607610235678184535533251295074929736392939725598345555223684473689",
+      "15852461416563938980812664669205586669275551636381044234656441244716521728494"
+    ],
+    "b": [
+      [
+        "5271136692644488661472090380084300860023621341105994559822360935366466488598",
+        "13087383351388148199576676131705235587076492997725459455618630929222583122567"
+      ],
+      [
+        "11577348146760796615264785176417792290215623721746201176452539864784075498810",
+        "17893729721208687510330180286659033807865545010318659797787524576669037031211"
+      ]
+    ],
+    "c": [
+      "12509499717138495769595382836457599601032647877926581706768198432092263516957",
+      "12074485721490120286767132312724602681882230534725439082885525839982480799988"
+    ]
+  },
+  "public_signals": [
+    "12506683786903428657580826970343219399794309499408177282243657255115537496844",
+    "14595410858393345558982908440260919580883831523172723621649567175847460824507",
+    "1092345678901234567890123456789012345678901234567890123456789012"
+  ],
+  "nullifier": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+  "recipient": "0x1234567890123456789012345678901234567890",
+  "merkle_root": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "generated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+**Field Element Validation**:
+- All proof components (`a`, `b`, `c`) are arrays of 2 field elements each
+- `public_signals` is an array of 3 field elements: `[merkle_root, recipient, nullifier]`
+- Field elements must be `< p` where `p = 21888242871839275222246405745257275088548364400416034343698204186575808495617`
+
+**Nullifier Calculation** (pseudocode):
+```
+private_key = 0x1234... (32 bytes)
+recipient = 0x5678... (20 bytes)
+padding = 0x000000000000000000000000 (12 bytes)
+input = private_key || recipient || padding  // 64 bytes total
+nullifier = poseidon_hash(input)  // 32 bytes
+```
 
 ## 5. System Architecture
 
@@ -527,6 +607,36 @@ uint256 constant CLAIM_GAS = 500_000;            // Total gas for claim transact
 uint256 constant MAX_CLAIM_GAS = 1_000_000;      // Maximum gas allowance per claim (with 100% buffer)
 uint256 constant RELAYER_BUFFER = 200_000;       // Additional buffer for relayers to handle gas price fluctuations
 ```
+
+## 11. Glossary
+
+### 11.1 Core Concepts
+- **Nullifier**: Unique identifier computed as `Poseidon(private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes of zeros))`. Prevents double claims.
+- **Merkle Path**: The sibling nodes along the path from a leaf to the Merkle root (26 × 32 bytes = 832 bytes).
+- **Field Element**: Integer in the BN128 scalar field modulo `p = 21888242871839275222246405745257275088548364400416034343698204186575808495617`.
+- **Public Signals**: Array `[merkle_root, recipient, nullifier]` passed to the verifier, where each is a field element.
+
+### 11.2 Data Formats
+- **Decimal String Format**: Primary format for field elements (e.g., `"13862987149607610235678184535533251295074929736392939725598345555223684473689"`).
+- **Hex String Format**: Alternative format for field elements with `0x` prefix (e.g., `"0x1eab1f9d8c9a0e3a9a1b9c8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d"`).
+- **Address Format**: 20-byte Ethereum address as hex string with `0x` prefix (e.g., `"0x1234567890123456789012345678901234567890"`).
+- **Hash Format**: 32-byte hashes as 64-character hex strings with `0x` prefix.
+
+### 11.3 System Components
+- **Relayer**: Optional service that submits proofs on behalf of users and pays gas fees. Users can also submit directly to the contract.
+- **Proof Package**: Complete proof data including Groth16 proof (`a`, `b`, `c` arrays) and public signals.
+- **Merkle Tree**: Binary tree of height 26 containing 65,249,064 leaves (hashes of qualified addresses).
+
+### 11.4 Cryptographic Parameters
+- **Poseidon Hash**: Width=3, full_rounds=8, partial_rounds=57, alpha=5 over BN128 scalar field.
+- **BN128 Curve**: Elliptic curve used for Groth16 proof system (Ethereum precompile compatible).
+- **secp256k1**: Curve used for Ethereum address derivation from private keys.
+
+### 11.5 Gas Estimates
+- **VERIFY_PROOF_GAS**: 300,000 gas for Groth16 verification
+- **CLAIM_GAS**: 500,000 gas total for verification + storage + transfer
+- **MAX_CLAIM_GAS**: 1,000,000 gas maximum allowance (100% buffer)
+- **RELAYER_BUFFER**: 200,000 gas additional buffer for relayers
 
 ---
 

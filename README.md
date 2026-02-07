@@ -51,13 +51,15 @@ docker-compose up -d
 
 ## Documentation
 
-- [Unified Specification](docs/00-specification.md) - Single source of truth for all technical details
-- [Project Overview](docs/01-overview.md)
-- [Technical Specification](docs/02-technical-specification.md)
-- [Implementation Roadmap](docs/03-implementation-roadmap.md)
-- [API Reference](docs/04-api-reference.md)
-- [Security & Privacy](docs/05-security-privacy.md)
-- [Privacy Analysis & Limitations](docs/06-privacy-analysis.md)
+**Important**: All technical constants, specifications, and data formats are defined in the [Unified Specification](docs/00-specification.md), which is the single source of truth. Other documents reference and elaborate on these specifications.
+
+- [Unified Specification](docs/00-specification.md) - **Single source of truth** for all technical details, constants, and interfaces
+- [Project Overview](docs/01-overview.md) - High-level introduction and architecture
+- [Technical Specification](docs/02-technical-specification.md) - Detailed implementation specifications
+- [Implementation Roadmap](docs/03-implementation-roadmap.md) - Development timeline and phases
+- [API Reference](docs/04-api-reference.md) - External interfaces and data formats
+- [Security & Privacy](docs/05-security-privacy.md) - Security considerations and threat model
+- [Privacy Analysis & Limitations](docs/06-privacy-analysis.md) - Privacy guarantees and limitations
 - [Consistency Checklist](docs/07-consistency-checklist.md) - Verification guide for documentation consistency
 
 ## Project Structure

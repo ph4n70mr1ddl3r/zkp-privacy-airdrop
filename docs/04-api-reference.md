@@ -65,6 +65,13 @@ Content-Type: application/json
 }
 ```
 
+**Note**: The `public_signals` array contains three elements in this order:
+1. `merkle_root` (field element in decimal string format)
+2. `recipient` (address converted to field element in decimal string format)  
+3. `nullifier` (field element in decimal string format)
+
+The `nullifier` and `merkle_root` fields are also provided as hex strings for convenience, but the `public_signals` array uses decimal string format for field elements.
+
 **Response** (200 OK):
 ```json
 {
@@ -741,7 +748,8 @@ All 20-byte addresses are represented as:
           "type": "array",
           "items": { "type": "string" },
           "minItems": 2,
-          "maxItems": 2
+          "maxItems": 2,
+          "description": "Groth16 proof A component (field elements as decimal strings)"
         },
         "b": {
           "type": "array",
@@ -752,41 +760,53 @@ All 20-byte addresses are represented as:
             "maxItems": 2
           },
           "minItems": 2,
-          "maxItems": 2
+          "maxItems": 2,
+          "description": "Groth16 proof B component (field elements as decimal strings)"
         },
         "c": {
           "type": "array",
           "items": { "type": "string" },
           "minItems": 2,
-          "maxItems": 2
+          "maxItems": 2,
+          "description": "Groth16 proof C component (field elements as decimal strings)"
         }
       },
       "required": ["a", "b", "c"]
     },
     "public_signals": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": { 
+        "type": "string",
+        "pattern": "^(0x[a-fA-F0-9]{1,64}|[0-9]+)$",
+        "description": "Field elements as decimal strings (primary) or hex strings (alternative)"
+      },
       "minItems": 3,
-      "maxItems": 3
+      "maxItems": 3,
+      "description": "Public signals: [merkle_root, recipient, nullifier] as field elements"
     },
     "nullifier": {
       "type": "string",
-      "pattern": "^0x[a-fA-F0-9]{64}$"
+      "pattern": "^0x[a-fA-F0-9]{64}$",
+      "description": "32-byte nullifier hash as hex string"
     },
     "recipient": {
       "type": "string",
-      "pattern": "^0x[a-fA-F0-9]{40}$"
+      "pattern": "^0x[a-fA-F0-9]{40}$",
+      "description": "20-byte Ethereum address as hex string"
     },
     "merkle_root": {
       "type": "string",
-      "pattern": "^0x[a-fA-F0-9]{64}$"
+      "pattern": "^0x[a-fA-F0-9]{64}$",
+      "description": "32-byte Merkle root as hex string"
     },
     "generated_at": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when proof was generated"
     }
   },
-  "required": ["proof", "public_signals", "nullifier", "recipient", "merkle_root", "generated_at"]
+  "required": ["proof", "public_signals", "nullifier", "recipient", "merkle_root", "generated_at"],
+  "description": "Proof JSON format for ZKP Privacy Airdrop claims. Field elements in proof components and public_signals should be decimal strings (primary) or hex strings with 0x prefix (alternative)."
 }
 ```
 

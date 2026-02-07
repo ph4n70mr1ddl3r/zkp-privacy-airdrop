@@ -2,9 +2,9 @@
 
 **Version**: 1.0.0  
 **Last Updated**: 2026-02-07  
-**Based on**: [Unified Specification](../docs/00-specification.md)
+**Based on**: [Unified Specification](./00-specification.md)
 
-> **Note**: This document is derived from the [Unified Specification](../docs/00-specification.md). Any discrepancies should be resolved in favor of the unified specification.
+> **Note**: This document is derived from the [Unified Specification](./00-specification.md). Any discrepancies should be resolved in favor of the unified specification. For detailed technical specifications, cryptographic constants, and data formats, always refer to the unified specification.
 
 ## Project Summary
 
