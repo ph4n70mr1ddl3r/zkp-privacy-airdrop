@@ -273,7 +273,7 @@ fn get_randomized_gas_price() -> U256 {
     let random_factor = Decimal::from_ratio(rand::random::<u32>() % 6, 100); // 0-5%
     let randomized_multiplier = multiplier * (Decimal::one() + random_factor);
     let gas_price = base_fee * randomized_multiplier;
-    min(gas_price, U256::from(50_000_000_000)) // Cap at 50 gwei
+    min(gas_price, U256::from(100_000_000)) // Cap at 0.1 gwei (Optimism gas is much cheaper)
 }
 ```
 
@@ -296,11 +296,13 @@ fn get_randomized_gas_price() -> U256 {
 4. **Client version**: User-agent strings
 
 **Mitigations**:
-- Randomized gas prices: Base fee × 1.1 × (1 + random(0, 0.05)), capped at 50 gwei
+- Randomized gas prices: Base fee × 1.1 × (1 + random(0, 0.05)), capped at 0.1 gwei (Optimism-specific)
 - Batch processing with random delays (1-60 seconds) obscures individual timestamps
 - Relayer manages nonces, not claimants
 - No identifying headers in requests
 - All gas prices rounded to nearest wei (not gwei) to prevent pattern recognition
+
+**See [Unified Specification](../docs/00-specification.md#62-network-configuration) for exact gas price parameters.**
 
 ## Attack Vectors & Defenses
 

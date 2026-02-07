@@ -100,7 +100,7 @@ This document provides a single source of truth for all technical specifications
 3. Derive Ethereum address: `address = keccak256(pub_bytes[1:])[12:32]`
 4. Compute leaf: `leaf = Poseidon(address)`
 5. Verify Merkle proof using Poseidon hash
-6. Compute nullifier: `nullifier = Poseidon(private_key)` where private_key is the 32-byte Ethereum private key
+6. Compute nullifier: `nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)` where private_key is the 32-byte Ethereum private key
 7. Verify computed nullifier matches public input
 
 #### Poseidon Hash Parameters
@@ -132,17 +132,32 @@ output <== poseidon.out;
 
 ### 2.2 Nullifier Generation
 ```
-nullifier = Poseidon(private_key)
+nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)
 ```
-where `private_key` is the 32-byte Ethereum private key (secp256k1 scalar).
+where:
+- `private_key` is the 32-byte Ethereum private key (secp256k1 scalar)
+- `"zkp_airdrop_nullifier_v1"` is a 23-byte domain separator (ASCII)
+- `zeros` is padding to reach 96 bytes total (Poseidon width=3 requires 3×32=96 bytes)
+- `||` denotes concatenation
 
-- **Total Input**: 32 bytes (padded to fit Poseidon width requirements)
+**Exact Implementation**:
+```python
+# Python pseudocode
+domain_separator = b"zkp_airdrop_nullifier_v1"  # 23 bytes
+private_key = 0x1234... (32 bytes)
+# Pad to 96 bytes: 23 + 32 + 41 = 96 bytes
+padded_input = domain_separator + private_key + bytes(41)
+nullifier = poseidon_hash(padded_input)  # 32 bytes output
+```
+
+- **Total Input**: 96 bytes (3 field elements) 
 - **Output**: 32 bytes (1 field element)
 - **Properties**: 
   - **Deterministic**: Same private_key → same nullifier
   - **Private**: Requires knowledge of private_key to compute (not derivable from address)
   - **Unique**: Different private keys produce different nullifiers with high probability
   - **Unlinkable**: Cannot determine which address corresponds to a nullifier without the private key
+  - **Domain Separated**: Prevents cross-protocol nullifier collisions
 - **Purpose**: Ensures each qualified account can only claim once, regardless of recipient address
 - **Security Guarantee**: 
   - Prevents double-spending by binding nullifier to private key
@@ -342,24 +357,22 @@ See API Reference (docs/04-api-reference.md) for detailed schemas.
 **Nullifier Calculation** (pseudocode):
 ```
 private_key = 0x1234... (32 bytes)
-# Pad private key to fit Poseidon hash input requirements (3 field elements = 96 bytes)
-# For width=3 Poseidon, we need to split 32 bytes into field elements
-nullifier = poseidon_hash(private_key)  # 32 bytes output
+domain_separator = "zkp_airdrop_nullifier_v1"  # ASCII string, 23 bytes
+# Pad to 96 bytes: 23 + 32 + 41 = 96 bytes
+padded_input = domain_separator || private_key || zeros  # 96 bytes total
+nullifier = poseidon_hash(padded_input)  # 32 bytes output
 ```
 
 **Byte-Level Example**:
 ```
 private_key = 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef (32 bytes)
-# Poseidon hash with width=3 takes 3 field elements as input (96 bytes)
-# Since private_key is 32 bytes, we need to pad it appropriately:
-# Option 1: Pad with zeros to 96 bytes: private_key || 0x00*64
-# Option 2: Use domain separation: poseidon_hash("zkp_nullifier" || private_key)
-# Implementation detail: Use appropriate padding based on Poseidon implementation
-padded_input = private_key || [0x00]*64  # 96 bytes total
+domain_separator = "zkp_airdrop_nullifier_v1"  # ASCII string, 23 bytes
+# Pad to 96 bytes: 23 + 32 + 41 = 96 bytes
+padded_input = domain_separator || private_key || [0x00]*41  # 96 bytes total
 nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
 ```
 
-**Important**: The exact padding scheme depends on the Poseidon implementation. The key property is that `nullifier = Poseidon(private_key)` is deterministic and only computable with knowledge of the private key.
+**Important**: This exact padding scheme with domain separator `"zkp_airdrop_nullifier_v1"` MUST be used consistently across all implementations (circuit, CLI, contract). The domain separator prevents cross-protocol nullifier collisions.
 
 ## 5. System Architecture
 

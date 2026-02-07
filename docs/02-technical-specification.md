@@ -95,9 +95,10 @@ for i in 0..25:
         current_hash = poseidon_hash(merkle_path[i], current_hash)
 assert(current_hash == merkle_root)
 
-// 6. Compute nullifier (hash of private key)
+// 6. Compute nullifier (hash of private key with domain separation)
     # private_key is already available as circuit input
-    computed_nullifier = poseidon_hash(private_key)
+    # Use domain separator "zkp_airdrop_nullifier_v1" (23 bytes) + private_key (32 bytes) + padding (41 bytes)
+    computed_nullifier = poseidon_hash_with_domain(private_key, "zkp_airdrop_nullifier_v1")
     assert(computed_nullifier == nullifier)
 ```
 
@@ -179,6 +180,8 @@ field_element = BigInt(padded_address) mod p
 
 ## 2. Merkle Tree Specifications
 
+**Note**: For complete Merkle tree specifications including exact constants and storage requirements, refer to the [Unified Specification](../docs/00-specification.md#12-merkle-tree).
+
 ### 2.1 Tree Structure
 
 - **Height**: 26 levels (supports 2^26 = 67,108,864 leaves)
@@ -201,6 +204,8 @@ root = tree.root()
 ```
 
 ### 2.3 Storage Requirements
+
+See [Unified Specification](../docs/00-specification.md#13-storage-requirements) for complete storage details.
 
 - **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
 - **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
@@ -420,10 +425,9 @@ contract RelayerRegistry {
 ```toml
 [dependencies]
 ethers = "2.0"
-circom-compat = "0.5"
-ark-circom = "0.5"
-ark-bn254 = "0.4"
-ark-groth16 = "0.4"
+ark-circom = "0.5"  # Includes Circom compatibility and BN128/Groth16 support
+ark-bn254 = "0.4"   # BN128 curve implementation
+ark-groth16 = "0.4" # Groth16 proof system
 ark-serialize = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 clap = { version = "4.0", features = ["derive"] }
@@ -482,11 +486,11 @@ pub fn generate_proof(
     // 3. Find Merkle path
     let (path, indices) = merkle_tree.get_path(&leaf)?;
     
-    // 4. Generate nullifier (Poseidon hash of private key)
+    // 4. Generate nullifier (Poseidon hash of private key with domain separation)
     // private_key is the 32-byte Ethereum private key
-    // For Poseidon with width=3, we need to pad to 96 bytes (3 field elements)
-    // Common approach: pad with zeros or use domain separation
-    let nullifier = poseidon_hash_with_domain(private_key, "zkp_airdrop_nullifier");
+    // Use domain separator "zkp_airdrop_nullifier_v1" (23 bytes) + private_key (32 bytes) + padding (41 bytes) = 96 bytes total
+    // This prevents cross-protocol nullifier collisions
+    let nullifier = poseidon_hash_with_domain(private_key, "zkp_airdrop_nullifier_v1");
     
     // 5. Build circuit inputs
     let inputs = CircuitInputs {
