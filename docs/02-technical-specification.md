@@ -98,7 +98,9 @@ assert(current_hash == merkle_root)
 // 6. Compute nullifier (hash of private key with domain separation)
     # private_key is already available as circuit input
     # Use domain separator "zkp_airdrop_nullifier_v1" (23 bytes) + private_key (32 bytes) + padding (41 bytes)
-    computed_nullifier = poseidon_hash_with_domain(private_key, "zkp_airdrop_nullifier_v1")
+    # Total input: 96 bytes (3 field elements for Poseidon width=3)
+    padded_input = "zkp_airdrop_nullifier_v1" || private_key || zeros  # 96 bytes total
+    computed_nullifier = poseidon_hash(padded_input)  # 32 bytes output
     assert(computed_nullifier == nullifier)
 ```
 
@@ -381,8 +383,12 @@ contract PrivacyAirdrop {
 
 **Note**: The main PrivacyAirdrop contract allows anyone to submit claims directly. This RelayerRegistry is an optional contract for relayers who want to accept donations and track balances. Users can always submit claims directly to the PrivacyAirdrop contract if they prefer.
 
+The RelayerRegistry implements the `IRelayerRegistry` interface defined in the [Unified Specification](../docs/00-specification.md#32-relayerregistry-contract).
+
 ```solidity
-contract RelayerRegistry {
+contract RelayerRegistry is IRelayerRegistry {
+    address public owner;
+    address public defaultRelayer;
     mapping(address => bool) public authorizedRelayers;
     mapping(address => uint256) public relayerBalances;
     
@@ -390,13 +396,20 @@ contract RelayerRegistry {
     event DonationReceived(address indexed donor, uint256 amount);
     event FundsWithdrawn(address indexed relayer, uint256 amount);
     
+    constructor(address _defaultRelayer) {
+        owner = msg.sender;
+        defaultRelayer = _defaultRelayer;
+        authorizedRelayers[_defaultRelayer] = true;
+    }
+    
     function authorizeRelayer(address relayer) external onlyOwner {
         authorizedRelayers[relayer] = true;
         emit RelayerAuthorized(relayer);
     }
     
     function donate() external payable {
-        relayerBalances[authorizedRelayers[msg.sender] ? msg.sender : defaultRelayer] += msg.value;
+        address recipient = authorizedRelayers[msg.sender] ? msg.sender : defaultRelayer;
+        relayerBalances[recipient] += msg.value;
         emit DonationReceived(msg.sender, msg.value);
     }
     
@@ -406,6 +419,19 @@ contract RelayerRegistry {
         relayerBalances[msg.sender] -= amount;
         payable(msg.sender).transfer(amount);
         emit FundsWithdrawn(msg.sender, amount);
+    }
+    
+    function isAuthorized(address relayer) external view returns (bool) {
+        return authorizedRelayers[relayer];
+    }
+    
+    function balanceOf(address relayer) external view returns (uint256) {
+        return relayerBalances[relayer];
+    }
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
     }
 }
 ```
@@ -490,7 +516,15 @@ pub fn generate_proof(
     // private_key is the 32-byte Ethereum private key
     // Use domain separator "zkp_airdrop_nullifier_v1" (23 bytes) + private_key (32 bytes) + padding (41 bytes) = 96 bytes total
     // This prevents cross-protocol nullifier collisions
-    let nullifier = poseidon_hash_with_domain(private_key, "zkp_airdrop_nullifier_v1");
+    // Formula: nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)
+    let domain_separator = b"zkp_airdrop_nullifier_v1";  // 23 bytes
+    let padding = vec![0u8; 41];  // 41 bytes of zeros
+    let mut nullifier_input = Vec::new();
+    nullifier_input.extend_from_slice(domain_separator);
+    nullifier_input.extend_from_slice(&private_key);
+    nullifier_input.extend_from_slice(&padding);
+    assert_eq!(nullifier_input.len(), 96);  // 23 + 32 + 41 = 96 bytes
+    let nullifier = poseidon_hash(&nullifier_input);
     
     // 5. Build circuit inputs
     let inputs = CircuitInputs {

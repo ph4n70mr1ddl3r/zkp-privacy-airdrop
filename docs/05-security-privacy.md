@@ -236,9 +236,15 @@ At no point is address revealed
 
 **Implementation**:
 ```rust
-// Nullifier = Poseidon(private_key)
+// Nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)
 // Same private key → Same nullifier → Only one claim allowed
-let nullifier = poseidon_hash_with_domain(private_key, "zkp_airdrop_nullifier");
+let domain_separator = b"zkp_airdrop_nullifier_v1";  // 23 bytes
+let padding = vec![0u8; 41];  // 41 bytes of zeros
+let mut nullifier_input = Vec::new();
+nullifier_input.extend_from_slice(domain_separator);
+nullifier_input.extend_from_slice(&private_key);
+nullifier_input.extend_from_slice(&padding);
+let nullifier = poseidon_hash(&nullifier_input);  // 32 bytes output
 ```
 
 **Analysis**:
@@ -270,7 +276,9 @@ async fn submit_with_delay(proof: ZKProof) {
 fn get_randomized_gas_price() -> U256 {
     let base_fee = get_base_fee();
     let multiplier = Decimal::from_ratio(11, 10); // 1.1x base
-    let random_factor = Decimal::from_ratio(rand::random::<u32>() % 6, 100); // 0-5%
+    // random_factor ∈ [0.00, 0.05] inclusive (0-5% variance)
+    let random_value = rand::random::<u32>() % 6; // Generates 0, 1, 2, 3, 4, or 5
+    let random_factor = Decimal::from_ratio(random_value, 100); // 0-5% inclusive
     let randomized_multiplier = multiplier * (Decimal::one() + random_factor);
     let gas_price = base_fee * randomized_multiplier;
     min(gas_price, U256::from(100_000_000)) // Cap at 0.1 gwei (Optimism gas is much cheaper)

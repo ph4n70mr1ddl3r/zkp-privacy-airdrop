@@ -344,17 +344,21 @@ All rate limits are shared across all relayers in the ecosystem. Exceeding limit
 
 ### Error Codes
 
-| Code | Description |
-|------|-------------|
-| `INVALID_PROOF` | The ZK proof is malformed or invalid |
-| `INVALID_NULLIFIER` | Nullifier hash is invalid |
-| `ALREADY_CLAIMED` | This nullifier has already been used |
-| `RATE_LIMITED` | Too many requests, retry after delay |
-| `INSUFFICIENT_FUNDS` | Relayer has insufficient ETH for gas |
-| `CONTRACT_ERROR` | Smart contract interaction failed |
-| `NETWORK_ERROR` | Ethereum network error |
-| `INTERNAL_ERROR` | Internal server error |
-| `ADDRESS_NOT_FOUND` | Address not in Merkle tree |
+| Code | HTTP Status | Description | User Message |
+|------|-------------|-------------|--------------|
+| `INVALID_PROOF` | 400 Bad Request | The ZK proof is malformed or invalid | "The provided proof is invalid. Please regenerate the proof with correct inputs." |
+| `INVALID_NULLIFIER` | 400 Bad Request | Nullifier hash is invalid format | "Invalid nullifier format. Must be 64-character hex string with 0x prefix." |
+| `ALREADY_CLAIMED` | 400 Bad Request | This nullifier has already been used | "Tokens have already been claimed with this nullifier. Each qualified account can only claim once." |
+| `RATE_LIMITED` | 429 Too Many Requests | Too many requests, retry after delay | "Rate limit exceeded. Please try again in {retry_after} seconds." |
+| `INSUFFICIENT_FUNDS` | 503 Service Unavailable | Relayer has insufficient ETH for gas | "Relayer temporarily unavailable due to insufficient funds. Please try another relayer or submit directly to the contract." |
+| `CONTRACT_ERROR` | 502 Bad Gateway | Smart contract interaction failed | "Contract interaction failed. Please try again later." |
+| `NETWORK_ERROR` | 502 Bad Gateway | Ethereum network error | "Ethereum network error. Please check your connection and try again." |
+| `INTERNAL_ERROR` | 500 Internal Server Error | Internal server error | "Internal server error. Please try again later." |
+| `ADDRESS_NOT_FOUND` | 404 Not Found | Address not in Merkle tree | "Address not found in qualified accounts list. Please verify your address is in the Merkle tree." |
+| `INVALID_ADDRESS` | 400 Bad Request | Invalid Ethereum address format | "Invalid Ethereum address. Must be 20-byte hex string with 0x prefix." |
+| `INVALID_FIELD_ELEMENT` | 400 Bad Request | Field element not in BN128 range | "Invalid field element. Must be less than BN128 prime modulus." |
+| `PROOF_EXPIRED` | 400 Bad Request | Proof generated before contract deployment | "Proof expired. Please regenerate proof with current Merkle root." |
+| `CLAIM_PERIOD_ENDED` | 400 Bad Request | Claim deadline has passed | "Claim period has ended. Tokens can no longer be claimed." |
 
 ### Error Handling & Recovery
 
@@ -639,17 +643,20 @@ zkp-airdrop config reset
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | General error |
-| 2 | Invalid arguments |
-| 3 | Proof generation failed |
-| 4 | Proof verification failed |
-| 5 | Network error |
-| 6 | Already claimed |
-| 7 | Rate limited |
-| 8 | Insufficient relayer funds |
+| Code | Meaning | API Error Code Mapping |
+|------|---------|------------------------|
+| 0 | Success | - |
+| 1 | General error | `INTERNAL_ERROR` |
+| 2 | Invalid arguments | `INVALID_PROOF`, `INVALID_NULLIFIER`, `INVALID_ADDRESS`, `INVALID_FIELD_ELEMENT` |
+| 3 | Proof generation failed | `INVALID_PROOF` |
+| 4 | Proof verification failed | `INVALID_PROOF` |
+| 5 | Network error | `NETWORK_ERROR`, `CONTRACT_ERROR` |
+| 6 | Already claimed | `ALREADY_CLAIMED` |
+| 7 | Rate limited | `RATE_LIMITED` |
+| 8 | Insufficient relayer funds | `INSUFFICIENT_FUNDS` |
+| 9 | Claim period ended | `CLAIM_PERIOD_ENDED` |
+| 10 | Address not found | `ADDRESS_NOT_FOUND` |
+| 11 | Proof expired | `PROOF_EXPIRED` |
 
 ## Smart Contract ABI
 
@@ -775,7 +782,11 @@ All 20-byte addresses are represented as:
       "properties": {
         "a": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": { 
+            "type": "string",
+            "pattern": "^(0x[a-fA-F0-9]{1,64}|[0-9]+)$",
+            "description": "Field element as decimal string (preferred) or hex string with 0x prefix"
+          },
           "minItems": 2,
           "maxItems": 2,
           "description": "Groth16 proof A component (field elements as decimal strings)"
@@ -784,7 +795,11 @@ All 20-byte addresses are represented as:
           "type": "array",
           "items": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": { 
+              "type": "string",
+              "pattern": "^(0x[a-fA-F0-9]{1,64}|[0-9]+)$",
+              "description": "Field element as decimal string (preferred) or hex string with 0x prefix"
+            },
             "minItems": 2,
             "maxItems": 2
           },
@@ -794,7 +809,11 @@ All 20-byte addresses are represented as:
         },
         "c": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": { 
+            "type": "string",
+            "pattern": "^(0x[a-fA-F0-9]{1,64}|[0-9]+)$",
+            "description": "Field element as decimal string (preferred) or hex string with 0x prefix"
+          },
           "minItems": 2,
           "maxItems": 2,
           "description": "Groth16 proof C component (field elements as decimal strings)"
@@ -835,7 +854,8 @@ All 20-byte addresses are represented as:
     }
   },
   "required": ["proof", "public_signals", "nullifier", "recipient", "merkle_root", "generated_at"],
-  "description": "Proof JSON format for ZKP Privacy Airdrop claims. Field elements in proof components and public_signals should be decimal strings (primary) or hex strings with 0x prefix (alternative)."
+  "description": "Proof JSON format for ZKP Privacy Airdrop claims. Field elements in proof components and public_signals should be decimal strings (primary) or hex strings with 0x prefix (alternative). All field elements must be valid BN128 field elements: 0 <= x < p where p = 21888242871839275222246405745257275088548364400416034343698204186575808495617.",
+  "additionalProperties": false
 }
 ```
 

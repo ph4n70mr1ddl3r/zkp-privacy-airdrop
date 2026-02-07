@@ -45,12 +45,12 @@ Check these values match across all documents:
 | BN128 prime | 21888242871839275222246405745257275088548364400416034343698204186575808495617 | All docs |
 | secp256k1 order | 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 | All docs |
 | Claim period | 90 days | All docs |
-| Verify proof gas | 300,000 | All docs |
-| Storage/transfer gas | 200,000 | All docs |
-| Claim gas (total) | 500,000 | All docs |
-| Relayer buffer | 200,000 | All docs |
-| Estimated claim gas | 700,000 | All docs |
-| Max claim gas | 1,000,000 | All docs |
+| Verify proof gas | 300,000 | `00-specification.md:383` |
+| Storage/transfer gas | 200,000 | `00-specification.md:384` |
+| Claim gas (total) | 500,000 | `00-specification.md:385` |
+| Relayer buffer | 200,000 | `00-specification.md:386` |
+| Estimated claim gas | 700,000 | `00-specification.md:387` |
+| Max claim gas | 1,000,000 | `00-specification.md:388` |
 | Optimism chain ID | 10 | 04-api-reference.md:175 |
 | Gas price cap | 0.1 gwei | All docs |
 
@@ -61,11 +61,16 @@ Check these values match across all documents:
 
 Must match:
 - `docs/00-specification.md:103` - `nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
-- `docs/02-technical-specification.md:489` - `poseidon_hash_with_domain(private_key, "zkp_airdrop_nullifier_v1")`
+- `docs/02-technical-specification.md:101` - `poseidon_hash("zkp_airdrop_nullifier_v1" || private_key || zeros)`
 - `docs/04-api-reference.md:844-876` - `Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
-- `docs/nullifier-fix-summary.md:13-17` - `nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
+- `docs/05-security-privacy.md:241` - `poseidon_hash("zkp_airdrop_nullifier_v1" || private_key || zeros)`
 
 **Formula**: `nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
+where:
+- `private_key` is 32-byte Ethereum private key
+- `"zkp_airdrop_nullifier_v1"` is 23-byte ASCII domain separator
+- `zeros` is 41 bytes of zeros (padding to reach 96 bytes total for Poseidon width=3)
+- Input length must be exactly 96 bytes (23 + 32 + 41)
 
 ### 2. Proof Format
 **Source**: `docs/00-specification.md:218-232`
@@ -130,6 +135,12 @@ Check that all contract interfaces match:
 | `claimAmount` | `claimAmount() returns (uint256)` | `00-specification.md:194` |
 | `claimDeadline` | `claimDeadline() returns (uint256)` | `00-specification.md:195` |
 | `estimateClaimGas` | `estimateClaimGas(Proof calldata proof, bytes32 nullifier, address recipient) returns (uint256)` | `00-specification.md:198-202` |
+| `authorizeRelayer` | `authorizeRelayer(address relayer)` | `00-specification.md:224` |
+| `donate` | `donate() external payable` | `00-specification.md:225` |
+| `withdraw` | `withdraw(uint256 amount) external` | `00-specification.md:226` |
+| `isAuthorized` | `isAuthorized(address relayer) returns (bool)` | `00-specification.md:227` |
+| `balanceOf` | `balanceOf(address relayer) returns (uint256)` | `00-specification.md:228` |
+| `defaultRelayer` | `defaultRelayer() returns (address)` | `00-specification.md:229` |
 
 ### API Endpoints
 Check that all API endpoints match `docs/04-api-reference.md`:
@@ -145,7 +156,26 @@ Check that all API endpoints match `docs/04-api-reference.md`:
 | `/api/v1/health` | GET | 100/60s per IP | Health check |
 | `/api/v1/merkle-path/{address}` | GET | 60/60s per IP | Optional tree service |
 
-### CLI Commands
+### 9. Error Codes
+Check that all error codes match `docs/04-api-reference.md:347-361`:
+
+| Code | HTTP Status | User Message |
+|------|-------------|--------------|
+| `INVALID_PROOF` | 400 | "The provided proof is invalid. Please regenerate the proof with correct inputs." |
+| `INVALID_NULLIFIER` | 400 | "Invalid nullifier format. Must be 64-character hex string with 0x prefix." |
+| `ALREADY_CLAIMED` | 400 | "Tokens have already been claimed with this nullifier. Each qualified account can only claim once." |
+| `RATE_LIMITED` | 429 | "Rate limit exceeded. Please try again in {retry_after} seconds." |
+| `INSUFFICIENT_FUNDS` | 503 | "Relayer temporarily unavailable due to insufficient funds. Please try another relayer or submit directly to the contract." |
+| `CONTRACT_ERROR` | 502 | "Contract interaction failed. Please try again later." |
+| `NETWORK_ERROR` | 502 | "Ethereum network error. Please check your connection and try again." |
+| `INTERNAL_ERROR` | 500 | "Internal server error. Please try again later." |
+| `ADDRESS_NOT_FOUND` | 404 | "Address not found in qualified accounts list. Please verify your address is in the Merkle tree." |
+| `INVALID_ADDRESS` | 400 | "Invalid Ethereum address. Must be 20-byte hex string with 0x prefix." |
+| `INVALID_FIELD_ELEMENT` | 400 | "Invalid field element. Must be less than BN128 prime modulus." |
+| `PROOF_EXPIRED` | 400 | "Proof expired. Please regenerate proof with current Merkle root." |
+| `CLAIM_PERIOD_ENDED` | 400 | "Claim period has ended. Tokens can no longer be claimed." |
+
+### 10. CLI Commands
 Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 
 | Command | Arguments | Output |
@@ -157,42 +187,46 @@ Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 | `download-tree` | `--source`, `--output`, `--format` | Merkle tree file |
 | `config` | `show`, `set`, `reset` | configuration |
 
-## Data Format Consistency
+## 11. Data Format Consistency
 
-### 1. Address Format
+### 11.1 Address Format
 - **Must**: `0x` prefix + 40 hex characters
 - **Must**: Valid Ethereum address checksum (EIP-55 optional)
 - **Example**: `0x1234567890123456789012345678901234567890`
 
-### 2. Hash Format (32-byte)
+### 11.2 Hash Format (32-byte)
 - **Must**: `0x` prefix + 64 hex characters
 - **Example**: `0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`
 
-### 3. Field Element Format
+### 11.3 Field Element Format
 - **Primary**: Decimal string (no `0x` prefix)
 - **Alternative**: Hex string with `0x` prefix (for developer convenience)
-- **Must**: Less than BN128 prime modulus
+- **Must**: Less than BN128 prime modulus: `0 <= x < 21888242871839275222246405745257275088548364400416034343698204186575808495617`
 - **Example (decimal)**: `"13862987149607610235678184535533251295074929736392939725598345555223684473689"`
 - **Example (hex)**: `"0x1eab1f9d8c9a0e3a9a1b9c8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d"`
 
-### 4. Proof JSON Structure
-- **a**: Array of 2 field elements (decimal strings)
-- **b**: 2x2 array of field elements (decimal strings)
-- **c**: Array of 2 field elements (decimal strings)
-- **public_signals**: Array of 3 field elements `[merkle_root, recipient, nullifier]`
-- **nullifier**: 32-byte hex string
-- **recipient**: 20-byte hex string (address)
-- **merkle_root**: 32-byte hex string
+### 11.4 Proof JSON Structure
+- **a**: Array of 2 field elements (decimal strings preferred, hex strings with 0x prefix alternative)
+- **b**: 2x2 array of field elements (decimal strings preferred, hex strings with 0x prefix alternative)
+- **c**: Array of 2 field elements (decimal strings preferred, hex strings with 0x prefix alternative)
+- **public_signals**: Array of 3 field elements `[merkle_root, recipient, nullifier]` (decimal or hex strings)
+- **nullifier**: 32-byte hex string with 0x prefix (64 hex characters)
+- **recipient**: 20-byte hex string with 0x prefix (40 hex characters, EIP-55 checksum optional)
+- **merkle_root**: 32-byte hex string with 0x prefix (64 hex characters)
 - **generated_at**: ISO 8601 timestamp
+- **Field Element Validation**: All field elements must be valid BN128 field elements: `0 <= x < p` where `p = 21888242871839275222246405745257275088548364400416034343698204186575808495617`
 
-### 5. Merkle Tree Binary Format
+### 11.5 Merkle Tree Binary Format
+**Source**: `00-specification.md:36-45`
+
 - **Header**: 16 bytes (`"ZKPT"` magic + version + height + num_leaves + root_hash)
 - **Leaf Data**: 20 bytes per address × 65,249,064 leaves
 - **Total size**: 1.216 GiB (addresses only) or 4.00 GiB (full tree)
+- **See storage requirements table in `00-specification.md:36-45` for complete details**
 
-## Security Parameter Consistency
+## 12. Security Parameter Consistency
 
-### Cryptographic Parameters
+### 12.1 Cryptographic Parameters
 | Parameter | Value | Check in |
 |-----------|-------|----------|
 | ZK security level | 128 bits | All security docs |
@@ -200,7 +234,9 @@ Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 | Trusted setup participants | ≥10 | `00-specification.md:391` |
 | Audit requirements | 3+ independent firms | `00-specification.md:392` |
 
-### Gas Estimates (Optimism)
+### 12.2 Gas Estimates (Optimism)
+**Source**: `00-specification.md:383-395` (single source of truth)
+
 | Operation | Gas Units | Notes |
 |-----------|-----------|-------|
 | Proof verification | 300,000 | Groth16 on BN128 |
@@ -211,7 +247,7 @@ Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 | Maximum cap | 1,000,000 | Absolute max with 100% buffer |
 | **Gas price cap** | **0.1 gwei** | **Optimism-specific** |
 
-### Rate Limits
+### 12.3 Rate Limits
 | Limit | Value | Check in |
 |-------|-------|----------|
 | Per nullifier | 1 request per 60 seconds | All rate limit sections |
@@ -244,7 +280,7 @@ Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 - [ ] Monitoring alerts configured
 - [ ] Documentation updated with actual deployment details
 
-## Common Inconsistency Points
+## 12. Common Inconsistency Points
 
 ### 1. Gas Price Cap
 **Incorrect**: 50 gwei (Ethereum mainnet typical)
@@ -254,19 +290,19 @@ Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 **Incorrect**: 1 (Ethereum mainnet)
 **Correct**: 10 (Optimism mainnet)
 
-### 3. Field Element Format
+### 12.3 Field Element Format
 **Incorrect**: Always hex with `0x` prefix
 **Correct**: Decimal strings primary, hex alternative
 
-### 4. Nullifier Calculation
+### 12.4 Nullifier Calculation
 **Incorrect**: `Poseidon(private_key)` without domain separator
 **Correct**: `Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)` with domain separator
 
-### 5. Proof Array Sizes
+### 12.5 Proof Array Sizes
 **Incorrect**: 3-element arrays for Groth16 on BN128
 **Correct**: 2-element arrays for `a` and `c`, 2x2 for `b`
 
-### 6. Merkle Path Size
+### 12.6 Merkle Path Size
 **Incorrect**: Variable or incorrect size
 **Correct**: 832 bytes (26 × 32 bytes for siblings)
 
@@ -297,9 +333,12 @@ Consider implementing automated checks:
 # Check constants match
 grep -r "65,249,064" docs/ | wc -l
 grep -r "gas price cap" docs/ | grep -E "0\.1 gwei|100000000"
+# Check gas price randomization formula
+grep -r "random_factor" docs/ | grep -E "0-5%|\[0.00, 0.05\]"
 
 # Check nullifier calculation
 grep -r "zkp_airdrop_nullifier_v1" docs/ | wc -l
+grep -r "Poseidon.*zkp_airdrop_nullifier_v1.*private_key.*zeros" docs/ | wc -l
 
 # Check field element format
 grep -r "decimal strings" docs/00-specification.md

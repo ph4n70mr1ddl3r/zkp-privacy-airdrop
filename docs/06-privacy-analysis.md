@@ -70,7 +70,7 @@ The ZKP Privacy Airdrop provides strong privacy guarantees through zero-knowledg
 **Mitigation**: Strong
 
 **Attack**: Analyze gas price patterns to link transactions.
-- Gas price = base_fee × 1.1 × (1 + random(0, 0.05))
+- Gas price = base_fee × 1.1 × (1 + random_factor) where random_factor ∈ [0.00, 0.05] inclusive
 - Cap at 0.1 gwei (Optimism specific)
 - Rounded to nearest wei (not gwei)
 

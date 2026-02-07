@@ -34,15 +34,24 @@ This document provides a single source of truth for all technical specifications
 - **Tree Root Size**: 32 bytes (BN128 field element)
 
 ### 1.3 Storage Requirements
-- **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
-- **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path siblings)
-- **Groth16 Proof Size**: ~200 bytes
-- **Total Proof Package**: ~1,032 bytes (Groth16 proof: ~200 bytes + Merkle path: 832 bytes)
-- **Precomputed Proofs Storage**: 56.88 GiB (65,249,064 leaves × 936 bytes per leaf including Merkle path siblings (832 bytes), leaf hash (32 bytes), and path indices (104 bytes))
-- **Merkle Tree File Size**:
-  - Binary format with addresses only: 1.216 GiB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,280 bytes)
-  - Binary format with hashes only: 1.945 GiB (16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes)
-  - Full tree for local generation: 4.00 GiB (all 134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
+
+| Component | Size | Calculation | Notes |
+|-----------|------|-------------|-------|
+| **Full Merkle Tree** | 4.00 GiB | 134,217,727 nodes × 32 bytes = 4,294,967,264 bytes | Required for tree generation |
+| **Address-only file** | 1.216 GiB | 16 byte header + 65,249,064 × 20 bytes = 1,304,981,280 bytes | Raw addresses for distribution |
+| **Hash-only file** | 1.945 GiB | 16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes | Leaf hashes for verification |
+| **Merkle path per claim** | 832 bytes | 26 × 32 bytes for Merkle path siblings | Required for proof generation |
+| **Groth16 proof** | ~200 bytes | Variable based on circuit constraints | ZK proof size |
+| **Complete proof package** | ~1,032 bytes | ~200 bytes (proof) + 832 bytes (path) | Total data per claim submission |
+| **Precomputed proofs** | 56.88 GiB | 65,249,064 leaves × 936 bytes (832 path + 32 hash + 104 indices) | Optional for API service |
+| **Proof JSON** | ~1.5 KB | Variable based on field element encoding | Human-readable proof format |
+
+**Notes**:
+- **Tree Generation**: Requires 4.00 GiB memory for full tree construction
+- **Distribution**: Address-only file (1.216 GiB) is smallest for distribution
+- **API Service**: Can serve Merkle paths on-demand without storing full tree
+- **Proof Size**: Complete proof (~1 KB) fits within Ethereum transaction limits
+- **Compression**: Zstandard compression can reduce file sizes by ~70%
 
 ### 1.4 Merkle Tree Generation Process
 
@@ -221,10 +230,12 @@ interface IPrivacyAirdrop {
 ### 3.2 RelayerRegistry Contract
 ```solidity
 interface IRelayerRegistry {
+    function authorizeRelayer(address relayer) external;
     function donate() external payable;
     function withdraw(uint256 amount) external;
     function isAuthorized(address relayer) external view returns (bool);
     function balanceOf(address relayer) external view returns (uint256);
+    function defaultRelayer() external view returns (address);
 }
 ```
 
@@ -469,9 +480,10 @@ nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
 - **Gas Price Strategy**: 
   - Optimism gas is 10-100x cheaper than Ethereum L1
   - Base: EIP-1559 with 10% premium for reliability
-  - Privacy Enhancement: Add random 0-5% variance to break timing correlations
+  - Privacy Enhancement: Add random 0-5% variance (inclusive) to break timing correlations
   - Maximum: 0.1 gwei cap to prevent excessive fees (Optimism gas is much cheaper)
-  - Relayers should use: `gas_price = min(base_fee * 1.1 * (1 + random(0, 0.05)), 0.1 gwei)`
+  - Relayers should use: `gas_price = min(base_fee * 1.1 * (1 + random_factor), 0.1 gwei)` where `random_factor` is uniformly distributed in [0.00, 0.05] inclusive
+  - **Exact implementation**: `random_factor = random(0, 6) / 100` where `random(0, 6)` generates integers 0 through 5 inclusive
 
 ### 6.2 Infrastructure Requirements
 - **Relayer Servers**: 3+ instances (medium/large)
