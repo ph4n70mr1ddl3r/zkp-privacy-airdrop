@@ -7,18 +7,18 @@
 ## Critical Items to Verify
 
 ### 1. Cryptographic Constants
-- [ ] **Nullifier hash input**: Must be `private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes zeros)` = 64 bytes total
-- [ ] **Poseidon parameters**: width=3, full_rounds=8, partial_rounds=57, alpha=5
-- [ ] **Field modulus**: BN128 scalar field = `21888242871839275222246405745257275088548364400416034343698204186575808495617`
-- [ ] **secp256k1 order**: `0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141`
+- [ ] **Nullifier hash input**: Must be `private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes zeros)` = 64 bytes total (see 00-specification.md:103-104)
+- [ ] **Poseidon parameters**: width=3, full_rounds=8, partial_rounds=57, alpha=5 (see 00-specification.md:108-115)
+- [ ] **Field modulus**: BN128 scalar field = `21888242871839275222246405745257275088548364400416034343698204186575808495617` (see 00-specification.md:148)
+- [ ] **secp256k1 order**: `0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141` (see 00-specification.md:632)
 
 ### 2. Numerical Constants
-- [ ] **Qualified accounts**: 65,249,064
-- [ ] **Claim amount**: 1,000 ZKP tokens (with 18 decimals = `1000 * 10**18`)
-- [ ] **Total supply**: 65,249,064,000 ZKP tokens
-- [ ] **Merkle tree height**: 26 levels
-- [ ] **Max leaves**: 2^26 = 67,108,864
-- [ ] **Claim period**: 90 days
+- [ ] **Qualified accounts**: 65,249,064 (see 00-specification.md:11)
+- [ ] **Claim amount**: 1,000 ZKP tokens (with 18 decimals = `1000 * 10**18`) (see 00-specification.md:22 and 615)
+- [ ] **Total supply**: 65,249,064,000 ZKP tokens (see 00-specification.md:23)
+- [ ] **Merkle tree height**: 26 levels (see 00-specification.md:27)
+- [ ] **Max leaves**: 2^26 = 67,108,864 (see 00-specification.md:618)
+- [ ] **Claim period**: 90 days (see 00-specification.md:24)
 
 ### 2.1 Data Source Verification
 - [ ] **Accounts file location**: https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing
@@ -26,18 +26,18 @@
 - [ ] **File verification**: SHA256 checksum of accounts.csv matches documented value
 
 ### 3. Storage Sizes
-- [ ] **Full tree storage**: 4.00 GiB (134,217,727 nodes × 32 bytes)
-- [ ] **Address-only file**: 1.216 GiB (header + 65,249,064 × 20 bytes)
-- [ ] **Hashes-only file**: 1.945 GiB (header + 65,249,064 × 32 bytes)
-- [ ] **Proof data per claim**: 832 bytes (26 × 32 bytes for Merkle path)
-- [ ] **Groth16 proof size**: ~200 bytes
-- [ ] **Total proof package**: ~1,032 bytes (Groth16 proof: ~200 bytes + Merkle path: 832 bytes)
+- [ ] **Full tree storage**: 4.00 GiB (134,217,727 nodes × 32 bytes) (see 00-specification.md:37)
+- [ ] **Address-only file**: 1.216 GiB (header + 65,249,064 × 20 bytes) (see 00-specification.md:43)
+- [ ] **Hashes-only file**: 1.945 GiB (header + 65,249,064 × 32 bytes) (see 00-specification.md:44)
+- [ ] **Proof data per claim**: 832 bytes (26 × 32 bytes for Merkle path) (see 00-specification.md:38)
+- [ ] **Groth16 proof size**: ~200 bytes (see 00-specification.md:39)
+- [ ] **Total proof package**: ~1,032 bytes (Groth16 proof: ~200 bytes + Merkle path: 832 bytes) (see 00-specification.md:40)
 
 ### 4. Gas Estimates
-- [ ] **Proof verification**: 300,000 gas
-- [ ] **Total claim transaction**: 500,000 gas
-- [ ] **Maximum claim gas**: 1,000,000 gas
-- [ ] **Relayer buffer**: 200,000 gas
+- [ ] **Proof verification**: 300,000 gas (see 00-specification.md:360 and 678)
+- [ ] **Total claim transaction**: 500,000 gas (see 00-specification.md:361 and 680)
+- [ ] **Maximum claim gas**: 1,000,000 gas (see 00-specification.md:364 and 683)
+- [ ] **Relayer buffer**: 200,000 gas (see 00-specification.md:362 and 681)
 
 ### 5. Data Formats
 #### Proof JSON Format
@@ -78,7 +78,7 @@
 - [ ] **Rate limits per nullifier**: 1 request per 60 seconds
 - [ ] **Rate limits per IP**: 100 requests per 60 seconds
 - [ ] **Global rate limit**: 1,000 requests per 60 seconds
-- [ ] **Gas price randomization**: Base fee × 1.1 × (1 + random(0, 0.05)), capped at 50 gwei
+- [ ] **Gas price randomization**: Base fee × 1.1 × (1 + random(0, 0.05)), capped at 0.1 gwei (Optimism)
 - [ ] **Minimum relayer balance**: 0.5 ETH (critical), 1.0 ETH (warning)
 
 ## Verification Process

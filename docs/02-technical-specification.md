@@ -253,7 +253,7 @@ struct LeafData {
 {
   "version": 1,
   "height": 26,
-  "num_leaves": 65249064,
+  "num_leaves": 65_249_064,
   "root": "0x1234...",
   "leaves": [
     {

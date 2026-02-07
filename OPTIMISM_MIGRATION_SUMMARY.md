@@ -12,7 +12,8 @@ Changed the deployment target from Ethereum mainnet to Optimism (Layer 2) for si
 - **Testnet Chain ID**: 11155420 (Optimism Sepolia)
 
 ### 2. Gas Price Adjustments
-- **Maximum gas price**: Changed from 50 gwei → 0.1 gwei (Optimism is much cheaper)
+- **Typical gas price**: Changed from 50 gwei (Ethereum) → 0.001 gwei (Optimism) for cost calculations
+- **Maximum gas price cap**: Changed from 50 gwei → 0.1 gwei (Optimism is much cheaper, cap prevents excessive fees)
 - **Gas price strategy**: Updated to reflect Optimism's EIP-1559 structure
 - **Cost comparison added**: ~50x cheaper on Optimism
 

@@ -277,7 +277,7 @@ interface IRelayerRegistry {
   version: 1
   height: 26
   reserved: 0x0000
-  num_leaves: 65249064 (0x03E3B4A8)
+  num_leaves: 65_249_064 (0x03E3B4A8)
   root_hash: [32 bytes]
 
 [Leaf Data Section]
