@@ -6,6 +6,47 @@
 
 > **Note**: This document provides detailed technical specifications. For authoritative constants and interfaces, refer to the [Unified Specification](../docs/00-specification.md).
 
+## Claimant Workflow
+
+### Step 1: Check Eligibility
+1. Download the qualified accounts list: `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`
+2. Check if your Ethereum address is in `accounts.csv`
+3. Note: The list includes 65,249,064 Ethereum mainnet addresses that paid at least **0.004 ETH in gas fees** from genesis until **December 31, 2025**
+
+### Step 2: Prepare Credentials
+- **Private Key**: Your Ethereum private key for a qualified account (same key works on Optimism)
+- **Recipient Address**: A new Optimism address to receive tokens (can be different from your qualified Ethereum address for enhanced privacy)
+
+### Step 3: Generate Proof (Offline)
+```bash
+zkp-airdrop generate-proof \
+  --private-key $PRIVATE_KEY \
+  --recipient $RECIPIENT_ADDRESS \
+  --merkle-tree accounts.csv \
+  --output proof.json
+```
+The `proof.json` contains everything needed to claim your 1,000 ZKP tokens.
+
+### Step 4: Claim Tokens (Choose One)
+
+**Option A: Use Relayer (Free Gas)**
+- Submit `proof.json` to any relayer service
+- Relayer pays gas fees (funded by community donations)
+- Relayer validates proof off-chain first to avoid wasting gas
+- Anyone can run a relayer or donate to support the ecosystem
+
+**Option B: Direct Submission (Pay Your Own Gas)**
+- Submit `proof.json` directly to the immutable airdrop contract
+- Pay your own gas fees (currently ~700,000 gas)
+- Maximum privacy: no third-party involved
+- Requires ETH for gas fees
+
+### Key Principles
+- **Contract Immutability**: The airdrop contract cannot be modified after deployment
+- **Permissionless**: Anyone with a valid proof can claim directly
+- **Privacy**: Your original qualified address is never revealed
+- **Optional Relayers**: Relay services are convenient but not required
+
 ## 1. Zero-Knowledge Proof System
 
 ### 1.1 Circuit Design
@@ -144,6 +185,10 @@ field_element = BigInt(padded_address) mod p
 - **Empty Leaves**: `Poseidon(0x0000000000000000000000000000000000000000000000000000000000000000)` (32 zero bytes)
 
 ### 2.2 Tree Construction
+
+The qualified accounts list is available at:
+- **Source**: https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing
+- **Download Command**: `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`
 
 ```python
 # Pseudocode
@@ -473,15 +518,16 @@ pub fn generate_proof(
 - No logging of sensitive data
 - Offline mode support (generate proof without internet)
 
-## 5. Web Relayer Service
+## 5. API Relayer Service
 
 ### 5.1 Technology Stack
 
-- **Runtime**: Rust (Actix-web or Axum)
+- **Runtime**: Rust (Actix-web or Axum) - **Pure API, no frontend**
 - **Database**: PostgreSQL (for metrics, not proof data)
 - **Cache**: Redis (rate limiting)
 - **Queue**: Optional (Redis/RabbitMQ) for high throughput
 - **Monitoring**: Prometheus + Grafana
+- **Interface**: REST API only - CLI tools interact directly
 
 ### 5.2 API Endpoints
 
@@ -635,8 +681,9 @@ Alerts for:
 ```yaml
 # config.yaml
 network:
-  rpc_url: "https://ethereum-mainnet.infura.io/v3/..."
-  chain_id: 1
+  rpc_url: "https://opt-mainnet.g.alchemy.com/v2/..."  # Optimism mainnet
+  chain_id: 10  # Optimism mainnet chain ID
+  # For testnet: https://opt-sepolia.g.alchemy.com/v2/..., chain_id: 11155420
   
 contract:
   airdrop_address: "0x..."
@@ -648,7 +695,7 @@ relayer:
   min_balance_critical: "500000000000000000"   # 0.5 ETH (stop accepting claims)
   gas_price_multiplier: 1.1  # 10% premium over base fee
   gas_price_randomization: 0.05  # 0-5% random variance for privacy
-  max_gas_price: "50000000000"  # 50 gwei cap
+  max_gas_price: "100000000"  # 0.1 gwei cap (Optimism gas is much cheaper than Ethereum)
   
 rate_limit:
   per_nullifier: 60  # seconds between requests for same nullifier

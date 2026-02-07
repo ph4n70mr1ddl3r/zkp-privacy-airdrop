@@ -1,6 +1,6 @@
 # ZKP Privacy Airdrop - Unified Specification
 
-## Version: 1.0.0
+## Version: 1.4.0
 ## Date: 2026-02-07
 
 This document provides a single source of truth for all technical specifications, constants, and interfaces for the ZKP Privacy Airdrop system.
@@ -9,6 +9,13 @@ This document provides a single source of truth for all technical specifications
 
 ### 1.1 Token Distribution
 - **Qualified Accounts**: 65,249,064 Ethereum addresses (from accounts.csv)
+  - **Selection Criteria**: Ethereum mainnet addresses that paid at least 0.004 ETH in gas fees from genesis until December 31, 2025
+  - **Source**: https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing
+  - **Download Command**: `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`
+- **Deployment Network**: Optimism (Layer 2 on Ethereum)
+  - **Benefits**: 10-100x lower gas fees compared to Ethereum mainnet
+  - **Address Compatibility**: Same Ethereum addresses work on Optimism
+  - **Bridge Required**: Users need ETH on Optimism for direct claims
 - **Token Name**: ZKP
 - **Token Symbol**: ZKP
 - **Token Decimals**: 18
@@ -41,6 +48,8 @@ This document provides a single source of truth for all technical specifications
 
 **Input Data**:
 - List of 65,249,064 Ethereum addresses (20 bytes each) from accounts.csv
+  - **Source**: https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing
+  - **Download Command**: `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`
 - Total input size: 65,249,064 × 20 bytes = 1.216 GiB (1.304 GB)
 
 **Generation Steps**:
@@ -57,7 +66,8 @@ This document provides a single source of truth for all technical specifications
 - **Time**: Estimated 4-8 hours on modern hardware
 
 **Verification & Audit**:
-- **Checksum**: SHA256 of sorted address list
+- **Input Data**: Available at https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing (download with `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`)
+- **Checksum**: SHA256 of sorted address list (to be published with final tree generation)
 - **Independent Verification**: Multiple parties recompute tree from same input
 - **Proof of Correctness**: Provide sample proofs for random leaves
 - **Transparency**: Publish generation script and input checksum
@@ -142,6 +152,17 @@ All field elements are encoded as:
 ## 3. Smart Contract Interfaces
 
 ### 3.1 PrivacyAirdrop Contract
+
+**Key Properties**:
+- **Immutable**: Contract cannot be modified after deployment
+- **Permissionless**: Anyone with a valid proof can call `claim()`
+- **Trustless**: No admin keys or upgradeability
+- **Decentralized**: No single point of failure
+
+**Claiming Options**:
+1. **Direct Submission**: User pays their own gas and submits proof directly
+2. **Relayer Submission**: User submits proof to relayer service, which pays gas (funded by donations)
+
 ```solidity
 interface IPrivacyAirdrop {
     struct Proof {
@@ -328,6 +349,7 @@ nullifier = poseidon_hash(input)  // 32 bytes
 - **Relayer Buffer**: 200,000 gas additional buffer for gas price fluctuations
 - **Estimated Gas per Claim**: 700,000 gas (verification + storage + transfer + buffer)
 - **Maximum Gas per Claim**: 1,000,000 gas (absolute maximum with 100% buffer)
+- **Optimism Cost Advantage**: Gas prices on Optimism are 10-100x cheaper than Ethereum L1, making claims affordable even for users submitting directly
 
 ### 5.2 Rate Limiting
 - **Per Nullifier**: 1 request per 60 seconds (all endpoints)
@@ -405,14 +427,15 @@ nullifier = poseidon_hash(input)  // 32 bytes
 ## 6. Deployment Specifications
 
 ### 6.1 Network Configuration
-- **Mainnet**: Ethereum
-- **Testnet**: Sepolia
-- **RPC Requirements**: Archive node access
+- **Mainnet**: Optimism (Layer 2 on Ethereum)
+- **Testnet**: Optimism Sepolia
+- **RPC Requirements**: Optimism RPC endpoint (public or private)
 - **Gas Price Strategy**: 
+  - Optimism gas is 10-100x cheaper than Ethereum L1
   - Base: EIP-1559 with 10% premium for reliability
   - Privacy Enhancement: Add random 0-5% variance to break timing correlations
-  - Maximum: 50 gwei cap to prevent excessive fees
-  - Relayers should use: `gas_price = min(base_fee * 1.1 * (1 + random(0, 0.05)), 50 gwei)`
+  - Maximum: 0.1 gwei cap to prevent excessive fees (Optimism gas is much cheaper)
+  - Relayers should use: `gas_price = min(base_fee * 1.1 * (1 + random(0, 0.05)), 0.1 gwei)`
 
 ### 6.2 Infrastructure Requirements
 - **Relayer Servers**: 3+ instances (medium/large)
@@ -465,7 +488,7 @@ nullifier = poseidon_hash(input)  // 32 bytes
 
 #### 7.3.4 End-to-End Testing
 - **Full workflow**: Generate proof → submit → verify on-chain
-- **Multiple networks**: Test on Sepolia, Goerli, and mainnet fork
+- **Multiple networks**: Test on Optimism Sepolia and Optimism mainnet fork
 - **Error handling**: Network failures, insufficient funds, rate limiting
 - **User experience**: CLI tool usability, error messages, help text
 - **Compatibility**: Test with different Ethereum clients and node versions
@@ -590,6 +613,9 @@ uint256 constant SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF4
 ```
 
 ### 10.3 Gas Estimates
+
+**Gas units remain the same on Optimism, but costs are 10-100x cheaper due to lower gas prices.**
+
 ```solidity
 uint256 constant VERIFY_PROOF_GAS = 300_000;     // Gas for Groth16 proof verification
 uint256 constant STORAGE_TRANSFER_GAS = 200_000; // Gas for storage updates and token transfer
@@ -598,6 +624,11 @@ uint256 constant RELAYER_BUFFER = 200_000;       // Additional buffer for relaye
 uint256 constant ESTIMATED_CLAIM_GAS = 700_000;  // Estimated gas with buffer (500K + 200K)
 uint256 constant MAX_CLAIM_GAS = 1_000_000;      // Maximum gas allowance per claim (absolute maximum with 100% buffer)
 ```
+
+**Cost Comparison (Approximate)**:
+- **Ethereum L1**: ~700,000 gas × 50 gwei = 0.035 ETH ($~105 at $3,000 ETH)
+- **Optimism**: ~700,000 gas × 0.001 gwei = 0.0007 ETH ($~2.10 at $3,000 ETH)
+- **Savings**: ~50x cheaper on Optimism
 
 ## 11. Glossary
 

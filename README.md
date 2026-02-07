@@ -1,6 +1,6 @@
 # ZKP Privacy Airdrop
 
-A privacy-preserving ERC20 token airdrop system using zero-knowledge proofs. Allows 65,249,064 qualified Ethereum accounts to claim ZKP tokens without revealing their identity.
+A privacy-preserving ERC20 token airdrop system using zero-knowledge proofs. Allows 65,249,064 qualified Ethereum accounts to claim ZKP tokens on Optimism without revealing their identity.
 
 ## Features
 
@@ -13,32 +13,74 @@ A privacy-preserving ERC20 token airdrop system using zero-knowledge proofs. All
 ## Architecture
 
 ```
-Claimant → Rust CLI → ZK Proof → [Relayer (Optional)] → Airdrop Contract → ZKP Tokens
-                            ↓
+Claimant → Rust CLI → ZK Proof → [API Relayer (Optional)] → Airdrop Contract → ZKP Tokens
+                            ↓                                  (Optimism)
                      Direct Submission (Alternative)
+
+Key Points:
+- **Optimism Network**: Deployed on Optimism for low gas fees (~10-100x cheaper than Ethereum)
+- **Relayer is a REST API service** with no frontend
+- CLI tool submits proofs directly to API endpoints  
+- Users can also submit directly to contract (pay own gas)
+- Multiple relayers can run independently
+- All relayers use same contract - no centralization
 ```
 
 ## Quick Start
 
-### For Claimants
+### Claimant Workflow
 
-```bash
-# Install CLI
-cargo install zkp-airdrop-cli
+1. **Download the qualified accounts list**:
+   ```bash
+   gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX
+   ```
+   This file contains 65,249,064 Ethereum addresses that paid at least 0.004 ETH in gas fees from genesis until December 31, 2025.
 
-# Generate proof (private)
-zkp-airdrop generate-proof \
-  --private-key $PRIVATE_KEY \
-  --recipient $RECIPIENT_ADDRESS \
-  --merkle-tree https://api.merkle-tree.io/tree.bin \
-  --output proof.json
+2. **Prepare your credentials**:
+   - **Private Key**: Your Ethereum private key for a qualified account (from the accounts list)
+   - **Recipient Address**: A new Ethereum address to receive the tokens (can be different from your qualified account)
 
-# Submit claim via relayer
-zkp-airdrop submit \
-  --proof proof.json \
-  --relayer-url https://relayer.zkp-airdrop.io \
-  --wait
-```
+3. **Generate proof (private, offline)**:
+   ```bash
+   # Install CLI
+   cargo install zkp-airdrop-cli
+   
+   # Generate proof using the accounts file
+   zkp-airdrop generate-proof \
+     --private-key $PRIVATE_KEY \
+     --recipient $RECIPIENT_ADDRESS \
+     --merkle-tree accounts.csv \
+     --output proof.json
+   ```
+   The `proof.json` file contains everything needed to claim your tokens.
+
+4. **Claim your tokens** (choose one option):
+
+   **Option A: Submit via relayer (free gas)**:
+   ```bash
+   zkp-airdrop submit \
+     --proof proof.json \
+     --relayer-url https://relayer.zkp-airdrop.io \
+     --wait
+   ```
+   The relayer is an optional web service that pays gas fees on your behalf, funded by community donations.
+
+   **Option B: Submit directly (pay your own gas)**:
+   ```bash
+   zkp-airdrop submit-direct \
+     --proof proof.json \
+     --rpc-url $ETHEREUM_RPC_URL \
+     --private-key $RECIPIENT_PRIVATE_KEY \
+     --wait
+   ```
+   You can interact directly with the immutable airdrop contract if you prefer to pay your own gas.
+
+### Important Notes
+
+- **Contract Immutability**: The airdrop contract is immutable after deployment. Anyone with a valid proof can claim tokens.
+- **Privacy**: Your original qualified address is never revealed on-chain.
+- **Relayers are Optional**: You can always submit directly to the contract if you prefer.
+- **Community Funded**: Relay services are funded by donations and provide free gas to claimants.
 
 ### For Relayers
 
@@ -71,7 +113,7 @@ docker-compose up -d
 ├── contracts/          # Solidity smart contracts
 ├── circuits/           # Circom ZK circuits
 ├── cli/                # Rust CLI tool
-├── relayer/            # Web relayer service
+├── relayer/            # API relayer service (no frontend)
 ├── tree-builder/       # Merkle tree construction
 └── tests/              # Test suite
 ```
@@ -83,6 +125,15 @@ docker-compose up -d
 - Rust 1.70+
 - Node.js 18+
 - Circom 2.1+
+- gdown (for downloading the accounts file)
+
+### Data Files
+
+The qualified accounts list is available at:
+- **Source**: https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing
+- **Download Command**: `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`
+
+This file contains 65,249,064 Ethereum addresses (20 bytes each, 1.216 GiB total) that are eligible for the airdrop.
 
 ### Build
 

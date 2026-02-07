@@ -47,7 +47,7 @@ cli/                                   # Rust CLI tool
     ├── merkle_tree.rs
     └── submitter.rs
 
-relayer/                               # Web relayer service
+relayer/                               # API relayer service (no frontend)
 └── src/
     ├── main.rs
     ├── api.rs
@@ -76,8 +76,8 @@ tests/                                 # Test suite
 
 ```
 ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│   Qualified  │──────▶│  Rust CLI    │──────▶│   Relayer    │
-│   Account    │      │  (ZK Proof)  │      │   Service    │
+│   Qualified  │──────▶│  Rust CLI    │──────▶│ API Relayer  │
+│   Account    │      │  (ZK Proof)  │      │  (Optional)  │
 └──────────────┘      └──────────────┘      └──────┬───────┘
                                                     │
                            ┌────────────────────────┘
@@ -86,6 +86,9 @@ tests/                                 # Test suite
                     │   Airdrop    │
                     │   Contract   │
                     └──────────────┘
+
+**Note**: Users can also submit directly to the contract, bypassing the relayer.
+Relayers are API services with no frontend - CLI tools interact directly via REST API.
 ```
 
 ## Getting Started

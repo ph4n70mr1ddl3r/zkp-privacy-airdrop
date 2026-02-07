@@ -34,7 +34,7 @@
 - [ ] Implement PrivacyAirdrop contract
 - [ ] Implement RelayerRegistry contract
 - [ ] Write comprehensive unit tests
-- [ ] Deploy to testnet
+- [ ] Deploy to Optimism Sepolia testnet
 - [ ] Generate and verify Merkle tree with sample data
 
 **Deliverables**:
@@ -72,6 +72,7 @@
 - CLI documentation
 
 ### Week 6: Merkle Tree Infrastructure
+- [ ] Download accounts.csv from https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing using `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`
 - [ ] Build 65,249,064 account Merkle tree (from accounts.csv, requires significant compute resources)
 - [ ] Optimize tree storage format for distribution
 - [ ] Implement tree querying API
@@ -87,15 +88,15 @@
 
 ## Phase 3: Relayer Service (Weeks 7-9)
 
-### Week 7: Web Service Foundation
-- [ ] Set up Actix-web or Axum project
-- [ ] Implement basic API structure
+### Week 7: API Service Foundation
+- [ ] Set up Actix-web or Axum project (API only, no frontend)
+- [ ] Implement basic REST API structure
 - [ ] Set up PostgreSQL schema
 - [ ] Implement rate limiting with Redis
 - [ ] Add health check endpoint
 
 **Deliverables**:
-- `relayer/` directory with web framework
+- `relayer/` directory with API framework
 - Database migrations
 - Rate limiting implementation
 - `/health` endpoint
@@ -196,14 +197,14 @@
 ## Phase 6: Deployment (Weeks 15-16)
 
 ### Week 15: Testnet Deployment
-- [ ] Deploy contracts to Sepolia testnet
+- [ ] Deploy contracts to Optimism Sepolia testnet
 - [ ] Deploy relayer to staging environment
 - [ ] Conduct public testnet testing
 - [ ] Gather community feedback
 - [ ] Performance optimization
 
 **Deliverables**:
-- Testnet deployment
+- Optimism Sepolia testnet deployment
 - Staging relayer
 - Testnet user guide
 - Performance benchmarks

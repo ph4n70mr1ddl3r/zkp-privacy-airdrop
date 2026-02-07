@@ -27,6 +27,8 @@ The ZKP Privacy Airdrop system provides the following privacy guarantees:
 
 #### 2.2 Statistical Analysis
 - **Eligible Set Known**: The Merkle tree root commits to the set of all eligible addresses. While individual addresses aren't revealed, the total set size (65,249,064) is public.
+  - **Selection Criteria**: Addresses that paid at least 0.004 ETH in gas fees from genesis until December 31, 2025
+  - **Fair Distribution**: This criteria creates a broad, fair distribution to active Ethereum users
 - **Claim Pattern Analysis**: If very few addresses from the eligible set claim, statistical analysis could narrow down possibilities.
 
 #### 2.3 Post-Claim Activity

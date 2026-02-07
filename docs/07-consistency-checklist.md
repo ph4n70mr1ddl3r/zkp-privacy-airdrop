@@ -20,6 +20,11 @@
 - [ ] **Max leaves**: 2^26 = 67,108,864
 - [ ] **Claim period**: 90 days
 
+### 2.1 Data Source Verification
+- [ ] **Accounts file location**: https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing
+- [ ] **Download command**: `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`
+- [ ] **File verification**: SHA256 checksum of accounts.csv matches documented value
+
 ### 3. Storage Sizes
 - [ ] **Full tree storage**: 4.00 GiB (134,217,727 nodes × 32 bytes)
 - [ ] **Address-only file**: 1.216 GiB (header + 65,249,064 × 20 bytes)
@@ -139,6 +144,29 @@ Consider implementing:
 - Version compatibility validation
 
 ## Version History
+
+### v1.4.0 (2026-02-07)
+- **Migrated to Optimism**: Changed deployment from Ethereum mainnet to Optimism L2
+- **Updated network config**: Mainnet = Optimism, Testnet = Optimism Sepolia
+- **Adjusted gas prices**: Maximum gas price reduced from 50 gwei to 0.1 gwei for Optimism
+- **Updated RPC endpoints**: Changed to Optimism RPC URLs
+- **Added cost comparison**: Showed 50x gas savings on Optimism
+- **Updated CLI options**: Network options changed to optimism/optimism-sepolia
+
+### v1.3.0 (2026-02-07)
+- Added detailed claimant workflow perspective to documentation
+- Documented accounts qualification criteria: ≥0.004 ETH gas fees paid by Dec 31, 2025
+- Clarified contract immutability and direct claim option
+- Emphasized relayers as optional, community-funded services
+- Created CLAIMANT_GUIDE.md with step-by-step instructions
+- Updated architecture diagrams to show both claim paths (relayer vs direct)
+- Added explicit notes about contract being immutable and permissionless
+
+### v1.2.0 (2026-02-07)
+- Added accounts.csv download information to all relevant documents
+- Documented accounts file source: https://drive.google.com/file/d/1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX/view?usp=sharing
+- Added download command: `gdown 1yvgsuDMhamUoKAfH59iuyDtm7x5mnHRX`
+- Added data source verification to consistency checklist
 
 ### v1.1.0 (2026-02-07)
 - Fixed nullifier hash input inconsistency in unified specification (line 93)

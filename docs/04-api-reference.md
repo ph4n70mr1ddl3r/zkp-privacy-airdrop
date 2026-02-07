@@ -8,6 +8,8 @@
 
 ## Relayer API
 
+**Note**: The relayer is a REST API service with no frontend/UI. The CLI tool interacts directly with these endpoints.
+
 Base URL: `https://relayer.zkp-airdrop.io/api/v1`
 
 ### Authentication
@@ -167,7 +169,7 @@ GET /api/v1/contract-info
 **Response** (200 OK):
 ```json
 {
-  "network": "mainnet",
+  "network": "optimism",
   "chain_id": 1,
   "contracts": {
     "airdrop": {
@@ -263,7 +265,7 @@ GET /api/v1/health
   "services": {
     "database": "connected",
     "redis": "connected",
-    "ethereum_node": "connected",
+    "optimism_node": "connected",
     "relayer_wallet": {
       "address": "0x...",
       "balance": "5000000000000000000",
@@ -281,7 +283,7 @@ GET /api/v1/health
   "services": {
     "database": "connected",
     "redis": "connected",
-    "ethereum_node": "disconnected",
+    "optimism_node": "disconnected",
     "relayer_wallet": {
       "address": "0x...",
       "balance": "10000000000000000",
@@ -370,7 +372,7 @@ cargo install zkp-airdrop-cli
 
 ```
 --config <FILE>     Path to config file [default: ~/.zkp-airdrop/config.toml]
---network <NETWORK> Network to use (mainnet, sepolia) [default: mainnet]
+--network <NETWORK> Network to use (optimism, optimism-sepolia) [default: optimism]
 -v, --verbose       Enable verbose output
 -q, --quiet         Suppress output except errors
 -h, --help          Print help
@@ -469,7 +471,7 @@ zkp-airdrop verify-proof \
 
 #### `submit`
 
-Submit a proof to the relayer.
+Submit a proof to a relayer API endpoint.
 
 ```bash
 zkp-airdrop submit \
@@ -590,7 +592,7 @@ Manage CLI configuration.
 zkp-airdrop config show
 
 # Set default values
-zkp-airdrop config set network mainnet
+zkp-airdrop config set network optimism
 zkp-airdrop config set relayer-url https://relayer.zkp-airdrop.io
 zkp-airdrop config set merkle-tree-source https://api.merkle-tree.io/tree.bin
 
