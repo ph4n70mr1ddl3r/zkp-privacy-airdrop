@@ -28,10 +28,10 @@ This document provides a single source of truth for all technical specifications
 
 ### 1.3 Storage Requirements
 - **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
-- **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path)
+- **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path siblings)
 - **Groth16 Proof Size**: ~200 bytes
 - **Total Proof Package**: ~1,032 bytes (proof + public signals)
-- **Precomputed Proofs Storage**: 56.88 GiB (65,249,064 leaves × 936 bytes per leaf including Merkle path, leaf hash, and index)
+- **Precomputed Proofs Storage**: 56.88 GiB (65,249,064 leaves × 936 bytes per leaf including Merkle path siblings (832 bytes), leaf hash (32 bytes), and path indices (104 bytes))
 - **Merkle Tree File Size**:
   - Binary format with addresses only: 1.216 GiB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,280 bytes)
   - Binary format with hashes only: 1.945 GiB (16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes)
@@ -41,7 +41,7 @@ This document provides a single source of truth for all technical specifications
 
 **Input Data**:
 - List of 65,249,064 Ethereum addresses (20 bytes each) from accounts.csv
-- Total input size: 65,249,064 × 20 bytes = 1.304 GB (1.216 GiB)
+- Total input size: 65,249,064 × 20 bytes = 1.216 GiB (1.304 GB)
 
 **Generation Steps**:
 1. **Hashing**: Compute Poseidon hash for each address → 65,249,064 leaves (32 bytes each)
@@ -51,8 +51,8 @@ This document provides a single source of truth for all technical specifications
 5. **Verification**: Independent verification of tree construction
 
 **Computational Requirements**:
-- **Memory**: ~32 GB RAM recommended
-- **Storage**: ~10 GB temporary storage
+- **Memory**: ~32 GiB RAM recommended
+- **Storage**: ~10 GiB temporary storage
 - **CPU**: Multi-threaded processing required
 - **Time**: Estimated 4-8 hours on modern hardware
 
@@ -64,7 +64,7 @@ This document provides a single source of truth for all technical specifications
 
 **Distribution**:
 - **Primary**: API service providing Merkle paths on-demand (no full tree download needed)
-- **Secondary**: CDN with HTTP range requests for full tree (4.00 GB)
+- **Secondary**: CDN with HTTP range requests for full tree (4.00 GiB)
 - **Fallback**: IPFS with content-addressed storage (CID: Qm...)
 - **Alternative**: Torrent for peer-to-peer distribution
 - **Verification Tool**: CLI tool to verify tree integrity and generate proofs offline
@@ -90,7 +90,7 @@ This document provides a single source of truth for all technical specifications
 3. Derive Ethereum address: `address = keccak256(pub_bytes[1:])[12:32]`
 4. Compute leaf: `leaf = Poseidon(address)`
 5. Verify Merkle proof using Poseidon hash
-6. Compute nullifier: `nullifier = Poseidon(private_key || recipient)`
+6. Compute nullifier: `nullifier = Poseidon(private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes of zeros))`
 7. Verify computed nullifier matches public input
 
 #### Poseidon Hash Parameters
@@ -259,7 +259,7 @@ interface IRelayerRegistry {
   For i in 0..num_leaves-1:
     address: [20 bytes]  // Ethereum address
     leaf_hash: [32 bytes] // Poseidon(address)
-    path_data: [936 bytes] // 26 × 32-bit indices (104 bytes) + 26 × 32-byte siblings (832 bytes)
+    path_data: [936 bytes] // 26 × 32-bit indices (104 bytes) + 26 × 32-byte siblings (832 bytes) = 936 bytes total
 ```
 
 ### 4.3 API Request/Response Formats
@@ -321,24 +321,13 @@ nullifier = poseidon_hash(input)  // 32 bytes
 
 ### 5.1 Component Specifications
 
-#### Rust CLI
-- **Version**: Rust 1.70+
-- **Dependencies**: arkworks, circom-compat, secp256k1, ethers-rs
-- **Proof Generation Time**: < 5 seconds (target)
-- **Memory Usage**: < 1 GB (with tree cache)
-
-#### Relayer Service
-- **Framework**: Actix-web or Axum (Rust)
-- **Database**: PostgreSQL (metrics only)
-- **Cache**: Redis (rate limiting)
-- **Concurrency**: 100+ concurrent requests
-- **Uptime Target**: 99.9%
-
 #### Smart Contracts
 - **Solidity Version**: 0.8.19+
 - **Proof Verification Gas**: ~300,000 gas (Groth16 verification)
 - **Total Claim Transaction Gas**: ~500,000 gas (verification + storage + transfer)
-- **Maximum Gas per Claim**: 1,000,000 gas (with buffer)
+- **Relayer Buffer**: 200,000 gas additional buffer for gas price fluctuations
+- **Estimated Gas per Claim**: 700,000 gas (verification + storage + transfer + buffer)
+- **Maximum Gas per Claim**: 1,000,000 gas (absolute maximum with 100% buffer)
 
 ### 5.2 Rate Limiting
 - **Per Nullifier**: 1 request per 60 seconds (all endpoints)
@@ -603,9 +592,11 @@ uint256 constant SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF4
 ### 10.3 Gas Estimates
 ```solidity
 uint256 constant VERIFY_PROOF_GAS = 300_000;     // Gas for Groth16 proof verification
-uint256 constant CLAIM_GAS = 500_000;            // Total gas for claim transaction (verification + storage + transfer)
-uint256 constant MAX_CLAIM_GAS = 1_000_000;      // Maximum gas allowance per claim (with 100% buffer)
+uint256 constant STORAGE_TRANSFER_GAS = 200_000; // Gas for storage updates and token transfer
+uint256 constant CLAIM_GAS = 500_000;            // Total gas for claim transaction (verification + storage + transfer = 300K + 200K)
 uint256 constant RELAYER_BUFFER = 200_000;       // Additional buffer for relayers to handle gas price fluctuations
+uint256 constant ESTIMATED_CLAIM_GAS = 700_000;  // Estimated gas with buffer (500K + 200K)
+uint256 constant MAX_CLAIM_GAS = 1_000_000;      // Maximum gas allowance per claim (absolute maximum with 100% buffer)
 ```
 
 ## 11. Glossary
@@ -633,10 +624,12 @@ uint256 constant RELAYER_BUFFER = 200_000;       // Additional buffer for relaye
 - **secp256k1**: Curve used for Ethereum address derivation from private keys.
 
 ### 11.5 Gas Estimates
-- **VERIFY_PROOF_GAS**: 300,000 gas for Groth16 verification
+- **VERIFY_PROOF_GAS**: 300,000 gas for Groth16 proof verification
+- **STORAGE_TRANSFER_GAS**: 200,000 gas for storage updates and token transfer
 - **CLAIM_GAS**: 500,000 gas total for verification + storage + transfer
-- **MAX_CLAIM_GAS**: 1,000,000 gas maximum allowance (100% buffer)
-- **RELAYER_BUFFER**: 200,000 gas additional buffer for relayers
+- **RELAYER_BUFFER**: 200,000 gas additional buffer for gas price fluctuations
+- **ESTIMATED_CLAIM_GAS**: 700,000 gas estimated with buffer (500K + 200K)
+- **MAX_CLAIM_GAS**: 1,000,000 gas maximum allowance (absolute maximum with 100% buffer)
 
 ---
 

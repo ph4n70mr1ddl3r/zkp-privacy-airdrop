@@ -6,14 +6,16 @@ A privacy-preserving ERC20 token airdrop system using zero-knowledge proofs. All
 
 - **Privacy**: Claim without revealing which address is in the qualified list
 - **Scalable**: Supports 65,249,064 qualified accounts
-- **Decentralized**: Multiple relayers can participate
+- **Decentralized**: Optional relayers or direct contract submission
 - **Secure**: Formally verified circuits and audited contracts
 - **User-friendly**: Simple Rust CLI for proof generation
 
 ## Architecture
 
 ```
-Claimant → Rust CLI → ZK Proof → Relayer → Airdrop Contract → ZKP Tokens
+Claimant → Rust CLI → ZK Proof → [Relayer (Optional)] → Airdrop Contract → ZKP Tokens
+                            ↓
+                     Direct Submission (Alternative)
 ```
 
 ## Quick Start

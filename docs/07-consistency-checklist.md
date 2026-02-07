@@ -140,15 +140,20 @@ Consider implementing:
 
 ## Version History
 
+### v1.1.0 (2026-02-07)
+- Fixed nullifier hash input inconsistency in unified specification (line 93)
+- Standardized gas estimates across all documents (300K verification, 200K storage+transfer, 500K total, 200K buffer, 700K estimated, 1M max)
+- Clarified relayer trust model (anyone can submit directly, relayers are optional)
+- Fixed proof data size ambiguity (936 bytes = 832 Merkle path + 32 leaf hash + 104 indices)
+- Standardized storage units to GiB (gibibytes = 2³⁰ bytes)
+- Added security fixes week after audit (Week 13) in implementation roadmap
+- Updated gas breakdown in technical specification (300K + 200K = 500K, not 300K + 150K + 50K)
+- Corrected GB vs GiB usage throughout documentation
+
 ### v1.0.0 (2026-02-07)
 - Initial consistency checklist created
-- Fixed nullifier hash input inconsistency (64 bytes with padding)
 - Standardized proof JSON format
-- Resolved relayer trust model conflict
-- Fixed timeline inconsistencies
 - Added version headers to all documents
-- Corrected gas buffer calculation (200,000 instead of 1,500,000)
-- Fixed Merkle tree file size calculations (1.216 GiB for addresses-only, 1.945 GiB for hashes-only, 4.00 GiB for full tree)
 
 ## References
 

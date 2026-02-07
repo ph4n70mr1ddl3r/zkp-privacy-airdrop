@@ -162,13 +162,23 @@
 
 **Deliverables**:
 - Audit reports
-- Fixed security issues
-- Final security documentation
+- Security issue tracking
 - Trusted setup preparation materials
 
-## Phase 5: Trusted Setup Ceremony (Week 13)
+### Week 13: Security Fixes & Remediation
+- [ ] Implement fixes for critical/high severity audit findings
+- [ ] Retest fixed issues
+- [ ] Update documentation based on audit findings
+- [ ] Final security review before trusted setup
 
-### Week 13: Multi-Party Trusted Setup
+**Deliverables**:
+- Fixed security issues
+- Updated security documentation
+- Final security sign-off
+
+## Phase 5: Trusted Setup Ceremony (Week 14)
+
+### Week 14: Multi-Party Trusted Setup
 - [ ] Coordinate trusted setup ceremony with 10+ independent participants
 - [ ] Perform Phase 2 circuit-specific setup
 - [ ] Generate final proving and verification keys
@@ -183,9 +193,9 @@
 - Public verification results
 - Participant attestations
 
-## Phase 6: Deployment (Weeks 14-15)
+## Phase 6: Deployment (Weeks 15-16)
 
-### Week 14: Testnet Deployment
+### Week 15: Testnet Deployment
 - [ ] Deploy contracts to Sepolia testnet
 - [ ] Deploy relayer to staging environment
 - [ ] Conduct public testnet testing
@@ -198,7 +208,7 @@
 - Testnet user guide
 - Performance benchmarks
 
-### Week 15: Mainnet Deployment
+### Week 16: Mainnet Deployment
 - [ ] Final mainnet contract deployment
 - [ ] Production relayer deployment
 - [ ] DNS and SSL configuration

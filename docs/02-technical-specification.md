@@ -158,7 +158,7 @@ root = tree.root()
 - **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
 - **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
 - **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path)
-- **Precomputed Proofs Storage**: 56.88 GiB (65,249,064 leaves × 936 bytes per leaf including Merkle path, leaf hash, and index)
+- **Precomputed Proofs Storage**: 56.88 GiB (65,249,064 leaves × 936 bytes per leaf including Merkle path siblings (832 bytes), leaf hash (32 bytes), and path indices (104 bytes))
 - **Merkle Tree File Sizes**:
   - Binary format with addresses only: 1.216 GiB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,280 bytes)
   - Binary format with hashes only: 1.945 GiB (16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes)
@@ -168,7 +168,7 @@ root = tree.root()
 
 Options:
 1. **API Service**: Primary method - provide Merkle paths on-demand via API (no full download needed)
-2. **Full Tree**: Host as downloadable file (4.00 GB) for offline proof generation
+2. **Full Tree**: Host as downloadable file (4.00 GiB) for offline proof generation
 3. **CDN**: HTTP range requests for efficient partial downloads
 4. **IPFS**: Distributed storage with pinning for redundancy
 5. **Torrent**: P2P distribution for resilience and censorship resistance
@@ -194,11 +194,11 @@ struct LeafData {
 
 // Complete file format:
 // [TreeHeader][LeafData 0][LeafData 1]...[LeafData N]
-// Total size: 16 + (65,249,064 * 20) = 1.30 GB
+// Total size: 16 + (65,249,064 * 20) = 1.216 GiB (1.30 GB)
 
 // Alternative: Pruned tree with only hashes
 // [TreeHeader][LeafHash 0][LeafHash 1]...[LeafHash N]
-// Total size: 16 + (65,249,064 * 32) = 1.94 GB
+// Total size: 16 + (65,249,064 * 32) = 1.945 GiB (1.94 GB)
 ```
 
 #### Merkle Tree JSON Format (API)
@@ -319,7 +319,7 @@ contract PrivacyAirdrop {
         // Gas estimation for claim transaction
         // This is approximate and may vary based on network conditions
         // Returns maximum expected gas usage to ensure relayers have sufficient balance
-        // Based on: 300K verification + 150K storage + 50K transfer = 500K base + 200K buffer
+        // Based on: 300K verification + 200K storage + transfer = 500K base + 200K buffer
         return 700_000; // Conservative estimate with buffer (verification + storage + transfer + buffer)
     }
 }
@@ -667,7 +667,7 @@ merkle_tree:
 ### 7.1 Smart Contract Security
 
 - **Reentrancy protection**: Use OpenZeppelin's ReentrancyGuard
-- **Access control**: Only relayers can submit claims (optional)
+- **Access control**: No centralized control in smart contract; anyone can submit claims directly, relayers are optional services
 - **Overflow protection**: Solidity 0.8+ built-in checks
 - **Emergency pause**: Pausable contract
 - **Upgradeability**: Consider proxy pattern for bug fixes
