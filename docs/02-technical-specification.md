@@ -95,9 +95,9 @@ for i in 0..25:
         current_hash = poseidon_hash(merkle_path[i], current_hash)
 assert(current_hash == merkle_root)
 
-// 6. Compute nullifier (private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes of zeros))
-    nullifier_input = private_key || recipient || [0x00; 12]  // 64 bytes total
-    computed_nullifier = poseidon_hash(nullifier_input)
+// 6. Compute nullifier (hash of private key)
+    # private_key is already available as circuit input
+    computed_nullifier = poseidon_hash(private_key)
     assert(computed_nullifier == nullifier)
 ```
 
@@ -482,11 +482,11 @@ pub fn generate_proof(
     // 3. Find Merkle path
     let (path, indices) = merkle_tree.get_path(&leaf)?;
     
-    // 4. Generate nullifier (Poseidon hash of private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes of zeros))
-    let mut nullifier_input = private_key.to_vec();  // 32 bytes
-    nullifier_input.extend_from_slice(recipient.as_bytes());  // 20 bytes
-    nullifier_input.extend_from_slice(&[0u8; 12]); // 12 bytes of padding (64 bytes total)
-    let nullifier = poseidon_hash(&nullifier_input);
+    // 4. Generate nullifier (Poseidon hash of private key)
+    // private_key is the 32-byte Ethereum private key
+    // For Poseidon with width=3, we need to pad to 96 bytes (3 field elements)
+    // Common approach: pad with zeros or use domain separation
+    let nullifier = poseidon_hash_with_domain(private_key, "zkp_airdrop_nullifier");
     
     // 5. Build circuit inputs
     let inputs = CircuitInputs {

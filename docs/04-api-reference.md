@@ -843,28 +843,39 @@ All 20-byte addresses are represented as:
 
 The nullifier is a 32-byte value computed as:
 ```
-nullifier = poseidon_hash(private_key || recipient || padding)
+nullifier = poseidon_hash(private_key)
 ```
-
-Where:
-- `private_key`: 32-byte Ethereum private key
-- `recipient`: 20-byte Ethereum address (0x-prefixed hex string)
-- `padding`: 12 bytes of zeros (0x00)
-- `||`: Concatenation (64 bytes total)
-- `poseidon_hash`: Poseidon hash function over BN128 scalar field (width 3)
+where `private_key` is the 32-byte Ethereum private key (secp256k1 scalar).
 
 **Important Properties**:
-1. **Deterministic**: Same (private_key, recipient) always produces same nullifier
-2. **Unique**: Different (private_key, recipient) pairs produce different nullifiers with high probability
-3. **Unlinkable**: Cannot derive private_key or recipient from nullifier
-4. **Double-spend protection**: Each nullifier can only be used once on-chain
+1. **Deterministic**: Same private_key always produces same nullifier
+2. **Private**: Requires knowledge of private_key to compute (cannot be derived from address alone)
+3. **Unique**: Different private keys produce different nullifiers with high probability
+4. **Unlinkable**: Cannot determine which address corresponds to a nullifier without the private key
+5. **Double-spend protection**: Each nullifier can only be used once on-chain, ensuring each qualified account can only claim once
+
+**Padding Considerations**:
+Poseidon with width=3 requires 3 field elements as input (96 bytes). The 32-byte private key needs to be padded:
+- **Option 1**: Zero padding: `private_key || [0x00]*64`
+- **Option 2**: Domain separation: `poseidon_hash("zkp_airdrop_nullifier" || private_key)`
+- **Option 3**: Split into field elements: Encode 32 bytes into 1-2 field elements, pad remainder with zeros
 
 **Example**:
 ```python
 # Pseudocode for nullifier generation
 private_key = 0x1234... (32 bytes)
-recipient = 0x5678... (20 bytes)
-padding = b'\x00' * 12  # 12 bytes of zeros
-input = private_key + recipient + padding  # 64 bytes total (32 + 20 + 12)
-nullifier = poseidon_hash(input)  # 32 bytes output
+
+# Option 1: Zero padding (simplest)
+padded_input = private_key + b'\x00' * 64  # 96 bytes total
+nullifier = poseidon_hash(padded_input)  # 32 bytes output
+
+# Option 2: Domain separation (recommended for collision resistance)
+domain = b"zkp_airdrop_nullifier_v1"
+padded_input = domain + private_key + b'\x00' * (96 - len(domain) - 32)
+nullifier = poseidon_hash(padded_input)
 ```
+
+**Security Notes**:
+- The nullifier must be computed exactly the same way in the ZK circuit and in the CLI
+- Use domain separation to prevent cross-protocol nullifier collisions
+- The exact padding scheme is an implementation detail but must be consistent across all components

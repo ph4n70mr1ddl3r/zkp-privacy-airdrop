@@ -100,7 +100,7 @@ This document provides a single source of truth for all technical specifications
 3. Derive Ethereum address: `address = keccak256(pub_bytes[1:])[12:32]`
 4. Compute leaf: `leaf = Poseidon(address)`
 5. Verify Merkle proof using Poseidon hash
-6. Compute nullifier: `nullifier = Poseidon(private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes of zeros))`
+6. Compute nullifier: `nullifier = Poseidon(private_key)` where private_key is the 32-byte Ethereum private key
 7. Verify computed nullifier matches public input
 
 #### Poseidon Hash Parameters
@@ -132,16 +132,22 @@ output <== poseidon.out;
 
 ### 2.2 Nullifier Generation
 ```
-nullifier = Poseidon(
-    private_key (32 bytes) || 
-    recipient (20 bytes) ||
-    padding (12 bytes of zeros)
-)
+nullifier = Poseidon(private_key)
 ```
-- **Total Input**: 64 bytes (padded to fit 4 field elements for Poseidon with width 3)
+where `private_key` is the 32-byte Ethereum private key (secp256k1 scalar).
+
+- **Total Input**: 32 bytes (padded to fit Poseidon width requirements)
 - **Output**: 32 bytes (1 field element)
-- **Properties**: Deterministic, collision-resistant, unlinkable
-- **Note**: Padding ensures consistent 64-byte input for all nullifier computations
+- **Properties**: 
+  - **Deterministic**: Same private_key → same nullifier
+  - **Private**: Requires knowledge of private_key to compute (not derivable from address)
+  - **Unique**: Different private keys produce different nullifiers with high probability
+  - **Unlinkable**: Cannot determine which address corresponds to a nullifier without the private key
+- **Purpose**: Ensures each qualified account can only claim once, regardless of recipient address
+- **Security Guarantee**: 
+  - Prevents double-spending by binding nullifier to private key
+  - Preserves privacy: nullifier cannot be linked to address without private key
+  - Each private key (and thus each qualified account) can only generate one valid nullifier
 
 ### 2.3 Field Element Encoding
 All field elements are encoded as:
@@ -336,20 +342,24 @@ See API Reference (docs/04-api-reference.md) for detailed schemas.
 **Nullifier Calculation** (pseudocode):
 ```
 private_key = 0x1234... (32 bytes)
-recipient = 0x5678... (20 bytes)
-padding = 0x000000000000000000000000 (12 bytes)
-input = private_key || recipient || padding  // 64 bytes total
-nullifier = poseidon_hash(input)  // 32 bytes
+# Pad private key to fit Poseidon hash input requirements (3 field elements = 96 bytes)
+# For width=3 Poseidon, we need to split 32 bytes into field elements
+nullifier = poseidon_hash(private_key)  # 32 bytes output
 ```
 
 **Byte-Level Example**:
 ```
 private_key = 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef (32 bytes)
-recipient = 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 (20 bytes)
-padding = 0x000000000000000000000000 (12 bytes)
-input = 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeff39fd6e51aad88f6f4ce6ab8827279cfffb92266000000000000000000000000 (64 bytes)
-nullifier = poseidon_hash(input)  # Result: 32-byte hash
+# Poseidon hash with width=3 takes 3 field elements as input (96 bytes)
+# Since private_key is 32 bytes, we need to pad it appropriately:
+# Option 1: Pad with zeros to 96 bytes: private_key || 0x00*64
+# Option 2: Use domain separation: poseidon_hash("zkp_nullifier" || private_key)
+# Implementation detail: Use appropriate padding based on Poseidon implementation
+padded_input = private_key || [0x00]*64  # 96 bytes total
+nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
 ```
+
+**Important**: The exact padding scheme depends on the Poseidon implementation. The key property is that `nullifier = Poseidon(private_key)` is deterministic and only computable with knowledge of the private key.
 
 ## 5. System Architecture
 
@@ -653,7 +663,7 @@ uint256 constant MAX_CLAIM_GAS = 1_000_000;      // Maximum gas allowance per cl
 ## 11. Glossary
 
 ### 11.1 Core Concepts
-- **Nullifier**: Unique identifier computed as `Poseidon(private_key (32 bytes) || recipient (20 bytes) || padding (12 bytes of zeros))`. Prevents double claims.
+- **Nullifier**: Unique identifier computed as `Poseidon(private_key)` where private_key is the Ethereum private key. Prevents double claims by ensuring each qualified account can only claim once. Only computable with knowledge of the private key, preserving privacy.
 - **Merkle Path**: The sibling nodes along the path from a leaf to the Merkle root (26 × 32 bytes = 832 bytes).
 - **Field Element**: Integer in the BN128 scalar field modulo `p = 21888242871839275222246405745257275088548364400416034343698204186575808495617`.
 - **Public Signals**: Array `[merkle_root, recipient, nullifier]` passed to the verifier, where each is a field element.

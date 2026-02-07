@@ -217,7 +217,7 @@ let private_key = read_password()?;
 **Proof**: 
 - Only the Merkle root is public
 - The proof demonstrates knowledge of a leaf without revealing which leaf
-- The nullifier is derived from private_key and recipient, not the address
+- The nullifier is derived from the private key (not the address), ensuring each account can only claim once while preserving privacy
 
 **Verification**:
 ```
@@ -230,21 +230,23 @@ Recipient receives tokens
 At no point is address revealed
 ```
 
-### 2. Claim Unlinkability
+### 2. Single Claim Guarantee
 
-**Claim**: Multiple claims from the same account cannot be linked.
+**Claim**: Each qualified account can only claim once, regardless of recipient.
 
 **Implementation**:
 ```rust
-// Nullifier = Poseidon(private_key, recipient)
-// Different recipient → Different nullifier
-let nullifier = poseidon_hash(&[private_key, recipient_bytes]);
+// Nullifier = Poseidon(private_key)
+// Same private key → Same nullifier → Only one claim allowed
+let nullifier = poseidon_hash_with_domain(private_key, "zkp_airdrop_nullifier");
 ```
 
 **Analysis**:
-- Nullifier is unique per (private_key, recipient) pair
-- Same private key with different recipients = different nullifiers
-- Cannot determine if two claims came from same private key
+- Nullifier is unique per private key
+- Each qualified account can claim exactly once to any recipient
+- Claims from same account are prevented (same nullifier)
+- Different recipients for same account not allowed (ensures 1:1 mapping)
+- **Privacy preserved**: Nullifier cannot be linked to address without private key
 
 ### 3. Timing Privacy
 
@@ -313,10 +315,12 @@ fn get_randomized_gas_price() -> U256 {
 
 ### 2. Double Spending
 
-**Attack**: Claim twice with same nullifier.
+**Attack**: Claim twice with same private key (to same or different recipient).
 
 **Defense**:
 ```solidity
+// Nullifier is computed from private key (via derived address)
+// Same private key → Same nullifier → Only one claim allowed
 require(!nullifiers[nullifier], "Already claimed");
 nullifiers[nullifier] = true;
 ```

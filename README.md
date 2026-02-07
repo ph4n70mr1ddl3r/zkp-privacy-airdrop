@@ -78,6 +78,7 @@ Key Points:
 ### Important Notes
 
 - **Contract Immutability**: The airdrop contract is immutable after deployment. Anyone with a valid proof can claim tokens.
+- **Single Claim Guarantee**: Each qualified account can only claim once, regardless of recipient address.
 - **Privacy**: Your original qualified address is never revealed on-chain.
 - **Relayers are Optional**: You can always submit directly to the contract if you prefer.
 - **Community Funded**: Relay services are funded by donations and provide free gas to claimants.

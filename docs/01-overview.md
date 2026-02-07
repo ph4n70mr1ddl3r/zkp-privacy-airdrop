@@ -48,9 +48,10 @@ The 65,249,064 eligible accounts are Ethereum mainnet addresses that paid at lea
 ## Privacy Guarantees
 
 - **Identity Privacy**: Claimant's original address is never revealed
-- **Claim Unlinkability**: Multiple claims from the same account cannot be linked
+- **Single Claim Guarantee**: Each qualified account can only claim once, regardless of recipient
 - **Recipient Privacy**: Recipient address is not tied to the original qualified account
 - **Zero Knowledge**: Proof reveals nothing except that the prover knows a private key in the list
+- **Double-Spend Prevention**: Nullifier system ensures each account can only claim tokens once
 
 ## User Workflow
 
