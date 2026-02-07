@@ -1,11 +1,11 @@
 # ZKP Privacy Airdrop
 
-A privacy-preserving ERC20 token airdrop system using zero-knowledge proofs. Allows 65,000,000 qualified Ethereum accounts to claim ZKP tokens without revealing their identity.
+A privacy-preserving ERC20 token airdrop system using zero-knowledge proofs. Allows 65,249,064 qualified Ethereum accounts to claim ZKP tokens without revealing their identity.
 
 ## Features
 
 - **Privacy**: Claim without revealing which address is in the qualified list
-- **Scalable**: Supports 65,000,000 qualified accounts
+- **Scalable**: Supports 65,249,064 qualified accounts
 - **Decentralized**: Multiple relayers can participate
 - **Secure**: Formally verified circuits and audited contracts
 - **User-friendly**: Simple Rust CLI for proof generation
@@ -58,6 +58,7 @@ docker-compose up -d
 - [API Reference](docs/04-api-reference.md)
 - [Security & Privacy](docs/05-security-privacy.md)
 - [Privacy Analysis & Limitations](docs/06-privacy-analysis.md)
+- [Consistency Checklist](docs/07-consistency-checklist.md) - Verification guide for documentation consistency
 
 ## Project Structure
 

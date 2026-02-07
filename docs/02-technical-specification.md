@@ -1,5 +1,11 @@
 # Technical Specification
 
+**Version**: 1.0.0  
+**Last Updated**: 2026-02-07  
+**Based on**: [Unified Specification](../docs/00-specification.md)
+
+> **Note**: This document provides detailed technical specifications. For authoritative constants and interfaces, refer to the [Unified Specification](../docs/00-specification.md).
+
 ## 1. Zero-Knowledge Proof System
 
 ### 1.1 Circuit Design
@@ -97,7 +103,11 @@ assert(computed_nullifier == nullifier)
 All field elements in the BN128 scalar field must be encoded as:
 
 1. **Field Element Representation**: Integer in range `[0, p-1]` where `p = 21888242871839275222246405745257275088548364400416034343698204186575808495617`
-2. **Byte Encoding**: Big-endian 32-byte representation
+2. **JSON Encoding**: 
+   - **Primary**: Decimal string representation
+   - **Alternative**: Hex string with `0x` prefix (for developer convenience)
+   - Example decimal: `"13862987149607610235678184535533251295074929736392939725598345555223684473689"`
+   - Example hex: `"0x1eab1f9d8c9a0e3a9a1b9c8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d"`
 3. **Validation**: Must be less than field modulus `p`
 4. **Zero Padding**: For inputs smaller than 32 bytes, left-pad with zeros
 5. **Address Encoding**: Ethereum addresses (20 bytes) are padded to 32 bytes with 12 leading zeros
@@ -119,7 +129,7 @@ field_element = BigInt(padded_address) mod p
 
 2. **On-chain verification** (required, by contract):
    - Verify Groth16 proof using verifier contract
-   - Check `nullifierHashes[nullifierHash] == false`
+   - Check `nullifiers[nullifier] == false`
    - Check `block.timestamp < claimDeadline`
    - Transfer tokens to recipient
    - Emit `Claimed` event
@@ -128,10 +138,10 @@ field_element = BigInt(padded_address) mod p
 
 ### 2.1 Tree Structure
 
-- **Height**: 26 levels (supports 2^26 = 67M leaves)
-- **Hash Function**: Poseidon (ZK-friendly)
-- **Leaf Hashing**: H(address) where address is bytes20
-- **Empty Leaves**: Hash of zero address or specific null value
+- **Height**: 26 levels (supports 2^26 = 67,108,864 leaves)
+- **Hash Function**: Poseidon (BN128 scalar field)
+- **Leaf Hashing**: `Poseidon(address)` where address is 20 bytes, padded to 32 bytes with 12 leading zeros
+- **Empty Leaves**: `Poseidon(0x0000000000000000000000000000000000000000000000000000000000000000)` (32 zero bytes)
 
 ### 2.2 Tree Construction
 
@@ -146,17 +156,22 @@ root = tree.root()
 ### 2.3 Storage Requirements
 
 - **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
-- **Full Tree**: ~4.3GB (134,217,727 nodes × 32 bytes)
-- **Compressed (pruned)**: ~8.3GB (65,000,000 leaves × 128 bytes for path data)
-- **Proof Size**: 26 × 32 bytes = 832 bytes per path
+- **Full Tree Storage**: 4.00 GB (134,217,727 nodes × 32 bytes)
+- **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path)
+- **Precomputed Proofs Storage**: 56.88 GB (65,249,064 leaves × 936 bytes per leaf including Merkle path, leaf hash, and index)
+- **Merkle Tree File Sizes**:
+  - Binary format with addresses only: 1.30 GB (16 byte header + 65,249,064 × 20 bytes)
+  - Binary format with hashes only: 1.94 GB (16 byte header + 65,249,064 × 32 bytes)
+  - Full tree for local generation: 4.00 GB (all 134,217,727 nodes × 32 bytes)
 
 ### 2.4 Distribution Strategy
 
 Options:
-1. **Full Tree**: Host as downloadable file (~4.3GB)
-2. **API Service**: Provide Merkle paths on-demand via API
-3. **IPFS**: Distributed storage with pinning
-4. **Torrent**: P2P distribution for resilience
+1. **API Service**: Primary method - provide Merkle paths on-demand via API (no full download needed)
+2. **Full Tree**: Host as downloadable file (4.00 GB) for offline proof generation
+3. **CDN**: HTTP range requests for efficient partial downloads
+4. **IPFS**: Distributed storage with pinning for redundancy
+5. **Torrent**: P2P distribution for resilience and censorship resistance
 
 ### 2.5 File Formats
 
@@ -168,7 +183,7 @@ struct TreeHeader {
     version: u8,           // Format version (1)
     height: u8,            // Tree height (26)
     reserved: [u8; 2],     // Reserved for future use
-    num_leaves: u32,       // Number of leaves (65,000,000)
+    num_leaves: u32,       // Number of leaves (65,249,064)
     root_hash: [u8; 32],   // Merkle root
 }
 
@@ -179,11 +194,11 @@ struct LeafData {
 
 // Complete file format:
 // [TreeHeader][LeafData 0][LeafData 1]...[LeafData N]
-// Total size: 16 + (65,000,000 * 20) ≈ 1.3GB
+// Total size: 16 + (65,249,064 * 20) = 1.30 GB
 
 // Alternative: Pruned tree with only hashes
 // [TreeHeader][LeafHash 0][LeafHash 1]...[LeafHash N]
-// Total size: 16 + (65,000,000 * 32) ≈ 2.1GB
+// Total size: 16 + (65,249,064 * 32) = 1.94 GB
 ```
 
 #### Merkle Tree JSON Format (API)
@@ -191,7 +206,7 @@ struct LeafData {
 {
   "version": 1,
   "height": 26,
-  "num_leaves": 65000000,
+  "num_leaves": 65249064,
   "root": "0x1234...",
   "leaves": [
     {
@@ -233,7 +248,7 @@ contract ZKPToken is ERC20, Ownable {
 contract PrivacyAirdrop {
     // State variables
     bytes32 public immutable merkleRoot;
-    mapping(bytes32 => bool) public nullifierHashes;
+    mapping(bytes32 => bool) public nullifiers;
     IERC20 public immutable token;
     uint256 public immutable claimAmount;
     uint256 public immutable claimDeadline;
@@ -242,7 +257,7 @@ contract PrivacyAirdrop {
     IVerifier public immutable verifier;
     
     // Events
-    event Claimed(bytes32 indexed nullifierHash, address indexed recipient);
+    event Claimed(bytes32 indexed nullifier, address indexed recipient);
     
     // ZK Proof structure
     struct Proof {
@@ -267,17 +282,17 @@ contract PrivacyAirdrop {
     
     function claim(
         Proof calldata proof,
-        bytes32 nullifierHash,
+        bytes32 nullifier,
         address recipient
     ) external {
         require(block.timestamp < claimDeadline, "Claim period ended");
-        require(!nullifierHashes[nullifierHash], "Already claimed");
+        require(!nullifiers[nullifier], "Already claimed");
         
         // Verify proof
         uint[3] memory publicSignals = [
             uint256(merkleRoot),
             uint256(uint160(recipient)),
-            uint256(nullifierHash)
+            uint256(nullifier)
         ];
         
         require(verifier.verifyProof(
@@ -288,22 +303,23 @@ contract PrivacyAirdrop {
         ), "Invalid proof");
         
         // Mark as claimed
-        nullifierHashes[nullifierHash] = true;
+        nullifiers[nullifier] = true;
         
         // Transfer tokens
         require(token.transfer(recipient, claimAmount), "Token transfer failed");
         
-        emit Claimed(nullifierHash, recipient);
+        emit Claimed(nullifier, recipient);
     }
     
     function estimateClaimGas(
         Proof calldata proof,
-        bytes32 nullifierHash,
+        bytes32 nullifier,
         address recipient
     ) external view returns (uint256) {
         // Gas estimation for claim transaction
         // This is approximate and may vary based on network conditions
-        return 500000; // Base gas estimate
+        // Returns maximum expected gas usage to ensure relayers have sufficient balance
+        return 1_000_000; // Maximum gas estimate (verification + storage + transfer + buffer)
     }
 }
 ```
@@ -416,9 +432,10 @@ pub fn generate_proof(
     // 3. Find Merkle path
     let (path, indices) = merkle_tree.get_path(&leaf)?;
     
-    // 4. Generate nullifier (Poseidon hash of private_key || recipient)
+    // 4. Generate nullifier (Poseidon hash of private_key || recipient || padding)
     let mut nullifier_input = private_key.to_vec();
     nullifier_input.extend_from_slice(recipient.as_bytes());
+    nullifier_input.extend_from_slice(&[0u8; 12]); // 12 bytes of padding
     let nullifier = poseidon_hash(&nullifier_input);
     
     // 5. Build circuit inputs
@@ -441,7 +458,7 @@ pub fn generate_proof(
             recipient.as_bytes().to_vec(),
             nullifier.to_vec(),
         ],
-        nullifier_hash: nullifier,
+        nullifier: nullifier,
     })
 }
 ```
@@ -471,7 +488,7 @@ pub fn generate_proof(
 struct SubmitClaimRequest {
     proof: ZKProof,
     recipient: Address,
-    nullifier_hash: H256,
+    nullifier: H256,
 }
 
 #[derive(Serialize)]
@@ -513,10 +530,10 @@ pub async fn submit_claim(
     state: &AppState,
 ) -> Result<SubmitClaimResponse> {
     // 1. Rate limiting check
-    check_rate_limit(&request.nullifier_hash, state).await?;
+    check_rate_limit(&request.nullifier, state).await?;
     
     // 2. Verify nullifier not already used
-    if state.contract.is_nullifier_used(request.nullifier_hash).await? {
+    if state.contract.is_nullifier_used(request.nullifier).await? {
         return Err(Error::AlreadyClaimed);
     }
     
@@ -538,12 +555,12 @@ pub async fn submit_claim(
     // 5. Submit transaction
     let tx_hash = state.contract.claim(
         request.proof,
-        request.nullifier_hash,
+        request.nullifier,
         request.recipient,
     ).await?;
     
     // 6. Record metrics
-    record_claim_submission(&request.nullifier_hash, &tx_hash, state).await;
+    record_claim_submission(&request.nullifier, &tx_hash, state).await;
     
     Ok(SubmitClaimResponse {
         success: true,
@@ -555,10 +572,16 @@ pub async fn submit_claim(
 
 ### 5.4 Rate Limiting & Anti-Spam
 
-- **Per-nullifier**: 1 request per minute
-- **Per-IP**: 10 requests per hour
-- **Global**: 100 requests per minute
-- **Proof validation**: Must pass off-chain verification
+- **Per Nullifier**: 1 request per 60 seconds (all endpoints)
+- **Per IP Address**: 100 requests per 60 seconds (all endpoints)
+- **Global**: 1,000 requests per 60 seconds (all endpoints)
+- **Endpoint-Specific Limits**:
+  - `POST /api/v1/submit-claim`: 1 request per 60 seconds per nullifier
+  - `GET /api/v1/check-status/{nullifier}`: 10 requests per 60 seconds per nullifier
+  - `GET /api/v1/merkle-path/{address}`: 60 requests per 60 seconds per IP
+  - Other endpoints: 100 requests per 60 seconds per IP
+- **Burst Allowance**: 2x limit for 10 seconds
+- **Proof validation**: Must pass off-chain verification before submission
 
 ### 5.5 Monitoring & Alerting
 
@@ -618,14 +641,18 @@ contract:
   
 relayer:
   private_key: "${RELAYER_PRIVATE_KEY}"
-  min_balance: "500000000000000000"  # 0.5 ETH
-  gas_price_multiplier: 1.1
-  max_gas_price: "50000000000"  # 50 gwei
+  min_balance_warning: "1000000000000000000"  # 1.0 ETH (warning threshold)
+  min_balance_critical: "500000000000000000"   # 0.5 ETH (stop accepting claims)
+  gas_price_multiplier: 1.1  # 10% premium over base fee
+  gas_price_randomization: 0.05  # 0-5% random variance for privacy
+  max_gas_price: "50000000000"  # 50 gwei cap
   
 rate_limit:
-  per_nullifier: 60  # seconds
-  per_ip: 10  # requests per hour
-  global: 100  # requests per minute
+  per_nullifier: 60  # seconds between requests for same nullifier
+  per_ip: 100  # requests per 60 seconds per IP
+  global: 1000  # requests per 60 seconds across all IPs
+  burst_factor: 2.0  # allow 2x limit for 10 seconds
+  burst_window: 10  # seconds
   
 merkle_tree:
   source: "https://api.merkle-tree.io/tree.json"

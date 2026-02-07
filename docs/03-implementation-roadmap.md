@@ -1,5 +1,9 @@
 # Implementation Roadmap
 
+**Version**: 1.0.0  
+**Last Updated**: 2026-02-07  
+**Based on**: [Technical Specification](../docs/02-technical-specification.md)
+
 ## Phase 1: Foundation (Weeks 1-3)
 
 ### Week 1: Project Setup & Circuit Design
@@ -14,18 +18,16 @@
 - `circuits/test/merkle_membership.test.js`
 - Circuit documentation
 
-### Week 2: Trusted Setup & Verification
-- [ ] Perform Phase 2 trusted setup ceremony
-- [ ] Generate proving and verification keys
+### Week 2: Circuit Verification & Testing
 - [ ] Implement Groth16 verifier contract
-- [ ] Test proof generation and verification
-- [ ] Document trusted setup transcripts
+- [ ] Test proof generation and verification with test vectors
+- [ ] Create test infrastructure for circuit validation
+- [ ] Document verification process
 
 **Deliverables**:
-- Proving key (`.zkey` file)
-- Verification key
 - `contracts/Verifier.sol`
-- Trusted setup documentation
+- Test suite for circuit verification
+- Documentation of verification process
 
 ### Week 3: Smart Contract Development
 - [ ] Implement ZKP Token contract (ERC20)
@@ -70,7 +72,7 @@
 - CLI documentation
 
 ### Week 6: Merkle Tree Infrastructure
-- [ ] Build 65,000,000 account Merkle tree (requires significant compute resources)
+- [ ] Build 65,249,064 account Merkle tree (from accounts.csv, requires significant compute resources)
 - [ ] Optimize tree storage format for distribution
 - [ ] Implement tree querying API
 - [ ] Set up tree distribution (IPFS, torrent, CDN)
@@ -150,23 +152,40 @@
 - Refactored and reviewed code
 - Audit preparation checklist
 
-### Week 12: Security Audit & Trusted Setup
+### Week 12: Security Audit & Final Preparation
 - [ ] Third-party smart contract audit (2+ firms)
 - [ ] Circuit security review and formal verification
 - [ ] Relayer penetration testing
 - [ ] CLI security assessment
-- [ ] Coordinate multi-party trusted setup ceremony (10+ participants)
-- [ ] Generate and verify proving/verification keys
 - [ ] Address audit findings
+- [ ] Prepare for trusted setup ceremony
 
 **Deliverables**:
 - Audit reports
 - Fixed security issues
 - Final security documentation
+- Trusted setup preparation materials
 
-## Phase 5: Deployment (Weeks 13-14)
+## Phase 5: Trusted Setup Ceremony (Week 13)
 
-### Week 13: Testnet Deployment
+### Week 13: Multi-Party Trusted Setup
+- [ ] Coordinate trusted setup ceremony with 10+ independent participants
+- [ ] Perform Phase 2 circuit-specific setup
+- [ ] Generate final proving and verification keys
+- [ ] Publish ceremony transcripts for public verification
+- [ ] Verify setup integrity using zk-SNARKs
+- [ ] Document ceremony process and participants
+
+**Deliverables**:
+- Final proving key (`.zkey` file)
+- Final verification key and verifier contract
+- Ceremony transcripts published on IPFS
+- Public verification results
+- Participant attestations
+
+## Phase 6: Deployment (Weeks 14-15)
+
+### Week 14: Testnet Deployment
 - [ ] Deploy contracts to Sepolia testnet
 - [ ] Deploy relayer to staging environment
 - [ ] Conduct public testnet testing
@@ -179,7 +198,7 @@
 - Testnet user guide
 - Performance benchmarks
 
-### Week 14: Mainnet Deployment
+### Week 15: Mainnet Deployment
 - [ ] Final mainnet contract deployment
 - [ ] Production relayer deployment
 - [ ] DNS and SSL configuration
@@ -191,7 +210,7 @@
 - Production relayer infrastructure
 - Launch documentation
 
-## Phase 6: Post-Launch (Ongoing)
+## Phase 7: Post-Launch (Ongoing)
 
 ### Month 1-2: Monitoring & Support
 - [ ] 24/7 monitoring and alerting

@@ -8,28 +8,66 @@ This document provides a single source of truth for all technical specifications
 ## 1. System Constants
 
 ### 1.1 Token Distribution
-- **Qualified Accounts**: 65,000,000 (65M) Ethereum addresses
+- **Qualified Accounts**: 65,249,064 Ethereum addresses (from accounts.csv)
 - **Token Name**: ZKP
 - **Token Symbol**: ZKP
 - **Token Decimals**: 18
 - **Claim Amount per Account**: 1,000 ZKP tokens
-- **Total Token Supply**: 65,000,000,000 ZKP (65M × 1,000)
+- **Total Token Supply**: 65,249,064,000 ZKP (65,249,064 × 1,000)
 - **Claim Period**: 90 days from contract deployment
 
 ### 1.2 Merkle Tree
 - **Tree Height**: 26 levels (supports up to 2^26 = 67,108,864 leaves)
+- **Actual Leaves**: 65,249,064 (from accounts.csv)
+- **Extra Capacity**: 1,859,800 empty leaves available
 - **Hash Function**: Poseidon (BN128 scalar field)
-- **Leaf Representation**: `Poseidon(address)` where address is 20 bytes
-- **Empty Leaf Value**: `Poseidon(0x0000000000000000000000000000000000000000)`
+- **Leaf Representation**: `Poseidon(address)` where address is 20 bytes, padded to 32 bytes with 12 leading zeros
+- **Empty Leaf Value**: `Poseidon(0x0000000000000000000000000000000000000000000000000000000000000000)` (32 zero bytes)
 - **Total Nodes**: 134,217,727 (2^27 - 1)
 - **Tree Root Size**: 32 bytes (BN128 field element)
 
 ### 1.3 Storage Requirements
-- **Full Tree Storage**: ~4.3 GB (134,217,727 nodes × 32 bytes)
-- **Compressed Tree Storage**: ~8.3 GB (65,000,000 leaves × 128 bytes per path)
+- **Full Tree Storage**: 4.00 GB (134,217,727 nodes × 32 bytes)
 - **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path)
 - **Groth16 Proof Size**: ~200 bytes
 - **Total Proof Package**: ~1,032 bytes (proof + public signals)
+- **Precomputed Proofs Storage**: 56.88 GB (65,249,064 leaves × 936 bytes per leaf including Merkle path, leaf hash, and index)
+- **Merkle Tree File Size**:
+  - Binary format with addresses only: 1.30 GB (16 byte header + 65,249,064 × 20 bytes)
+  - Binary format with hashes only: 1.94 GB (16 byte header + 65,249,064 × 32 bytes)
+  - Full tree for local generation: 4.00 GB (all 134,217,727 nodes × 32 bytes)
+
+### 1.4 Merkle Tree Generation Process
+
+**Input Data**:
+- List of 65,249,064 Ethereum addresses (20 bytes each) from accounts.csv
+- Total input size: 65,249,064 × 20 bytes = 1.30 GB
+
+**Generation Steps**:
+1. **Hashing**: Compute Poseidon hash for each address → 65,249,064 leaves (32 bytes each)
+2. **Tree Construction**: Build binary Merkle tree bottom-up
+3. **Root Computation**: Compute final Merkle root (32 bytes)
+4. **Proof Generation**: For each leaf, compute its Merkle path (832 bytes)
+5. **Verification**: Independent verification of tree construction
+
+**Computational Requirements**:
+- **Memory**: ~32 GB RAM recommended
+- **Storage**: ~10 GB temporary storage
+- **CPU**: Multi-threaded processing required
+- **Time**: Estimated 4-8 hours on modern hardware
+
+**Verification & Audit**:
+- **Checksum**: SHA256 of sorted address list
+- **Independent Verification**: Multiple parties recompute tree from same input
+- **Proof of Correctness**: Provide sample proofs for random leaves
+- **Transparency**: Publish generation script and input checksum
+
+**Distribution**:
+- **Primary**: API service providing Merkle paths on-demand (no full tree download needed)
+- **Secondary**: CDN with HTTP range requests for full tree (4.00 GB)
+- **Fallback**: IPFS with content-addressed storage (CID: Qm...)
+- **Alternative**: Torrent for peer-to-peer distribution
+- **Verification Tool**: CLI tool to verify tree integrity and generate proofs offline
 
 ## 2. Cryptographic Specifications
 
@@ -56,12 +94,31 @@ This document provides a single source of truth for all technical specifications
 7. Verify computed nullifier matches public input
 
 #### Poseidon Hash Parameters
-- **Prime Field**: BN128 (0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47)
+- **Prime Field**: BN128 scalar field (modulus: 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47)
 - **Width**: 3 (capacity 2, rate 1)
-- **Rounds**: 8 full rounds, 57 partial rounds
-- **Alpha**: 5
-- **MDS Matrix**: Precomputed for BN128 field
-- **Security Level**: 128-bit
+- **Full Rounds**: 8 (4 at beginning, 4 at end)
+- **Partial Rounds**: 57
+- **Alpha**: 5 (x^5 S-box)
+- **MDS Matrix**: Precomputed for BN128 field using the Cauchy matrix method
+- **Round Constants**: Generated using SHA256 with domain separation
+- **Security Level**: 128-bit against preimage and collision attacks
+- **Implementation**: Compatible with circomlib's Poseidon implementation
+
+**Constants Generation**:
+- Round constants derived from: `SHA256("poseidon_bn128_t3_f8_p57_" || domain_separator || round_index)`
+- MDS matrix generated using Cauchy matrix: `M[i][j] = 1/(x_i + y_j)` where x_i, y_j are distinct field elements
+- Domain separation: `"zkp_airdrop_v1"` for all Poseidon instances in the circuit
+
+**Reference Implementation**:
+```circom
+include "circomlib/poseidon.circom";
+
+component poseidon = Poseidon(3);
+poseidon.inputs[0] <== input0;
+poseidon.inputs[1] <== input1;
+poseidon.inputs[2] <== input2;
+output <== poseidon.out;
+```
 
 ### 2.2 Nullifier Generation
 ```
@@ -71,9 +128,10 @@ nullifier = Poseidon(
     padding (12 bytes of zeros)
 )
 ```
-- **Total Input**: 64 bytes (padded to fit 4 field elements)
+- **Total Input**: 64 bytes (padded to fit 4 field elements for Poseidon with width 3)
 - **Output**: 32 bytes (1 field element)
 - **Properties**: Deterministic, collision-resistant, unlinkable
+- **Note**: Padding ensures consistent 64-byte input for all nullifier computations
 
 ### 2.3 Field Element Encoding
 All field elements are encoded as:
@@ -92,16 +150,25 @@ interface IPrivacyAirdrop {
         uint256[2] c;
     }
     
+    // Anyone can call claim() - no whitelist required
+    // Relayers are optional services that pay gas for users
     function claim(
         Proof calldata proof,
-        bytes32 nullifierHash,
+        bytes32 nullifier,
         address recipient
     ) external;
     
-    function isClaimed(bytes32 nullifierHash) external view returns (bool);
+    function isClaimed(bytes32 nullifier) external view returns (bool);
     function merkleRoot() external view returns (bytes32);
     function claimAmount() external view returns (uint256);
     function claimDeadline() external view returns (uint256);
+    
+    // Optional: estimate gas for claim transaction
+    function estimateClaimGas(
+        Proof calldata proof,
+        bytes32 nullifier,
+        address recipient
+    ) external view returns (uint256);
 }
 ```
 
@@ -126,12 +193,29 @@ interface IRelayerRegistry {
     "c": ["<field_element>", "<field_element>"]
   },
   "public_signals": ["<merkle_root>", "<recipient>", "<nullifier>"],
-  "nullifier_hash": "0x...",
+  "nullifier": "0x...",
   "recipient": "0x...",
   "merkle_root": "0x...",
   "generated_at": "ISO8601_TIMESTAMP"
 }
 ```
+
+**Field Element Encoding**:
+- **Primary Format**: Decimal strings (not hex)
+- **Alternative Format**: Hex strings with `0x` prefix (for developer convenience)
+- **Validation**: Must be valid BN128 field elements: `0 <= x < p` where `p = 21888242871839275222246405745257275088548364400416034343698204186575808495617`
+- **Examples**: 
+  - Decimal: `"13862987149607610235678184535533251295074929736392939725598345555223684473689"`
+  - Hex: `"0x1eab1f9d8c9a0e3a9a1b9c8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d"`
+
+**Address Encoding**:
+- **Format**: 20-byte hex strings with `0x` prefix (lowercase)
+- **Validation**: Must be valid Ethereum address checksum (EIP-55 optional but recommended)
+- **Example**: `"0x1234567890123456789012345678901234567890"`
+
+**Hash Encoding**:
+- **Format**: 32-byte hashes (Merkle root, nullifier) as 64-character hex strings with `0x` prefix (lowercase)
+- **Example**: `"0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"`
 
 ### 4.2 Merkle Tree Binary Format
 ```
@@ -140,14 +224,14 @@ interface IRelayerRegistry {
   version: 1
   height: 26
   reserved: 0x0000
-  num_leaves: 65000000 (0x03E0D240)
+  num_leaves: 65249064 (0x03E3B4A8)
   root_hash: [32 bytes]
 
 [Leaf Data Section]
   For i in 0..num_leaves-1:
     address: [20 bytes]  // Ethereum address
     leaf_hash: [32 bytes] // Poseidon(address)
-    path_data: [128 bytes] // 26 × 32-bit indices + 26 × 32-byte siblings
+    path_data: [936 bytes] // 26 × 32-bit indices (104 bytes) + 26 × 32-byte siblings (832 bytes)
 ```
 
 ### 4.3 API Request/Response Formats
@@ -172,13 +256,19 @@ See API Reference (docs/04-api-reference.md) for detailed schemas.
 
 #### Smart Contracts
 - **Solidity Version**: 0.8.19+
-- **Verification Gas**: ~300,000 gas (target)
-- **Claim Gas**: ~500,000 gas (target)
+- **Proof Verification Gas**: ~300,000 gas (Groth16 verification)
+- **Total Claim Transaction Gas**: ~500,000 gas (verification + storage + transfer)
+- **Maximum Gas per Claim**: 1,000,000 gas (with buffer)
 
 ### 5.2 Rate Limiting
-- **Per Nullifier**: 1 request per 60 seconds
-- **Per IP Address**: 100 requests per minute
-- **Global**: 1,000 requests per minute
+- **Per Nullifier**: 1 request per 60 seconds (all endpoints)
+- **Per IP Address**: 100 requests per 60 seconds (all endpoints)
+- **Global**: 1,000 requests per 60 seconds (all endpoints)
+- **Endpoint-Specific Limits**:
+  - `POST /api/v1/submit-claim`: 1 request per 60 seconds per nullifier
+  - `GET /api/v1/check-status/{nullifier}`: 10 requests per 60 seconds per nullifier
+  - `GET /api/v1/merkle-path/{address}`: 60 requests per 60 seconds per IP
+  - Other endpoints: 100 requests per 60 seconds per IP
 - **Burst Allowance**: 2x limit for 10 seconds
 
 ### 5.3 Security Parameters
@@ -188,13 +278,72 @@ See API Reference (docs/04-api-reference.md) for detailed schemas.
 - **Audit Requirements**: 3+ independent security firms
 - **Bug Bounty**: Yes, with substantial rewards
 
+### 5.4 Comprehensive Security Plan
+
+#### 5.4.1 Trusted Setup Ceremony
+**Phase 1 (Powers of Tau)**:
+- Use existing community-trusted setup (e.g., Perpetual Powers of Tau)
+- Verify contribution integrity using zk-SNARKs
+- Multi-party computation with at least 10 independent participants
+- Publicly verifiable transcripts published on IPFS
+
+**Phase 2 (Circuit-Specific)**:
+- Dedicated ceremony for merkle_membership circuit
+- Participants from diverse backgrounds (academia, industry, community)
+- Secure computation environment with air-gapped machines
+- Live streaming of ceremony with public verification
+
+#### 5.4.2 Key Management
+**Contract Deployment**:
+- 3/5 multisig for deployment and upgrades
+- Time-locked administrative functions
+- Emergency pause mechanism
+- Gradual decentralization roadmap
+
+**Relayer Operations**:
+- AWS KMS or HashiCorp Vault for private keys
+- Automated key rotation every 24 hours
+- Hot/warm/cold wallet separation
+- Multi-sig for large withdrawals
+
+#### 5.4.3 Disaster Recovery
+**Data Backup**:
+- Daily backups of Merkle tree and claim state
+- Geographic redundancy across 3+ regions
+- Versioned backups with 30-day retention
+- Regular restoration testing
+
+**Incident Response**:
+- 24/7 monitoring and alerting
+- Escalation procedures for security incidents
+- Communication plan for users during outages
+- Post-incident analysis and remediation
+
+#### 5.4.4 Monitoring & Alerting
+**Key Metrics**:
+- Proof verification success/failure rates
+- Claim volume and distribution patterns
+- Relayer balance and gas usage
+- API response times and error rates
+
+**Alert Thresholds**:
+- >5% proof verification failure rate
+- Relayer balance < 1 ETH (warning)
+- Relayer balance < 0.5 ETH (critical - stop accepting claims)
+- API error rate > 1%
+- Unusual claim patterns detected
+
 ## 6. Deployment Specifications
 
 ### 6.1 Network Configuration
 - **Mainnet**: Ethereum
 - **Testnet**: Sepolia
 - **RPC Requirements**: Archive node access
-- **Gas Price Strategy**: EIP-1559 with 10% premium
+- **Gas Price Strategy**: 
+  - Base: EIP-1559 with 10% premium for reliability
+  - Privacy Enhancement: Add random 0-5% variance to break timing correlations
+  - Maximum: 50 gwei cap to prevent excessive fees
+  - Relayers should use: `gas_price = min(base_fee * 1.1 * (1 + random(0, 0.05)), 50 gwei)`
 
 ### 6.2 Infrastructure Requirements
 - **Relayer Servers**: 3+ instances (medium/large)
@@ -211,16 +360,53 @@ See API Reference (docs/04-api-reference.md) for detailed schemas.
 ## 7. Testing Specifications
 
 ### 7.1 Test Coverage Targets
-- **Unit Tests**: 90%+ coverage
-- **Integration Tests**: Full claim workflow
-- **Load Tests**: 10,000 concurrent claims
-- **Security Tests**: Formal verification + audits
+- **Unit Tests**: 90%+ coverage for all components
+- **Integration Tests**: Full claim workflow with mocked dependencies
+- **Load Tests**: 10,000 concurrent claims with realistic distribution
+- **Security Tests**: Formal verification + third-party audits
 
 ### 7.2 Performance Targets
-- **Proof Generation**: < 5 seconds
-- **Claim Processing**: < 30 seconds (end-to-end)
-- **API Response**: < 100ms (p95)
-- **Database Queries**: < 10ms (p95)
+- **Proof Generation**: < 5 seconds (95th percentile)
+- **Claim Processing**: < 30 seconds end-to-end (submission to confirmation)
+- **API Response**: < 100ms (p95) for all endpoints
+- **Database Queries**: < 10ms (p95) for read queries, < 50ms for writes
+
+### 7.3 Detailed Testing Requirements
+
+#### 7.3.1 Circuit Testing
+- **Property-based testing**: Verify circuit constraints for random inputs
+- **Edge cases**: Zero values, maximum values, invalid inputs
+- **Formal verification**: Prove circuit correctness using automated tools
+- **Witness generation**: Test with 1,000+ random valid/invalid witnesses
+- **Cross-implementation verification**: Compare outputs with reference implementation
+
+#### 7.3.2 Smart Contract Testing
+- **Unit tests**: 100% coverage for critical functions (claim, verify, admin)
+- **Integration tests**: Full claim flow with mocked relayer
+- **Fuzzing**: Property-based fuzzing with Echidna/Hardhat
+- **Gas optimization**: Verify gas usage meets targets
+- **Upgrade testing**: Test proxy pattern upgrades
+
+#### 7.3.3 Relayer Testing
+- **Load testing**: 10,000+ concurrent requests
+- **Stress testing**: System limits and failure modes
+- **Security testing**: Penetration testing, DDoS simulation
+- **Recovery testing**: Database restore, failover procedures
+- **Monitoring testing**: Alert verification, metric collection
+
+#### 7.3.4 End-to-End Testing
+- **Full workflow**: Generate proof → submit → verify on-chain
+- **Multiple networks**: Test on Sepolia, Goerli, and mainnet fork
+- **Error handling**: Network failures, insufficient funds, rate limiting
+- **User experience**: CLI tool usability, error messages, help text
+- **Compatibility**: Test with different Ethereum clients and node versions
+
+#### 7.3.5 Security Testing
+- **Third-party audits**: Minimum 2 independent security firms
+- **Bug bounty program**: Public program with substantial rewards
+- **Code review**: Internal and external review of all critical code
+- **Dependency audit**: Regular security updates for all dependencies
+- **Incident response testing**: Simulate security incidents and responses
 
 ## 8. Change Management
 
@@ -231,10 +417,36 @@ See API Reference (docs/04-api-reference.md) for detailed schemas.
 - **CLI Version**: Semantic versioning
 
 ### 8.2 Upgrade Paths
-- **Contracts**: Proxy pattern for future upgrades
-- **Circuits**: New trusted setup required for changes
-- **Relayer**: Rolling updates with zero downtime
-- **CLI**: Backward compatible for 6 months
+- **Contracts**: Proxy pattern with transparent proxy for future upgrades
+- **Circuits**: New trusted setup required for circuit changes (breaking changes only)
+- **Relayer**: Rolling updates with zero downtime, backward-compatible API
+- **CLI**: Backward compatible for 6 months, deprecation warnings for older versions
+
+### 8.3 Circuit Versioning Protocol
+
+**Circuit Identifier**: `merkle_membership_v1`
+- **Format**: `<circuit_name>_v<major>.<minor>.<patch>`
+- **Immutable Properties**: Hash function, curve, security level cannot change within same major version
+- **Upgradable Properties**: Circuit optimizations, constraint reductions (patch version changes)
+
+**Breaking Changes (Major Version Bump)**:
+- Changes to hash function (Poseidon → different hash)
+- Changes to elliptic curve (BN128 → BLS12-381)
+- Changes to security level (128-bit → 256-bit)
+- Changes to public/private input structure
+
+**Non-Breaking Changes (Minor/Patch Version)**:
+- Circuit optimizations (reduced constraints)
+- Bug fixes in circuit logic
+- Improved efficiency without changing proofs
+- Additional safety checks
+
+**Migration Process**:
+1. New circuit version deployed with new trusted setup
+2. Old contract remains active during migration period
+3. New contract deployed with updated verifier
+4. Users can claim using either circuit version during transition
+5. Old contract disabled after migration period (e.g., 30 days)
 
 ## 9. Compliance & Standards
 
@@ -250,6 +462,40 @@ See API Reference (docs/04-api-reference.md) for detailed schemas.
 - **Testing**: Property-based testing for cryptographic code
 - **Documentation**: All public APIs documented
 
+### 9.3 Legal & Compliance
+
+#### 9.3.1 Regulatory Considerations
+- **Jurisdiction**: Project based in Switzerland (crypto-friendly jurisdiction)
+- **Token Classification**: Utility token, not a security
+- **KYC/AML**: No built-in KYC/AML requirements
+- **OFAC Compliance**: No built-in sanctions screening
+
+#### 9.3.2 User Responsibilities
+- **Legal Compliance**: Users responsible for complying with local laws
+- **Tax Obligations**: Users responsible for tax reporting
+- **Age Requirements**: Must be 18+ or age of majority in jurisdiction
+- **Prohibited Jurisdictions**: Users from OFAC-sanctioned countries prohibited
+
+#### 9.3.3 Privacy Considerations
+- **GDPR Compliance**: No personal data collection by design
+- **Data Retention**: Minimal logs, no IP address storage
+- **Right to be Forgotten**: Not applicable due to blockchain immutability
+- **Data Protection**: End-to-end encryption for all communications
+
+#### 9.3.4 Terms of Service
+- **Disclaimer**: Software provided "as is" without warranties
+- **Liability Limitation**: No liability for lost funds or technical issues
+- **Governing Law**: Swiss law, with arbitration in Zurich
+- **Updates**: Terms may be updated with 30-day notice
+
+#### 9.3.5 Risk Disclosures
+Users must acknowledge:
+1. **Blockchain Risk**: Transactions are irreversible
+2. **Privacy Limitations**: See Privacy Analysis document
+3. **Technical Risk**: Software may contain bugs
+4. **Regulatory Risk**: Laws may change affecting usability
+5. **Market Risk**: Token value may fluctuate
+
 ## 10. Constants Reference
 
 ### 10.1 Numerical Constants
@@ -257,7 +503,9 @@ See API Reference (docs/04-api-reference.md) for detailed schemas.
 uint256 constant CLAIM_AMOUNT = 1000 * 10**18; // 1000 ZKP tokens
 uint256 constant CLAIM_DEADLINE = 90 days;
 uint256 constant MERKLE_TREE_HEIGHT = 26;
-uint256 constant MAX_LEAVES = 2**26; // 67,108,864
+uint256 constant MAX_LEAVES = 2**26; // 67,108,864 (maximum capacity)
+uint256 constant TOTAL_QUALIFIED_ACCOUNTS = 65_249_064; // From accounts.csv
+uint256 constant TOTAL_TOKEN_SUPPLY = 65_249_064_000 * 10**18; // 65,249,064 × 1000 ZKP tokens
 ```
 
 ### 10.2 Hash Constants
@@ -274,9 +522,10 @@ uint256 constant SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF4
 
 ### 10.3 Gas Estimates
 ```solidity
-uint256 constant VERIFY_PROOF_GAS = 300_000;
-uint256 constant CLAIM_GAS = 500_000;
-uint256 constant RELAYER_BUFFER = 1_000_000; // Additional buffer
+uint256 constant VERIFY_PROOF_GAS = 300_000;     // Gas for Groth16 proof verification
+uint256 constant CLAIM_GAS = 500_000;            // Total gas for claim transaction (verification + storage + transfer)
+uint256 constant MAX_CLAIM_GAS = 1_000_000;      // Maximum gas allowance per claim (with 100% buffer)
+uint256 constant RELAYER_BUFFER = 200_000;       // Additional buffer for relayers to handle gas price fluctuations
 ```
 
 ---

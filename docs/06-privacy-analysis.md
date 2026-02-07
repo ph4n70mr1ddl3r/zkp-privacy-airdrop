@@ -1,5 +1,9 @@
 # Privacy Analysis & Limitations
 
+**Version**: 1.0.0  
+**Last Updated**: 2026-02-07  
+**Based on**: [Security & Privacy Considerations](../docs/05-security-privacy.md)
+
 ## Privacy Guarantees
 
 ### 1. What the System Protects
@@ -22,7 +26,7 @@ The ZKP Privacy Airdrop system provides the following privacy guarantees:
 - **Network Analysis**: IP address exposure if not using Tor/VPN with the relayer.
 
 #### 2.2 Statistical Analysis
-- **Eligible Set Known**: The Merkle tree root commits to the set of all eligible addresses. While individual addresses aren't revealed, the total set size (65M) is public.
+- **Eligible Set Known**: The Merkle tree root commits to the set of all eligible addresses. While individual addresses aren't revealed, the total set size (65,249,064) is public.
 - **Claim Pattern Analysis**: If very few addresses from the eligible set claim, statistical analysis could narrow down possibilities.
 
 #### 2.3 Post-Claim Activity

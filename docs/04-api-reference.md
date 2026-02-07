@@ -1,5 +1,11 @@
 # API Reference
 
+**Version**: 1.0.0  
+**Last Updated**: 2026-02-07  
+**Based on**: [Unified Specification](../docs/00-specification.md)
+
+> **Note**: All data formats and constants are defined in the [Unified Specification](../docs/00-specification.md).
+
 ## Relayer API
 
 Base URL: `https://relayer.zkp-airdrop.io/api/v1`
@@ -16,6 +22,8 @@ Authorization: Bearer <API_KEY>
 #### Submit Claim
 
 Submits a zero-knowledge proof to claim tokens. The relayer validates the proof off-chain before submitting to the contract to save gas costs.
+
+**Note**: The smart contract allows anyone to submit claims directly. Relayers are optional services that pay gas fees on behalf of users. Users can also submit claims directly to the contract if they prefer to pay their own gas.
 
 ```http
 POST /api/v1/submit-claim
@@ -50,8 +58,10 @@ Content-Type: application/json
     "14595410858393345558982908440260919580883831523172723621649567175847460824507",
     "1092345678901234567890123456789012345678901234567890123456789012"
   ],
+  "nullifier": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
   "recipient": "0x1234567890123456789012345678901234567890",
-  "nullifier_hash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+  "merkle_root": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "generated_at": "2024-01-15T10:30:00Z"
 }
 ```
 
@@ -99,13 +109,13 @@ Content-Type: application/json
 Check if a nullifier has been used to claim tokens.
 
 ```http
-GET /api/v1/claim-status/{nullifier_hash}
+GET /api/v1/check-status/{nullifier}
 ```
 
 **Response** (200 OK):
 ```json
 {
-  "nullifier_hash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+  "nullifier": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
   "claimed": true,
   "tx_hash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
   "recipient": "0x1234567890123456789012345678901234567890",
@@ -117,7 +127,7 @@ GET /api/v1/claim-status/{nullifier_hash}
 **Response** (200 OK - Not Claimed):
 ```json
 {
-  "nullifier_hash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+  "nullifier": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
   "claimed": false
 }
 ```
@@ -313,8 +323,8 @@ GET /api/v1/merkle-path/{address}
 
 Rate limits are applied per endpoint to prevent abuse while maintaining service availability:
 
-- **Submit Claim**: 1 request per 60 seconds per nullifier hash
-- **Check Claim Status**: 10 requests per 60 seconds per nullifier hash  
+- **Submit Claim**: 1 request per 60 seconds per nullifier
+- **Check Claim Status**: 10 requests per 60 seconds per nullifier  
 - **Get Merkle Path**: 60 requests per 60 seconds per IP address
 - **General API**: 100 requests per 60 seconds per IP address
 - **Burst Allowance**: 2x limit for 10 seconds
@@ -413,7 +423,7 @@ echo "0x1234..." | zkp-airdrop generate-proof \
     "c": ["...", "..."]
   },
   "public_signals": ["...", "...", "..."],
-  "nullifier_hash": "0x...",
+  "nullifier": "0x...",
   "recipient": "0x...",
   "merkle_root": "0x...",
   "generated_at": "2024-01-15T10:30:00Z"
@@ -496,7 +506,7 @@ zkp-airdrop check-status --nullifier <NULLIFIER_HASH>
 ```
 
 **Arguments**:
-- `--nullifier <HASH>`: Nullifier hash to check
+- `--nullifier <HASH>`: Nullifier to check (32-byte hex string)
 - `--relayer-url <URL>`: Relayer endpoint URL
 - `--rpc-url <URL>`: Ethereum RPC URL (alternative to relayer)
 
@@ -648,7 +658,7 @@ zkp-airdrop config reset
       {
         "indexed": true,
         "internalType": "bytes32",
-        "name": "nullifierHash",
+        "name": "nullifier",
         "type": "bytes32"
       },
       {
@@ -687,7 +697,7 @@ zkp-airdrop config reset
       },
       {
         "internalType": "bytes32",
-        "name": "nullifierHash",
+        "name": "nullifier",
         "type": "bytes32"
       },
       {
@@ -717,7 +727,7 @@ All 20-byte addresses are represented as:
 - 40 hexadecimal characters
 - Example: `0x1234567890123456789012345678901234567890`
 
-### ZKProof JSON Schema
+### Proof JSON Schema
 
 ```json
 {
@@ -759,12 +769,24 @@ All 20-byte addresses are represented as:
       "minItems": 3,
       "maxItems": 3
     },
-    "nullifier_hash": {
+    "nullifier": {
       "type": "string",
       "pattern": "^0x[a-fA-F0-9]{64}$"
+    },
+    "recipient": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{40}$"
+    },
+    "merkle_root": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{64}$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
-  "required": ["proof", "public_signals", "nullifier_hash"]
+  "required": ["proof", "public_signals", "nullifier", "recipient", "merkle_root", "generated_at"]
 }
 ```
 
@@ -772,14 +794,15 @@ All 20-byte addresses are represented as:
 
 The nullifier is a 32-byte value computed as:
 ```
-nullifier = poseidon_hash(private_key || recipient)
+nullifier = poseidon_hash(private_key || recipient || padding)
 ```
 
 Where:
 - `private_key`: 32-byte Ethereum private key
 - `recipient`: 20-byte Ethereum address (0x-prefixed hex string)
-- `||`: Concatenation (52 bytes total)
-- `poseidon_hash`: Poseidon hash function over BN128 scalar field
+- `padding`: 12 bytes of zeros (0x00)
+- `||`: Concatenation (64 bytes total)
+- `poseidon_hash`: Poseidon hash function over BN128 scalar field (width 3)
 
 **Important Properties**:
 1. **Deterministic**: Same (private_key, recipient) always produces same nullifier

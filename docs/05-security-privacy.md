@@ -1,5 +1,9 @@
 # Security & Privacy Considerations
 
+**Version**: 1.0.0  
+**Last Updated**: 2026-02-07  
+**Based on**: [Technical Specification](../docs/02-technical-specification.md) and [Unified Specification](../docs/00-specification.md)
+
 ## Threat Model
 
 ### Actors
@@ -63,13 +67,11 @@
 
 ```solidity
 // Allow anyone to submit claims for maximum decentralization
-// Relayer is optional service for users who don't want to pay gas
+// Relayers are optional services for users who don't want to pay gas
+// No centralized control - anyone can call the claim() function
 
-// Alternative: Only allow relayers (more centralized but prevents spam)
-// modifier onlyRelayer() {
-//     require(relayerRegistry.isAuthorized(msg.sender), "Unauthorized");
-//     _;
-// }
+// Important: This maximizes censorship resistance but requires
+// additional spam prevention measures (gas costs, rate limiting)
 ```
 
 #### Reentrancy Protection
@@ -251,7 +253,7 @@ let nullifier = poseidon_hash(&[private_key, recipient_bytes]);
 **Mitigations**:
 - Relayer introduces random delays (1-60 seconds)
 - Claims are batched and submitted in random order
-- Gas price randomization
+- Gas price randomization: Base fee × 1.1 × (1 + random(0, 0.05))
 - No immediate confirmation to claimant
 
 ```rust
@@ -261,6 +263,15 @@ async fn submit_with_delay(proof: ZKProof) {
     
     let gas_price = get_randomized_gas_price();
     submit_transaction(proof, gas_price).await;
+}
+
+fn get_randomized_gas_price() -> U256 {
+    let base_fee = get_base_fee();
+    let multiplier = Decimal::from_ratio(11, 10); // 1.1x base
+    let random_factor = Decimal::from_ratio(rand::random::<u32>() % 6, 100); // 0-5%
+    let randomized_multiplier = multiplier * (Decimal::one() + random_factor);
+    let gas_price = base_fee * randomized_multiplier;
+    min(gas_price, U256::from(50_000_000_000)) // Cap at 50 gwei
 }
 ```
 
@@ -283,10 +294,11 @@ async fn submit_with_delay(proof: ZKProof) {
 4. **Client version**: User-agent strings
 
 **Mitigations**:
-- Standardized gas prices (rounded to nearest gwei)
-- Batch processing obscures individual timestamps
+- Randomized gas prices: Base fee × 1.1 × (1 + random(0, 0.05)), capped at 50 gwei
+- Batch processing with random delays (1-60 seconds) obscures individual timestamps
 - Relayer manages nonces, not claimants
 - No identifying headers in requests
+- All gas prices rounded to nearest wei (not gwei) to prevent pattern recognition
 
 ## Attack Vectors & Defenses
 
@@ -305,8 +317,8 @@ async fn submit_with_delay(proof: ZKProof) {
 
 **Defense**:
 ```solidity
-require(!nullifierHashes[nullifierHash], "Already claimed");
-nullifierHashes[nullifierHash] = true;
+require(!nullifiers[nullifier], "Already claimed");
+nullifiers[nullifier] = true;
 ```
 
 ### 3. Replay Attack
@@ -389,7 +401,7 @@ nullifierHashes[nullifierHash] = true;
 
 ### 3. Merkle Tree Size
 
-**Issue**: 65M leaves may allow some statistical analysis.
+**Issue**: 65,249,064 leaves may allow some statistical analysis.
 
 **Limitation**: If tree is public, attackers know the set of possible claimants.
 

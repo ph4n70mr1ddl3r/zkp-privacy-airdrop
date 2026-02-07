@@ -11,17 +11,22 @@ This is a comprehensive documentation suite for the ZKP Privacy Airdrop project 
 3. **Implementation Plan**: [03-implementation-roadmap.md](03-implementation-roadmap.md)
 4. **API Reference**: [04-api-reference.md](04-api-reference.md)
 5. **Security & Privacy**: [05-security-privacy.md](05-security-privacy.md)
+6. **Privacy Analysis**: [06-privacy-analysis.md](06-privacy-analysis.md)
+7. **Consistency Guide**: [07-consistency-checklist.md](07-consistency-checklist.md)
 
 ## Project Structure
 
 ```
 docs/
 ├── README.md                          # This file
+├── 00-specification.md                # Unified specification (single source of truth)
 ├── 01-overview.md                     # Project overview and goals
 ├── 02-technical-specification.md      # Detailed technical specs
 ├── 03-implementation-roadmap.md       # Development timeline
 ├── 04-api-reference.md                # API and CLI reference
-└── 05-security-privacy.md             # Security considerations
+├── 05-security-privacy.md             # Security considerations
+├── 06-privacy-analysis.md             # Privacy limitations and analysis
+└── 07-consistency-checklist.md        # Documentation consistency guide
 
 contracts/                             # Smart contracts
 ├── ZKPToken.sol
@@ -59,7 +64,7 @@ tests/                                 # Test suite
 ## Key Features
 
 - **Privacy**: Claim tokens without revealing your identity
-- **Scalability**: Supports 65M+ qualified accounts
+- **Scalability**: Supports 65,249,064 qualified accounts
 - **Decentralization**: Anyone can run a relayer
 - **Security**: Audited contracts and formally verified circuits
 - **User-Friendly**: Simple CLI tool for proof generation
