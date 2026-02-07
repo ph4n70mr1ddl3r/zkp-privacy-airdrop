@@ -835,6 +835,7 @@ Where:
 # Pseudocode for nullifier generation
 private_key = 0x1234... (32 bytes)
 recipient = 0x5678... (20 bytes)
-input = private_key + recipient  # 52 bytes concatenation
+padding = b'\x00' * 12  # 12 bytes of zeros
+input = private_key + recipient + padding  # 64 bytes total (32 + 20 + 12)
 nullifier = poseidon_hash(input)  # 32 bytes output
 ```

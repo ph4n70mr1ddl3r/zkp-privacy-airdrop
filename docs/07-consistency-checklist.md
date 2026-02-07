@@ -21,9 +21,9 @@
 - [ ] **Claim period**: 90 days
 
 ### 3. Storage Sizes
-- [ ] **Full tree storage**: 4.00 GB (134,217,727 nodes × 32 bytes)
-- [ ] **Address-only file**: 1.30 GB (header + 65,249,064 × 20 bytes)
-- [ ] **Hashes-only file**: 1.94 GB (header + 65,249,064 × 32 bytes)
+- [ ] **Full tree storage**: 4.00 GiB (134,217,727 nodes × 32 bytes)
+- [ ] **Address-only file**: 1.216 GiB (header + 65,249,064 × 20 bytes)
+- [ ] **Hashes-only file**: 1.945 GiB (header + 65,249,064 × 32 bytes)
 - [ ] **Proof data per claim**: 832 bytes (26 × 32 bytes for Merkle path)
 - [ ] **Groth16 proof size**: ~200 bytes
 - [ ] **Total proof package**: ~1,032 bytes
@@ -148,7 +148,7 @@ Consider implementing:
 - Fixed timeline inconsistencies
 - Added version headers to all documents
 - Corrected gas buffer calculation (200,000 instead of 1,500,000)
-- Fixed Merkle tree file size calculation (1.94 GB for hashes-only)
+- Fixed Merkle tree file size calculations (1.216 GiB for addresses-only, 1.945 GiB for hashes-only, 4.00 GiB for full tree)
 
 ## References
 

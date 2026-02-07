@@ -156,13 +156,13 @@ root = tree.root()
 ### 2.3 Storage Requirements
 
 - **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
-- **Full Tree Storage**: 4.00 GB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
+- **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
 - **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path)
-- **Precomputed Proofs Storage**: 56.88 GB (65,249,064 leaves × 936 bytes per leaf including Merkle path, leaf hash, and index)
+- **Precomputed Proofs Storage**: 56.88 GiB (65,249,064 leaves × 936 bytes per leaf including Merkle path, leaf hash, and index)
 - **Merkle Tree File Sizes**:
-  - Binary format with addresses only: 1.30 GB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,296 bytes ≈ 1.216 GB)
-  - Binary format with hashes only: 1.94 GB (16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes ≈ 1.945 GB)
-  - Full tree for local generation: 4.00 GB (all 134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
+  - Binary format with addresses only: 1.216 GiB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,280 bytes)
+  - Binary format with hashes only: 1.945 GiB (16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes)
+  - Full tree for local generation: 4.00 GiB (all 134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
 
 ### 2.4 Distribution Strategy
 
