@@ -1,9 +1,17 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  external_labels:
+    monitor: 'zkp-airdrop-relayer'
 
 scrape_configs:
   - job_name: 'relayer'
     static_configs:
       - targets: ['relayer:8080']
     metrics_path: '/metrics'
+    scrape_timeout: 10s
+    scheme: http
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

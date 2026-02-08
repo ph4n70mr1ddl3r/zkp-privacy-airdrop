@@ -16,6 +16,10 @@ Cargo.lock
 *.env
 .env.*
 
+# Secrets
+secrets/*.txt
+secrets/*.key
+
 # OS files
 .DS_Store
 Thumbs.db
