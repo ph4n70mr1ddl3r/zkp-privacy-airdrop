@@ -6,6 +6,7 @@
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.0.1 | 2026-02-08 | Fixed gas price randomization formula in automated verification script (random_integer(0, 5) not random(0, 6)) | Documentation Review |
 | 1.0.0 | 2026-02-07 | Initial version with comprehensive cross-references | Documentation Review |  
 
 This document serves as a verification guide to ensure all documentation and implementations remain consistent with the [Unified Specification v1.5.0](./00-specification.md), which is the single source of truth.
@@ -362,7 +363,7 @@ grep -r "65,249,064" docs/ | wc -l
 grep -r "gas price cap" docs/ | grep -E "0\.1 gwei|100000000"
 # Check gas price randomization formula
 grep -r "random_factor" docs/ | grep -E "0-5%|\[0.00, 0.05\]|inclusive"
-# Verify: random_factor ∈ [0.00, 0.05] inclusive, generated as random(0, 6) / 100
+# Verify: random_factor ∈ [0.00, 0.05] inclusive, generated as random_integer(0, 5) / 100.0
 
 # Check nullifier calculation
 grep -r "zkp_airdrop_nullifier_v1" docs/ | wc -l
@@ -384,6 +385,6 @@ grep -r "hex strings" docs/00-specification.md | grep "alternative"
 | `04-api-reference.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
 | `05-security-privacy.md` | 1.0.0 | 2026-02-07 | `00-specification.md` v1.5.0 + `02-technical-specification.md` v1.1.0 |
 | `06-privacy-analysis.md` | 1.0.0 | 2026-02-07 | `05-security-privacy.md` v1.0.0 |
-| `07-consistency-checklist.md` | 1.0.0 | 2026-02-07 | All documents |
+| `07-consistency-checklist.md` | 1.0.1 | 2026-02-08 | All documents |
 
 **Rule**: When `00-specification.md` version changes, update all dependent document versions and update this table.
