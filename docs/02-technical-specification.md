@@ -1,12 +1,13 @@
 # Technical Specification
 
-**Version**: 1.1.0  
-**Last Updated**: 2026-02-07  
-**Based on**: [Unified Specification v1.5.0](../docs/00-specification.md)
+**Version**: 1.1.1
+**Last Updated**: 2026-02-08
+**Based on**: [Unified Specification v1.5.1](./00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.1.1 | 2026-02-08 | Updated to match specification v1.5.1 (version alignment and path fix) | Documentation Review |
 | 1.1.0 | 2026-02-07 | Updated nullifier padding, gas price randomization, precomputed proofs storage calculation | Documentation Review |
 | 1.0.0 | 2026-02-02 | Initial version | Core Team |
 
@@ -226,12 +227,19 @@ See [Unified Specification](../docs/00-specification.md#13-storage-requirements)
 
 ### 2.4 Distribution Strategy
 
-Options:
-1. **API Service**: Primary method - provide Merkle paths on-demand via API (no full download needed)
-2. **Full Tree**: Host as downloadable file (4.00 GiB) for offline proof generation
-3. **CDN**: HTTP range requests for efficient partial downloads
-4. **IPFS**: Distributed storage with pinning for redundancy
-5. **Torrent**: P2P distribution for resilience and censorship resistance
+**Priority Order** (Recommended to Alternative):
+1. **API Service** (Recommended): Primary method - provide Merkle paths on-demand via API (no full download needed)
+2. **CDN** (Secondary): HTTP range requests for efficient partial downloads
+3. **IPFS** (Tertiary): Distributed storage with pinning for redundancy
+4. **Torrent** (Fallback): P2P distribution for resilience and censorship resistance
+5. **Full Tree** (Offline): Host as downloadable file (4.00 GiB) for offline proof generation (not recommended for most users)
+
+**Implementation Notes**:
+- API service provides optimal balance of speed and storage efficiency
+- CDN offers good performance with lower storage requirements than full tree
+- IPFS provides censorship resistance and decentralized access
+- Torrent offers resilience when other methods are unavailable
+- Full tree is only recommended for advanced users who need completely offline proof generation
 
 ### 2.5 File Formats
 
@@ -735,13 +743,13 @@ contract:
   airdrop_address: "0x..."
   token_address: "0x..."
   
-relayer:
-  private_key: "${RELAYER_PRIVATE_KEY}"
-  min_balance_warning: "1000000000000000000"  # 1.0 ETH (warning threshold)
-  min_balance_critical: "500000000000000000"   # 0.5 ETH (stop accepting claims)
-  gas_price_multiplier: 1.1  # 10% premium over base fee
-  gas_price_randomization: 0.05  # 0-5% random variance for privacy (inclusive: random_factor ∈ [0.00, 0.05])
-  max_gas_price: "100000000"  # 0.1 gwei cap (Optimism gas is much cheaper than Ethereum)
+ relayer:
+   private_key: "${RELAYER_PRIVATE_KEY}"
+   min_balance_warning: "1000000000000000000"  # 1.0 ETH (warning threshold)
+   min_balance_critical: "500000000000000000"   # 0.5 ETH (stop accepting claims)
+   multiplier: 1.1  # 10% multiplier over base fee
+   gas_price_randomization: 0.05  # 0-5% random variance for privacy (inclusive: random_factor ∈ [0.00, 0.05])
+   max_gas_price: "100000000"  # 0.1 gwei cap (Optimism gas is much cheaper than Ethereum)
   
 rate_limit:
   per_nullifier: 60  # minimum seconds between requests for same nullifier (1 request per 60 seconds)

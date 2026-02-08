@@ -1,11 +1,12 @@
 # Consistency Checklist
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-02-07
+**Version**: 1.0.3
+**Last Updated**: 2026-02-08
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.0.3 | 2026-02-08 | Updated version control table to reflect all documents now referencing spec v1.5.1 | Documentation Review |
 | 1.0.2 | 2026-02-08 | Updated to reflect docs/00-specification.md v1.5.1 (gas price terminology fix, removed dead references) | Documentation Review |
 | 1.0.1 | 2026-02-08 | Fixed gas price randomization formula in automated verification script (random_integer(0, 5) not random(0, 6)) | Documentation Review |
 | 1.0.0 | 2026-02-07 | Initial version with comprehensive cross-references | Documentation Review |  
@@ -52,22 +53,22 @@ Check these values match across all documents:
 | BN128 prime | 21888242871839275222246405745257275088548364400416034343698204186575808495617 | All docs |
 | secp256k1 order | 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 | All docs |
 | Claim period | 90 days | All docs |
-| Verify proof gas | 300,000 | `00-specification.md:383` |
-| Storage/transfer gas | 200,000 | `00-specification.md:384` |
-| Claim gas (total) | 500,000 | `00-specification.md:385` |
-| Relayer buffer | 200,000 | `00-specification.md:386` |
-| Estimated claim gas | 700,000 | `00-specification.md:387` |
-| Max claim gas | 1,000,000 | `00-specification.md:388` |
+| Verify proof gas | 300,000 | `00-specification.md:689` |
+| Storage/transfer gas | 200,000 | `00-specification.md:690` |
+| Claim gas (total) | 500,000 | `00-specification.md:691` |
+| Relayer buffer | 200,000 | `00-specification.md:692` |
+| Estimated claim gas | 700,000 | `00-specification.md:693` |
+| Max claim gas | 1,000,000 | `00-specification.md:694` |
 | Optimism chain ID | 10 | 04-api-reference.md:175 |
 | Gas price cap | 0.1 gwei | All docs |
 
 ## Critical Cross-Reference Checks
 
 ### 1. Nullifier Calculation
-**Source**: `docs/00-specification.md:142-150` (lines 142-150)
+**Source**: `docs/00-specification.md:154-160` (lines 154-160)
 
 Must match:
-- `docs/00-specification.md:103` (line 103) - `nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
+- `docs/00-specification.md:155` (line 155) - `nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
 - `docs/02-technical-specification.md:101` (line 101) - `poseidon_hash("zkp_airdrop_nullifier_v1" || private_key || zeros)`
 - `docs/04-api-reference.md:864-876` (lines 864-876) - `Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
 - `docs/05-security-privacy.md:239-248` (lines 239-248) - `poseidon_hash("zkp_airdrop_nullifier_v1" || private_key || zeros)`
@@ -80,7 +81,7 @@ where:
 - Input length must be exactly 96 bytes (23 + 32 + 41 = 96)
 
 ### 2. Proof Format
-**Source**: `docs/00-specification.md:244-262` (lines 244-262)
+**Source**: `docs/00-specification.md:255-269` (lines 255-269)
 
 Must match:
 - `docs/04-api-reference.md:40-69` (lines 40-69) - JSON structure
@@ -103,7 +104,7 @@ Must match:
 ```
 
 ### 3. Field Element Encoding
-**Source**: `docs/00-specification.md:152-161`
+**Source**: `docs/00-specification.md:187-195`
 
 Must match:
 - Primary format: **decimal strings**
@@ -111,7 +112,7 @@ Must match:
 - Must be < BN128 prime modulus
 
 ### 4. Merkle Tree Structure
-**Source**: `docs/00-specification.md:26-45` (lines 26-45)
+**Source**: `docs/00-specification.md:37-44` (lines 37-44)
 
 Must match:
 - Height: 26 levels
@@ -121,7 +122,7 @@ Must match:
 - Empty leaf: `Poseidon(32 zero bytes)`
 
 ### 5. Rate Limiting
-**Source**: `docs/00-specification.md:404-414` (lines 404-414)
+**Source**: `docs/00-specification.md:415-424` (lines 415-424)
 
 Must match:
 - Per nullifier: 1 request per 60 seconds (all endpoints)
@@ -247,7 +248,7 @@ Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 | Audit requirements | 3+ independent firms | `00-specification.md:392` |
 
 ### 12.2 Gas Estimates (Optimism)
-**Source**: `00-specification.md:393-400` and `00-specification.md:675-681` (single source of truth)
+**Source**: `00-specification.md:405-410` and `00-specification.md:684-694` (single source of truth)
 
 | Operation | Gas Units | Notes |
 |-----------|-----------|-------|
@@ -380,12 +381,12 @@ grep -r "hex strings" docs/00-specification.md | grep "alternative"
 | Document | Current Version | Last Updated | Based On |
 |----------|----------------|--------------|----------|
 | `00-specification.md` | 1.5.1 | 2026-02-08 | - (source of truth) |
-| `01-overview.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
-| `02-technical-specification.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
+| `01-overview.md` | 1.1.1 | 2026-02-08 | `00-specification.md` v1.5.1 |
+| `02-technical-specification.md` | 1.1.1 | 2026-02-08 | `00-specification.md` v1.5.1 |
 | `03-implementation-roadmap.md` | 1.0.0 | 2026-02-07 | `02-technical-specification.md` v1.1.0 |
-| `04-api-reference.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
-| `05-security-privacy.md` | 1.0.0 | 2026-02-07 | `00-specification.md` v1.5.0 + `02-technical-specification.md` v1.1.0 |
+| `04-api-reference.md` | 1.1.1 | 2026-02-08 | `00-specification.md` v1.5.1 |
+| `05-security-privacy.md` | 1.0.1 | 2026-02-08 | `00-specification.md` v1.5.1 + `02-technical-specification.md` v1.1.1 |
 | `06-privacy-analysis.md` | 1.0.0 | 2026-02-07 | `05-security-privacy.md` v1.0.0 |
-| `07-consistency-checklist.md` | 1.0.2 | 2026-02-08 | All documents |
+| `07-consistency-checklist.md` | 1.0.3 | 2026-02-08 | All documents |
 
 **Rule**: When `00-specification.md` version changes, update all dependent document versions and update this table.

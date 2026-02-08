@@ -1,12 +1,13 @@
 # Security & Privacy Considerations
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-02-07  
-**Based on**: [Technical Specification v1.1.0](../docs/02-technical-specification.md) and [Unified Specification v1.5.0](../docs/00-specification.md)
+**Version**: 1.0.1
+**Last Updated**: 2026-02-08
+**Based on**: [Technical Specification v1.1.1](./02-technical-specification.md) and [Unified Specification v1.5.1](./00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.0.1 | 2026-02-08 | Updated to match specification v1.5.1 (version alignment, clarified gas price randomization range) | Documentation Review |
 | 1.0.0 | 2026-02-07 | Initial version | Core Team |
 
 ## Threat Model
@@ -267,7 +268,7 @@ let nullifier = poseidon_hash(&nullifier_input);  // 32 bytes output
 **Mitigations**:
 - Relayer introduces random delays (1-60 seconds)
 - Claims are batched and submitted in random order
-- Gas price randomization: Base fee × 1.1 × (1 + random(0, 0.05))
+- Gas price randomization: Base fee × 1.1 × (1 + random_factor) where random_factor ∈ [0.00, 0.05] inclusive (0-5% variance)
 - No immediate confirmation to claimant
 
 ```rust
@@ -310,7 +311,7 @@ fn get_randomized_gas_price() -> U256 {
 4. **Client version**: User-agent strings
 
 **Mitigations**:
-- Randomized gas prices: Base fee × 1.1 × (1 + random(0, 0.05)), capped at 0.1 gwei (Optimism-specific)
+- Randomized gas prices: Base fee × 1.1 × (1 + random_factor) where random_factor ∈ [0.00, 0.05] inclusive (0-5% variance), capped at 0.1 gwei (Optimism-specific)
 - Batch processing with random delays (1-60 seconds) obscures individual timestamps
 - Relayer manages nonces, not claimants
 - No identifying headers in requests

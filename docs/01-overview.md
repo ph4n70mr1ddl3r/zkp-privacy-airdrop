@@ -1,12 +1,13 @@
 # ZKP Privacy Airdrop - Project Overview
 
-**Version**: 1.1.0  
-**Last Updated**: 2026-02-07  
-**Based on**: [Unified Specification v1.5.0](./00-specification.md)
+**Version**: 1.1.1
+**Last Updated**: 2026-02-08
+**Based on**: [Unified Specification v1.5.1](./00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.1.1 | 2026-02-08 | Updated to match specification v1.5.1 (version alignment) | Documentation Review |
 | 1.1.0 | 2026-02-07 | Updated to match specification v1.5.0 | Documentation Review |
 | 1.0.0 | 2026-02-02 | Initial version | Core Team |
 

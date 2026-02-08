@@ -1,12 +1,13 @@
 # API Reference
 
-**Version**: 1.1.0  
-**Last Updated**: 2026-02-07  
-**Based on**: [Unified Specification v1.5.0](../docs/00-specification.md)
+**Version**: 1.1.1
+**Last Updated**: 2026-02-08
+**Based on**: [Unified Specification v1.5.1](./00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.1.1 | 2026-02-08 | Updated to match specification v1.5.1 (version alignment, added path_data field) | Documentation Review |
 | 1.1.0 | 2026-02-07 | Updated nullifier specification and field element format clarification | Documentation Review |
 | 1.0.0 | 2026-02-02 | Initial version | Core Team |
 
@@ -772,9 +773,37 @@ All 32-byte values (hashes, nullifiers, Merkle roots) are represented as:
 - Example: `0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`
 
 All 20-byte addresses are represented as:
-- `0x` prefix  
+- `0x` prefix
 - 40 hexadecimal characters
 - Example: `0x1234567890123456789012345678901234567890`
+
+### Merkle Tree Binary Format
+
+For API services providing on-demand Merkle path data, the binary format includes path_data per leaf:
+
+```
+[Header (16 bytes)]
+  magic: "ZKPT" (0x5A4B5054)
+  version: 1
+  height: 26
+  reserved: 0x0000
+  num_leaves: 65_249_064 (0x03E3B4A8)
+  root_hash: [32 bytes]
+
+[Leaf Data Section]
+  For i in 0..num_leaves-1:
+    address: [20 bytes]  // Ethereum address
+    leaf_hash: [32 bytes] // Poseidon(address)
+    path_data: [868 bytes] // 26 × 32-byte siblings (832 bytes) + 32 bytes leaf hash + 4 bytes path indices (26 bits packed into 4 bytes) = 868 bytes total
+```
+
+**Note**: The `path_data` field (868 bytes) is optional and intended for API services that provide precomputed Merkle paths for faster proof generation. The breakdown is:
+- Merkle path siblings: 26 × 32 bytes = 832 bytes
+- Leaf hash: 32 bytes
+- Path indices: 4 bytes (26 bits packed)
+- **Total**: 868 bytes per leaf
+
+See [Unified Specification](../docs/00-specification.md#32-merkle-tree-binary-format) for complete format details.
 
 ### Proof JSON Schema
 
