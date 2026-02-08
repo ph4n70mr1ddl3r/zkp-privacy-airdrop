@@ -26,7 +26,7 @@ pub struct PlonkProof {
 impl PlonkProof {
     /// Convert PLONK proof to flat array for API transmission
     pub fn to_flat_array(&self) -> Vec<String> {
-        let mut proof_vec = Vec::with_capacity(8);
+        let mut proof_vec = Vec::with_capacity(23);
         proof_vec.extend_from_slice(&self.A);
         proof_vec.extend(self.B.iter().flatten());
         proof_vec.extend_from_slice(&self.C);

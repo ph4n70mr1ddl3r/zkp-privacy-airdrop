@@ -57,7 +57,9 @@ pub async fn execute(
     
     pb.set_message("Generating zero-knowledge proof...");
     pb.set_position(90);
-    
+
+    // TODO: Replace with actual proof generation using proving key
+    // This is a dummy proof for testing purposes only
     let proof_data = ProofData {
         proof: crate::types::Proof {
             a: ["0".to_string(), "0".to_string()],
@@ -93,9 +95,6 @@ pub async fn execute(
              output_path.display(),
              config.relayer_url.as_deref().unwrap_or("<RELAYER_URL>"),
              recipient);
-    println!("  Or submit directly:");
-    println!("    zkp-airdrop submit-direct --proof {} --rpc-url <RPC_URL>",
-             output_path.display());
     
     Ok(())
 }

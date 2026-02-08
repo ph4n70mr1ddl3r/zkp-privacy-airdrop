@@ -34,7 +34,11 @@ pub fn execute(
 
     if proof_root.to_lowercase() != merkle_root.to_lowercase() {
         println!("\n{} {}", "Error:".red(), "Merkle root mismatch!");
-        return Ok(());
+        return Err(anyhow::anyhow!(
+            "Merkle root mismatch: expected {}, got {}",
+            merkle_root,
+            proof_root
+        ));
     }
 
     println!("\n{} {}", "✓".green(), "Merkle root matches");

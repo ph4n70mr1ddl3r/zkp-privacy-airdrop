@@ -19,8 +19,8 @@ pub async fn execute(
     config: &Config,
 ) -> Result<()> {
     let proof_system_lower = proof_system.to_lowercase();
-    let use_plonk = proof_system_lower == "plonk" || proof_system_lower == "groth16";
-    
+    let use_plonk = proof_system_lower == "plonk";
+
     info!("Generating {} proof...", proof_system);
     
     let private_key_bytes = crate::crypto::read_private_key(
@@ -83,11 +83,8 @@ pub async fn execute(
     println!("  Submit via relayer:");
     println!("    zkp-airdrop submit --proof {} --relayer-url {} --recipient {}",
              output_path.display(),
-             config.get_relayer_url().unwrap_or_else("<RELAYER_URL>".to_string()),
+             config.get_relayer_url().unwrap_or_else(|_| "<RELAYER_URL>".to_string()),
              recipient);
-    println!("  Or submit directly:");
-    println!("    zkp-airdrop submit-direct --proof {} --rpc-url <RPC_URL> --private-key <RECIPIENT_PRIVATE_KEY>",
-             output_path.display());
     println!();
     
     Ok(())

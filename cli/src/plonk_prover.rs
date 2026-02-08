@@ -106,13 +106,17 @@ pub fn generate_plonk_proof(
     let merkle_root = merkle_tree.root;
     let merkle_root_field = {
         let mut bytes = [0u8; 32];
-        merkle_root[..].copy_to_slice(&mut bytes);
+        bytes.copy_from_slice(&merkle_root[..]);
         F::from_be_bytes_mod_order(&bytes, true)
     };
 
     let public_inputs = PublicInputs {
         merkle_root: [merkle_root_field, F::zero(), F::zero()],
-        recipient: [recipient_field, F::zero(), F::zero()],
+        recipient: [
+            F::from_str(&recipient_field).unwrap_or_else(|_| F::zero()),
+            F::zero(),
+            F::zero(),
+        ],
         nullifier: F::from_be_bytes_mod_order(nullifier.as_bytes(), true),
     };
 
@@ -120,7 +124,7 @@ pub fn generate_plonk_proof(
     let mut merkle_path_fields = Vec::with_capacity(26);
     for sibling in &merkle_path {
         let mut bytes = [0u8; 32];
-        sibling[..].copy_to_slice(&mut bytes);
+        bytes.copy_from_slice(&sibling[..]);
         merkle_path_fields.push(F::from_be_bytes_mod_order(&bytes, true));
     }
 
@@ -163,6 +167,7 @@ pub fn generate_plonk_proof(
 
 /// Internal PLONK proof generation
 /// This is a placeholder - actual implementation would use the proving key
+/// TODO: Implement actual PLONK proof generation using proving key
 fn generate_plonk_proof_internal(
     _private_inputs: &PrivateInputs,
     _public_inputs: &PublicInputs,
@@ -195,8 +200,7 @@ mod tests {
         let address = Address::from([0x12u8; 20]);
         let field = address_to_field(&address);
 
-        assert_eq!(field.0.is_zero());
-        assert_eq!(field.1.is_zero());
-        assert!(field.2.is_zero());
+        let parsed_field = F::from_str(&field).unwrap();
+        assert!(!parsed_field.is_zero());
     }
 }
