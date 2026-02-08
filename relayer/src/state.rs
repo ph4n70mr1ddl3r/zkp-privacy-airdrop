@@ -31,6 +31,7 @@ pub struct RelayerStats {
     pub total_claims: u64,
     pub successful_claims: u64,
     pub failed_claims: u64,
+    #[allow(dead_code)]
     pub total_gas_used: u64,
     pub start_time: std::time::Instant,
 }

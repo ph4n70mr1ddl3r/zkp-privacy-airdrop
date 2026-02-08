@@ -59,6 +59,7 @@ pub struct SubmitClaimRequest {
 impl SubmitClaimRequest {
     /// Create a minimal PLONK request for testing
     #[must_use]
+    #[allow(dead_code)]
     pub fn plonk_minimal() -> Self {
         Self {
             proof: Proof::Plonk(PlonkProof {
@@ -205,6 +206,7 @@ pub struct MerklePathResponse {
     pub root: String,
 }
 
+#[allow(dead_code)]
 pub enum RateLimitType {
     SubmitClaim,
     GetMerklePath,
