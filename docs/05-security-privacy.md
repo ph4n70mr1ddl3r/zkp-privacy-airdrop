@@ -317,7 +317,7 @@ fn get_randomized_gas_price() -> U256 {
 - No identifying headers in requests
 - All gas prices rounded to nearest wei (not gwei) to prevent pattern recognition
 
-**See [Unified Specification](../docs/00-specification.md#62-network-configuration) for exact gas price parameters.**
+**See [Unified Specification](./00-specification.md#62-network-configuration) for exact gas price parameters.**
 
 ## Attack Vectors & Defenses
 

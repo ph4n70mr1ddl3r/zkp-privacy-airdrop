@@ -11,7 +11,7 @@
 | 1.1.0 | 2026-02-07 | Updated nullifier padding, gas price randomization, precomputed proofs storage calculation | Documentation Review |
 | 1.0.0 | 2026-02-02 | Initial version | Core Team |
 
-> **Note**: This document provides detailed technical specifications. For authoritative constants and interfaces, refer to the [Unified Specification](../docs/00-specification.md).
+> **Note**: This document provides detailed technical specifications. For authoritative constants and interfaces, refer to the [Unified Specification](./00-specification.md).
 > 
 > **Implementation Status**: This is a specification document. Implementation timeline is detailed in the [Implementation Roadmap](./03-implementation-roadmap.md).
 
@@ -214,7 +214,7 @@ root = tree.root()
 
 ### 2.3 Storage Requirements
 
-See [Unified Specification](../docs/00-specification.md#13-storage-requirements) for complete storage details.
+See [Unified Specification](./00-specification.md#13-storage-requirements) for complete storage details.
 
 - **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
 - **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
@@ -397,7 +397,7 @@ contract PrivacyAirdrop {
 
 **Note**: The main PrivacyAirdrop contract allows anyone to submit claims directly. This RelayerRegistry is an optional contract for relayers who want to accept donations and track balances. Users can always submit claims directly to the PrivacyAirdrop contract if they prefer.
 
-The RelayerRegistry implements the `IRelayerRegistry` interface defined in the [Unified Specification](../docs/00-specification.md#32-relayerregistry-contract).
+The RelayerRegistry implements the `IRelayerRegistry` interface defined in the [Unified Specification](./00-specification.md#32-relayerregistry-contract).
 
 ```solidity
 contract RelayerRegistry is IRelayerRegistry {

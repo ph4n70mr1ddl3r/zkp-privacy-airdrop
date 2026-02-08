@@ -11,7 +11,7 @@
 | 1.1.0 | 2026-02-07 | Updated nullifier specification and field element format clarification | Documentation Review |
 | 1.0.0 | 2026-02-02 | Initial version | Core Team |
 
-> **Note**: All data formats and constants are defined in the [Unified Specification](../docs/00-specification.md).
+> **Note**: All data formats and constants are defined in the [Unified Specification](./00-specification.md).
 > 
 > **Implementation Status**: This is a specification document. Implementation timeline is detailed in the [Implementation Roadmap](./03-implementation-roadmap.md).
 
@@ -803,7 +803,7 @@ For API services providing on-demand Merkle path data, the binary format include
 - Path indices: 4 bytes (26 bits packed)
 - **Total**: 868 bytes per leaf
 
-See [Unified Specification](../docs/00-specification.md#32-merkle-tree-binary-format) for complete format details.
+See [Unified Specification](./00-specification.md#32-merkle-tree-binary-format) for complete format details.
 
 ### Proof JSON Schema
 

@@ -1,8 +1,8 @@
 # Implementation Roadmap
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-02-07  
-**Based on**: [Technical Specification v1.1.0](../docs/02-technical-specification.md)
+**Version**: 1.0.1
+**Last Updated**: 2026-02-08
+**Based on**: [Technical Specification v1.1.1](./02-technical-specification.md)
 
 ## Phase 1: Foundation (Weeks 1-3)
 
