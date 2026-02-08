@@ -189,7 +189,7 @@ field_element = BigInt(padded_address) mod p
 
 ## 2. Merkle Tree Specifications
 
-**Note**: For complete Merkle tree specifications including exact constants and storage requirements, refer to the [Unified Specification](../docs/00-specification.md#12-merkle-tree).
+**Note**: For complete Merkle tree specifications including exact constants and storage requirements, refer to the [Unified Specification](./00-specification.md#12-merkle-tree).
 
 ### 2.1 Tree Structure
 
@@ -214,7 +214,7 @@ root = tree.root()
 
 ### 2.3 Storage Requirements
 
-See [Unified Specification](./00-specification.md#13-storage-requirements) for complete storage details.
+For complete storage details, refer to the [Unified Specification section on storage requirements](./00-specification.md#13-storage-requirements).
 
 - **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
 - **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)

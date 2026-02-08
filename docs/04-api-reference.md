@@ -815,11 +815,11 @@ See [Unified Specification](./00-specification.md#32-merkle-tree-binary-format) 
     "proof": {
       "type": "object",
       "properties": {
-        "a": {
-          "type": "array",
-          "items": { 
-            "type": "string",
-            "pattern": "^(0x[a-fA-F0-9]{1,64}|[0-9]+)$",
+    "a": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(0x[a-fA-F0-9]{64}|[0-9]+)$",
             "description": "Field element as decimal string (preferred) or hex string with 0x prefix"
           },
           "minItems": 2,
@@ -830,9 +830,9 @@ See [Unified Specification](./00-specification.md#32-merkle-tree-binary-format) 
           "type": "array",
           "items": {
             "type": "array",
-            "items": { 
+            "items": {
               "type": "string",
-              "pattern": "^(0x[a-fA-F0-9]{1,64}|[0-9]+)$",
+              "pattern": "^(0x[a-fA-F0-9]{64}|[0-9]+)$",
               "description": "Field element as decimal string (preferred) or hex string with 0x prefix"
             },
             "minItems": 2,
@@ -844,9 +844,9 @@ See [Unified Specification](./00-specification.md#32-merkle-tree-binary-format) 
         },
         "c": {
           "type": "array",
-          "items": { 
+          "items": {
             "type": "string",
-            "pattern": "^(0x[a-fA-F0-9]{1,64}|[0-9]+)$",
+            "pattern": "^(0x[a-fA-F0-9]{64}|[0-9]+)$",
             "description": "Field element as decimal string (preferred) or hex string with 0x prefix"
           },
           "minItems": 2,
@@ -858,9 +858,9 @@ See [Unified Specification](./00-specification.md#32-merkle-tree-binary-format) 
     },
     "public_signals": {
       "type": "array",
-      "items": { 
+      "items": {
         "type": "string",
-        "pattern": "^(0x[a-fA-F0-9]{1,64}|[0-9]+)$",
+        "pattern": "^(0x[a-fA-F0-9]{64}|[0-9]+)$",
         "description": "Field elements as decimal strings (primary) or hex strings (alternative)"
       },
       "minItems": 3,
