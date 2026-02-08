@@ -1,9 +1,9 @@
 use redis::Client;
 use anyhow::Result;
-use redis::aio::Connection;
+use redis::aio::ConnectionManager;
 
-pub async fn connect(redis_url: &str) -> Result<Connection> {
+pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
     let client = Client::open(redis_url)?;
-    let conn = client.get_async_connection().await?;
-    Ok(conn)
+    let manager = ConnectionManager::new(client).await?;
+    Ok(manager)
 }

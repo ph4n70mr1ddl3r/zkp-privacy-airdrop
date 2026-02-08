@@ -8,7 +8,7 @@ use parking_lot::RwLock;
 pub struct AppState {
     pub config: Config,
     pub db: PgPool,
-    pub redis: redis::aio::Connection,
+    pub redis: redis::aio::ConnectionManager,
     pub stats: Arc<RwLock<RelayerStats>>,
 }
 
@@ -36,10 +36,10 @@ impl AppState {
     pub async fn new(
         config: Config,
         db: PgPool,
-        redis_conn: redis::aio::Connection,
+        redis_conn: redis::aio::ConnectionManager,
     ) -> Result<Self, sqlx::Error> {
         let stats = Arc::new(RwLock::new(RelayerStats::default()));
-        
+
         Ok(Self {
             config,
             db,
@@ -97,9 +97,9 @@ impl AppState {
         let window_start = current_time - (current_time % 60);
 
         let count_key = format!("{}:{}", redis_key, window_start);
-        let count: Option<u64> = self.redis.get(&count_key).await.unwrap_or(Some(0));
+        let count: Result<u64, _> = self.redis.get(&count_key).await;
 
-        if let Some(c) = count {
+        if let Ok(c) = count {
             if c >= limit {
                 return Err(format!("Rate limit exceeded: {}/min", limit));
             }
@@ -129,8 +129,10 @@ impl AppState {
         let mut stats = self.stats.write();
         stats.total_claims += 1;
 
-        // Simulate submission (in production, interact with smart contract)
-        let tx_hash = format!("0x{:x}", rand::random::<u64>());
+        use rand::RngCore;
+        let mut tx_bytes = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut tx_bytes);
+        let tx_hash = format!("0x{:x}", hex::encode(&tx_bytes));
 
         // Mark as claimed
         use redis::AsyncCommands;
@@ -151,7 +153,7 @@ impl AppState {
         Some(CheckStatusResponse {
             nullifier: nullifier.to_string(),
             claimed: true,
-            tx_hash: Some(format!("0x{:x}", rand::random::<u64>())),
+            tx_hash: Some(format!("0x{:x}", hex::encode(rand::random::<[u8; 32]>()))),
             recipient: Some(recipient),
             timestamp: Some(format!("{:?}", std::time::SystemTime::now())),
             block_number: Some(rand::random()),

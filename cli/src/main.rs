@@ -10,6 +10,7 @@ mod config;
 mod crypto;
 mod types;
 mod plonk_prover;
+mod tree;
 
 use config::Config;
 
@@ -50,10 +51,7 @@ struct Cli {
             #[arg(long)]
             output: Option<PathBuf>,
             #[arg(long, default_value = "json")]
-            #[arg(long, default_value = "json")]
             format: String,
-            #[arg(short, long, global = true)]
-            proof_system: Option<String>,
         },
         GenerateProofPlonk {
             #[arg(long)]
@@ -69,7 +67,7 @@ struct Cli {
             #[arg(long)]
             output: Option<PathBuf>,
             #[arg(long, default_value = "json")]
-            #[arg(long, default_value = "json")]
+            format: String,
         },
     VerifyProof {
         #[arg(long)]
@@ -152,40 +150,42 @@ async fn main() -> Result<()> {
 
     let result = match cli.command {
         Commands::GenerateProof {
-            #[arg(long)]
-            private_key: Option<String>,
-            #[arg(long)]
-            private_key_file: Option<PathBuf>,
-            #[arg(long)]
-            private_key_stdin: bool,
-            #[arg(long)]
-            recipient: String,
-            #[arg(long)]
-            merkle_tree: String,
-            #[arg(long)]
-            output: Option<PathBuf>,
-            #[arg(long, default_value = "json")]
-            #[arg(long, default_value = "json")]
-            format: String,
-            #[arg(short, long, global = true)]
-            proof_system: Option<String>,
-        },
-        GenerateProofPlonk {
-            #[arg(long)]
-            private_key: Option<String>,
-            #[arg(long)]
-            private_key_file: Option<PathBuf>,
-            #[arg(long)]
-            private_key_stdin: bool,
-            #[arg(long)]
-            recipient: String,
-            #[arg(long)]
-            merkle_tree: String,
-            #[arg(long)]
-            output: Option<PathBuf>,
-            #[arg(long, default_value = "json")]
-            #[arg(long, default_value = "json")]
-        },
+            private_key,
+            private_key_file,
+            private_key_stdin,
+            recipient,
+            merkle_tree,
+            output,
+            format,
+        } => commands::generate_proof::execute(
+            private_key,
+            private_key_file,
+            private_key_stdin,
+            recipient,
+            merkle_tree,
+            output,
+            format,
+            &config,
+        ).await,
+        Commands::GenerateProofPlonk {
+            private_key,
+            private_key_file,
+            private_key_stdin,
+            recipient,
+            merkle_tree,
+            output,
+            format,
+        } => commands::generate_proof_plonk::execute(
+            private_key,
+            private_key_file,
+            private_key_stdin,
+            recipient,
+            merkle_tree,
+            output,
+            format,
+            cli.proof_system.unwrap_or_else(|| "groth16".to_string()),
+            &config,
+        ).await,
         Commands::VerifyProof {
             proof,
             merkle_root,

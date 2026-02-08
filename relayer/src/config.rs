@@ -1,5 +1,6 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -29,12 +30,19 @@ pub struct ContractsConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayerConfig {
+    #[serde(skip_serializing)]
     pub private_key: String,
     pub min_balance_warning: String,
     pub min_balance_critical: String,
     pub gas_multiplier: f64,
     pub gas_price_randomization: f64,
     pub max_gas_price: String,
+}
+
+impl Drop for RelayerConfig {
+    fn drop(&mut self) {
+        self.private_key.zeroize();
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -86,9 +94,18 @@ impl Config {
                 },
             },
             relayer: RelayerConfig {
-                private_key: std::env::var("RELAYER_PRIVATE_KEY").unwrap_or_else(|_| {
-                    "0x0000000000000000000000000000000000000000000000000000000000000000".to_string()
-                }),
+                private_key: {
+                    let key = std::env::var("RELAYER_PRIVATE_KEY").unwrap_or_else(|_| {
+                        eprintln!("WARNING: Using default insecure private key. Set RELAYER_PRIVATE_KEY environment variable in production!");
+                        "0x0000000000000000000000000000000000000000000000000000000000000000".to_string()
+                    });
+                    if key.starts_with(
+                        "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    ) {
+                        eprintln!("WARNING: Insecure default private key detected. Set RELAYER_PRIVATE_KEY environment variable!");
+                    }
+                    key
+                },
                 min_balance_warning: std::env::var("RELAYER_MIN_BALANCE_WARNING")
                     .unwrap_or_else(|_| "1000000000000000000".to_string()), // 1 ETH
                 min_balance_critical: std::env::var("RELAYER_MIN_BALANCE_CRITICAL")

@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 use std::path::PathBuf;
+use tracing::info;
 
 use crate::config::Config;
 use crate::types::{PLONKProof, PLONKProofData};

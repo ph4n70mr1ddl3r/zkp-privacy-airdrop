@@ -25,9 +25,8 @@ dirs = "5.0"
 toml = "0.8"
 indicatif = "0.17"
 colored = "2.1"
-ark-circom = { version = "0.5", features = ["circom-2"] }
+ark-circom = { version = "0.5" }
 ark-bn254 = "0.4"
-ark-plonk = "0.4"  # PLONK proof system (replaces ark-groth16)
 ark-serialize = "0.4"
 ark-ff = "0.4"
 ark-ec = "0.4"

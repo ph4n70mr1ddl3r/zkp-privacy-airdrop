@@ -100,15 +100,16 @@ fn keccak_hash(input: &[u8]) -> String {
     hex::encode(result)
 }
 
-pub fn poseidon_hash_field(input: &[u8; 32]) -> String {
+pub fn poseidon_hash_field(input: &[u8; 32]) -> Result<String> {
     let hash = keccak_hash(input);
-    let hash_bytes = hex::decode(&hash).context("Failed to decode hash")?;
+    let hash_bytes =
+        hex::decode(&hash).map_err(|e| anyhow::anyhow!("Failed to decode hash: {}", e))?;
     let mut hash_array = [0u8; 32];
     hash_array.copy_from_slice(&hash_bytes[..32]);
-    field_element_to_decimal(&hash_array)
+    Ok(field_element_to_decimal(&hash_array))
 }
 
-pub fn field_element_to_decimal(bytes: &[u8; 32]) -> String {
+fn field_element_to_decimal(bytes: &[u8; 32]) -> String {
     use num_bigint::BigUint;
     use num_traits::{Num, Zero};
 
@@ -124,9 +125,9 @@ pub fn field_element_to_decimal(bytes: &[u8; 32]) -> String {
     reduced.to_str_radix(10)
 }
 
-pub fn address_to_field(address: &Address) -> String {
+pub fn address_to_field(address: &Address) -> Result<String> {
     let address_bytes = address.as_bytes();
     let mut padded = [0u8; 32];
     padded[12..].copy_from_slice(address_bytes);
-    field_element_to_decimal(&padded)
+    Ok(field_element_to_decimal(&padded))
 }
