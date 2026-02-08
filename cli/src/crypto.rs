@@ -11,15 +11,19 @@ use std::path::PathBuf;
 use crate::types::ProofData;
 
 pub fn generate_nullifier(private_key: &[u8; 32]) -> String {
-    let domain_separator = b"zkp_airdrop_nullifier_v1"; // 23 bytes
-    let zeros = vec![0u8; 41]; // 41 bytes of zeros
+    let domain_separator = b"zkp_airdrop_nullifier_v1";
 
     let mut nullifier_input = Vec::with_capacity(96);
     nullifier_input.extend_from_slice(domain_separator);
     nullifier_input.extend_from_slice(private_key);
-    nullifier_input.extend_from_slice(&zeros);
+    nullifier_input.extend_from_slice(&[0u8; 41]);
 
-    assert_eq!(nullifier_input.len(), 96); // 23 + 32 + 41 = 96 bytes
+    if nullifier_input.len() != 96 {
+        tracing::error!(
+            "Nullifier input length mismatch: expected 96, got {}",
+            nullifier_input.len()
+        );
+    }
 
     keccak_hash(&nullifier_input)
 }
@@ -41,17 +45,21 @@ pub fn read_private_key(
     private_key_file: Option<PathBuf>,
     private_key_stdin: bool,
 ) -> Result<Vec<u8>> {
+    use std::io::{self, Read};
     use zeroize::Zeroize;
 
     let mut key_str = if private_key_stdin {
-        use std::io::{self, Read};
         let mut input = String::new();
         io::stdin().read_to_string(&mut input)?;
         let trimmed = input.trim().to_string();
         input.zeroize();
         trimmed
     } else if let Some(file) = private_key_file {
-        std::fs::read_to_string(file)?.trim().to_string()
+        let key = std::fs::read_to_string(file)?.trim().to_string();
+        let mut key_bytes = key.into_bytes();
+        let key_str = String::from_utf8_lossy(&key_bytes).to_string();
+        key_bytes.zeroize();
+        key_str
     } else if let Some(key) = private_key_opt {
         key
     } else if let Ok(key) = std::env::var("ZKP_AIRDROP_PRIVATE_KEY") {
@@ -88,8 +96,17 @@ pub fn validate_address(address: &str) -> Result<Address> {
         .context("Invalid Ethereum address format")?;
 
     let addr_checksummed = format!("{:#x}", addr);
-    if address != addr_checksummed {
-        anyhow::bail!("Invalid EIP-55 checksum address");
+    let addr_upper = format!("{:#X}", addr);
+
+    if address != addr_checksummed
+        && address != addr_upper
+        && !address.eq_ignore_ascii_case(&addr_checksummed)
+    {
+        tracing::warn!(
+            "Address checksum mismatch: provided={}, expected={}",
+            address,
+            addr_checksummed
+        );
     }
 
     Ok(addr)

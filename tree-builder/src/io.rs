@@ -94,6 +94,7 @@ pub fn write_tree(tree: &crate::tree::MerkleTree, output: &Path) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn read_tree(path: &Path) -> Result<crate::tree::MerkleTree> {
     let file = File::open(path).context("Failed to open tree file")?;
 
@@ -125,7 +126,8 @@ pub fn read_tree(path: &Path) -> Result<crate::tree::MerkleTree> {
     for _ in 0..num_leaves {
         let mut leaf = [0u8; 32];
         reader.read_exact(&mut leaf)?;
-        tree.insert(leaf);
+        tree.insert(leaf)
+            .map_err(|e| anyhow::anyhow!("Failed to insert leaf: {}", e))?;
     }
 
     tree.root = root_hash;

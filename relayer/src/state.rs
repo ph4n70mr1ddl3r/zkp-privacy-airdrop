@@ -170,41 +170,37 @@ impl AppState {
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
         use redis::AsyncCommands;
-        
+
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
-        let result = redis
-            .set(&key, &claim.recipient)
+        redis
+            .set::<_, _, ()>(&key, &claim.recipient)
             .await
-            .map_err(|e| e.to_string());
+            .map_err(|e| e.to_string())?;
 
-        let tx_hash = match result {
-            Ok(()) => {
-                let mut stats = self.stats.write();
-                stats.total_claims += 1;
-                stats.successful_claims += 1;
+        {
+            let mut stats = self.stats.write();
+            stats.total_claims += 1;
+            stats.successful_claims += 1;
+        }
 
-                let tx_bytes = uuid::Uuid::new_v4().to_bytes_le();
-                let tx_hash = format!("0x{}", hex::encode(&tx_bytes[..]));
-                
-                let timestamp = chrono::Utc::now().to_rfc3339();
-                
-                let tx_key = format!("{}:tx_hash", key);
-                let _: () = redis.set(&tx_key, &tx_hash).await.map_err(|e| e.to_string())?;
-                
-                let timestamp_key = format!("{}:timestamp", key);
-                let _: () = redis.set(&timestamp_key, &timestamp).await.map_err(|e| e.to_string())?;
-                
-                Ok(tx_hash)
-            }
-            Err(e) => {
-                let mut stats = self.stats.write();
-                stats.total_claims += 1;
-                stats.failed_claims += 1;
-                Err(e)
-            }
-        }?;
+        let tx_bytes = uuid::Uuid::new_v4().to_bytes_le();
+        let tx_hash = format!("0x{}", hex::encode(&tx_bytes[..]));
+
+        let timestamp = chrono::Utc::now().to_rfc3339();
+
+        let tx_key = format!("{}:tx_hash", key);
+        redis
+            .set::<_, _, ()>(&tx_key, &tx_hash)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let timestamp_key = format!("{}:timestamp", key);
+        redis
+            .set::<_, _, ()>(&timestamp_key, &timestamp)
+            .await
+            .map_err(|e| e.to_string())?;
 
         drop(redis);
 

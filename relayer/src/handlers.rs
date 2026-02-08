@@ -7,11 +7,30 @@ use crate::state::AppState;
 use crate::types_plonk::*;
 
 pub fn is_valid_address(address: &str) -> bool {
-    address.len() == 42 && address.starts_with("0x") && Address::from_str(address).is_ok()
+    if address.len() != 42 {
+        return false;
+    }
+    if !address.starts_with("0x") && !address.starts_with("0X") {
+        return false;
+    }
+    let address_bytes = match hex::decode(&address[2..]) {
+        Ok(bytes) => bytes,
+        Err(_) => return false,
+    };
+    if address_bytes.len() != 20 {
+        return false;
+    }
+    Address::from_str(address).is_ok()
 }
 
 pub fn is_valid_nullifier(nullifier: &str) -> bool {
-    nullifier.len() == 66 && nullifier.starts_with("0x") && hex::decode(&nullifier[2..]).is_ok()
+    if nullifier.len() != 66 {
+        return false;
+    }
+    if !nullifier.starts_with("0x") && !nullifier.starts_with("0X") {
+        return false;
+    }
+    hex::decode(&nullifier[2..]).is_ok()
 }
 
 pub async fn health(state: web::Data<AppState>) -> impl Responder {
