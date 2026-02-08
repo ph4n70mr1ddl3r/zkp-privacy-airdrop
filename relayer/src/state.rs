@@ -1,15 +1,27 @@
 use crate::config::Config;
-use crate::types::*;
+use crate::types_plonk::*;
 use sqlx::PgPool;
 use redis::aio::ConnectionManager;
 use std::sync::Arc;
 use parking_lot::RwLock;
+use tokio::sync::Mutex;
 
 pub struct AppState {
-    pub config: Config,
+    pub config: Arc<Config>,
     pub db: PgPool,
-    pub redis: redis::aio::ConnectionManager,
+    pub redis: Arc<Mutex<ConnectionManager>>,
     pub stats: Arc<RwLock<RelayerStats>>,
+}
+
+impl Clone for AppState {
+    fn clone(&self) -> Self {
+        Self {
+            config: Arc::clone(&self.config),
+            db: self.db.clone(),
+            redis: Arc::clone(&self.redis),
+            stats: Arc::clone(&self.stats),
+        }
+    }
 }
 
 pub struct RelayerStats {
@@ -36,14 +48,14 @@ impl AppState {
     pub async fn new(
         config: Config,
         db: PgPool,
-        redis_conn: redis::aio::ConnectionManager,
+        redis_conn: ConnectionManager,
     ) -> Result<Self, sqlx::Error> {
         let stats = Arc::new(RwLock::new(RelayerStats::default()));
 
         Ok(Self {
-            config,
+            config: Arc::new(config),
             db,
-            redis: redis_conn,
+            redis: Arc::new(Mutex::new(redis_conn)),
             stats,
         })
     }
@@ -85,8 +97,9 @@ impl AppState {
         use redis::AsyncCommands;
 
         let limit = match limit_type {
-            RateLimitType::Claim => self.config.rate_limit.claims_per_minute,
-            RateLimitType::Default => self.config.rate_limit.requests_per_minute,
+            RateLimitType::SubmitClaim => self.config.rate_limit.claims_per_minute,
+            RateLimitType::GetMerklePath => self.config.rate_limit.requests_per_minute,
+            RateLimitType::CheckStatus => self.config.rate_limit.requests_per_minute,
         };
 
         let redis_key = format!("rate_limit:{}", key);
@@ -97,7 +110,8 @@ impl AppState {
         let window_start = current_time - (current_time % 60);
 
         let count_key = format!("{}:{}", redis_key, window_start);
-        let count: Result<u64, _> = self.redis.get(&count_key).await;
+        let mut redis = self.redis.lock().await;
+        let count: Result<u64, _> = redis.get(&count_key).await;
 
         if let Ok(c) = count {
             if c >= limit {
@@ -105,13 +119,13 @@ impl AppState {
             }
         }
 
-        self.redis
-            .incr(&count_key)
+        redis
+            .incr::<_, _, ()>(&count_key, 1)
             .await
             .map_err(|e| e.to_string())?;
 
-        self.redis
-            .expire(&count_key, 120)
+        redis
+            .expire::<_, ()>(&count_key, 120)
             .await
             .map_err(|e| e.to_string())?;
 
@@ -122,7 +136,8 @@ impl AppState {
         use redis::AsyncCommands;
 
         let key = format!("nullifier:{}", nullifier);
-        self.redis.exists(&key).await.unwrap_or(0) > 0
+        let mut redis = self.redis.lock().await;
+        redis.exists(&key).await.unwrap_or(0) > 0
     }
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
@@ -132,12 +147,13 @@ impl AppState {
         use rand::RngCore;
         let mut tx_bytes = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut tx_bytes);
-        let tx_hash = format!("0x{:x}", hex::encode(&tx_bytes));
+        let tx_hash = format!("0x{}", hex::encode(&tx_bytes));
 
         // Mark as claimed
         use redis::AsyncCommands;
         let key = format!("nullifier:{}", claim.nullifier);
-        let _: () = self.redis.set(&key, &claim.recipient).await.map_err(|e| e.to_string())?;
+        let mut redis = self.redis.lock().await;
+        let _: () = redis.set(&key, &claim.recipient).await.map_err(|e| e.to_string())?;
 
         stats.successful_claims += 1;
 
@@ -148,13 +164,14 @@ impl AppState {
         use redis::AsyncCommands;
 
         let key = format!("nullifier:{}", nullifier);
-        let recipient: Option<String> = self.redis.get(&key).await.ok().flatten()?;
+        let mut redis = self.redis.lock().await;
+        let recipient: Option<String> = redis.get(&key).await.ok().flatten()?;
 
         Some(CheckStatusResponse {
             nullifier: nullifier.to_string(),
             claimed: true,
-            tx_hash: Some(format!("0x{:x}", hex::encode(rand::random::<[u8; 32]>()))),
-            recipient: Some(recipient),
+            tx_hash: Some(format!("0x{}", hex::encode(rand::random::<[u8; 32]>()))),
+            recipient,
             timestamp: Some(format!("{:?}", std::time::SystemTime::now())),
             block_number: Some(rand::random()),
         })

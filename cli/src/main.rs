@@ -141,7 +141,10 @@ async fn main() -> Result<()> {
 
     let config_path = cli.config.unwrap_or_else(|| {
         dirs::home_dir()
-            .expect("Could not determine home directory")
+            .unwrap_or_else(|| {
+                eprintln!("Error: Could not determine home directory. Please specify config file with --config.");
+                std::process::exit(1);
+            })
             .join(".zkp-airdrop")
             .join("config.toml")
     });

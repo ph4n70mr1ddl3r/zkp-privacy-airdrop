@@ -96,13 +96,18 @@ impl Config {
             relayer: RelayerConfig {
                 private_key: {
                     let key = std::env::var("RELAYER_PRIVATE_KEY").unwrap_or_else(|_| {
-                        eprintln!("WARNING: Using default insecure private key. Set RELAYER_PRIVATE_KEY environment variable in production!");
-                        "0x0000000000000000000000000000000000000000000000000000000000000000".to_string()
+                        eprintln!(
+                            "CRITICAL ERROR: RELAYER_PRIVATE_KEY environment variable not set!"
+                        );
+                        eprintln!("This service cannot start without a valid private key.");
+                        std::process::exit(1);
                     });
-                    if key.starts_with(
-                        "0x0000000000000000000000000000000000000000000000000000000000000000",
-                    ) {
-                        eprintln!("WARNING: Insecure default private key detected. Set RELAYER_PRIVATE_KEY environment variable!");
+                    if key == "0x0000000000000000000000000000000000000000000000000000000000000000"
+                        || key == "0000000000000000000000000000000000000000000000000000000000000000"
+                    {
+                        eprintln!("CRITICAL ERROR: Insecure default private key detected!");
+                        eprintln!("Please set RELAYER_PRIVATE_KEY to a secure private key.");
+                        std::process::exit(1);
                     }
                     key
                 },

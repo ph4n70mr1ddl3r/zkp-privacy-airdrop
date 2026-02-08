@@ -31,6 +31,9 @@ pub async fn execute(
     let address_str = format!("{:?}", address);
     println!("{} {}", "Address:".green(), address_str);
 
+    let nullifier = generate_nullifier(&private_key);
+    let nullifier_hex = format!("0x{}", hex::encode(&nullifier.as_bytes()));
+
     private_key.zeroize();
     println!("{} {}", "Recipient:".green(), recipient);
     
@@ -45,13 +48,10 @@ pub async fn execute(
     
     pb.set_message("Computing leaf hash...");
     pb.set_position(30);
-    
+
     pb.set_message("Generating nullifier...");
     pb.set_position(50);
-    
-    let nullifier = generate_nullifier(&private_key);
-    let nullifier_hex = format!("0x{}", hex::encode(&nullifier.as_bytes()));
-    
+
     pb.set_message("Finding Merkle path...");
     pb.set_position(70);
     

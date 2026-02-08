@@ -1,21 +1,7 @@
-// PLONK Proof Generation Module
-// Week 2, Task 1
-
 use anyhow::{Context, Result};
-use ark_bn254::{Fq, Fq2Config};
-use ark_ec::models::{bn::Bn254, Fq2, Fq6};
-use ark_ec::msm::MNT6;
-use ark_ff::PrimeField;
-use ark_groth16::{Groth16, Groth16Bls12_381, ProvingKey, VerifyingKey};
-use ark_poly::polynomial::univariate::DensePolynomial;
-use ark_poly_commit::{kzg10, kzg10};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::UniformRand;
+use ark_bn254::Fq;
 use ethers::types::{Address, H256};
-use num_bigint::BigUint;
-use num_traits::Zero;
 use serde::{Deserialize, Serialize};
-use zeroize::Zeroize;
 
 use crate::crypto::{address_to_field, derive_address, generate_nullifier};
 use crate::tree::MerkleTree;

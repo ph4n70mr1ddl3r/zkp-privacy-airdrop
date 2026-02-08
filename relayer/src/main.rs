@@ -4,6 +4,8 @@ mod metrics;
 mod state;
 mod db;
 mod redis;
+mod types;
+mod types_plonk;
 
 use actix_web::{App, HttpServer, middleware, web};
 use tracing::{info, error};
@@ -26,13 +28,13 @@ async fn main() -> anyhow::Result<()> {
     let db_pool = db::create_pool(&config.database_url).await?;
     let redis_client = redis::connect(&config.redis_url).await?;
 
+    let bind_address = format!("{}:{}", config.host, config.port);
+
     let app_state = state::AppState::new(
-        config.clone(),
+        config,
         db_pool,
         redis_client,
     ).await?;
-
-    let bind_address = format!("{}:{}", config.host, config.port);
 
     info!("Listening on {}", bind_address);
 
@@ -43,9 +45,14 @@ async fn main() -> anyhow::Result<()> {
             .wrap(middleware::Compress::default())
             .wrap(middleware::NormalizePath::trim())
             .wrap(
-                actix_cors::Cors::permissive()
+                actix_cors::Cors::default()
                     .allowed_origin_fn(|origin, _req_head| {
-                        true // Allow all origins for now
+                        if let Ok(origin_str) = origin.to_str() {
+                            origin_str.starts_with("http://localhost")
+                                || origin_str.starts_with("https://")
+                        } else {
+                            false
+                        }
                     })
                     .allowed_methods(vec!["GET", "POST", "OPTIONS"])
                     .allowed_headers(vec![
@@ -53,6 +60,7 @@ async fn main() -> anyhow::Result<()> {
                         actix_web::http::header::ACCEPT,
                         actix_web::http::header::CONTENT_TYPE,
                     ])
+                    .max_age(3600)
             )
             .service(
                 web::scope("/api/v1")

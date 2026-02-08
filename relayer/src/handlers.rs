@@ -1,7 +1,6 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
-use serde::{Deserialize, Serialize};
 use tracing::{info, error, warn};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 
 use crate::state::AppState;
 use crate::types_plonk::*;

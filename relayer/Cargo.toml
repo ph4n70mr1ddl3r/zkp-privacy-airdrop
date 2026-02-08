@@ -32,3 +32,4 @@ sha3 = "0.10"
 bytes = "1.5"
 derive_more = "0.99"
 uuid = { version = "1.6", features = ["v4", "serde"] }
+zeroize = "1.7"
