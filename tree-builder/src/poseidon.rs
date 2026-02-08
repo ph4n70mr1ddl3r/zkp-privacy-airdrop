@@ -36,7 +36,6 @@ pub fn hash_two(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     mod_field(&result.into())
 }
 
-#[allow(dead_code)]
 pub fn hash_domain(input: &[u8]) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(input);

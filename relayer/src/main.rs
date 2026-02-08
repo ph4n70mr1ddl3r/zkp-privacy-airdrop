@@ -9,6 +9,7 @@ mod types_plonk;
 use actix_web::{App, HttpServer, middleware, web};
 use actix_web::http::header::HeaderName;
 use tracing::info;
+use std::sync::Arc;
 
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
@@ -29,6 +30,8 @@ async fn main() -> anyhow::Result<()> {
 
     let bind_address = format!("{}:{}", config.host, config.port);
 
+    let allowed_origins = Arc::new(config.cors.allowed_origins.clone());
+
     let app_state = state::AppState::new(
         config.clone(),
         db_pool,
@@ -45,7 +48,7 @@ async fn main() -> anyhow::Result<()> {
             .wrap(middleware::Compress::default())
             .wrap(middleware::NormalizePath::trim())
             .wrap({
-                let allowed_origins = config.cors.allowed_origins.clone();
+                let allowed_origins = Arc::clone(&allowed_origins);
                 actix_cors::Cors::default()
                     .allowed_origin_fn(move |origin, _req_head| {
                         if let Ok(origin_str) = origin.to_str() {

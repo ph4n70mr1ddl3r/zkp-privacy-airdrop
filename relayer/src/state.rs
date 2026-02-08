@@ -31,7 +31,6 @@ pub struct RelayerStats {
     pub total_claims: u64,
     pub successful_claims: u64,
     pub failed_claims: u64,
-    #[allow(dead_code)]
     pub total_gas_used: u64,
     pub start_time: std::time::Instant,
 }
@@ -163,27 +162,32 @@ impl AppState {
     }
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
-        {
-            let mut stats = self.stats.write();
-            stats.total_claims += 1;
-        }
-
         use rand::RngCore;
         let mut tx_bytes = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut tx_bytes);
         let tx_hash = format!("0x{}", hex::encode(tx_bytes));
 
-        // Mark as claimed
         use redis::AsyncCommands;
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
-        let _: () = redis.set(&key, &claim.recipient).await.map_err(|e| e.to_string())?;
+
+        let result = redis.set(&key, &claim.recipient).await.map_err(|e| e.to_string());
         drop(redis);
 
-        {
-            let mut stats = self.stats.write();
-            stats.successful_claims += 1;
-        }
+        let tx_hash = match result {
+            Ok(()) => {
+                let mut stats = self.stats.write();
+                stats.total_claims += 1;
+                stats.successful_claims += 1;
+                Ok(tx_hash)
+            }
+            Err(e) => {
+                let mut stats = self.stats.write();
+                stats.total_claims += 1;
+                stats.failed_claims += 1;
+                Err(e)
+            }
+        }?;
 
         Ok(tx_hash)
     }

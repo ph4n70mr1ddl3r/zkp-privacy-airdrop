@@ -27,10 +27,13 @@ pub async fn execute(
     
     let proof_content = std::fs::read_to_string(&proof_path)
         .context("Failed to read proof file")?;
-    
+
     let proof_data: ProofData = serde_json::from_str(&proof_content)
         .context("Failed to parse proof JSON")?;
-    
+
+    validate_proof_structure(&proof_data)
+        .context("Invalid proof structure")?;
+
     if proof_data.recipient.to_lowercase() != recipient.to_lowercase() {
         return Err(anyhow::anyhow!(
             "Proof recipient mismatch: proof is for {}, but submitting for {}",
@@ -91,8 +94,13 @@ pub async fn execute(
                 "RATE_LIMITED" => {
                     if let Some(retry_after) = response.headers().get("Retry-After") {
                         if let Ok(seconds_str) = retry_after.to_str() {
-                            if let Ok(seconds) = seconds_str.parse::<u64>() {
-                                println!("{} Try again in {} seconds.", "Note:".yellow(), seconds);
+                            if let Ok(secs) = seconds_str.parse::<u64>() {
+                                const MAX_RETRY_AFTER: u64 = 86400;
+                                if secs > MAX_RETRY_AFTER {
+                                    tracing::warn!("Suspicious Retry-After value: {}", secs);
+                                } else {
+                                    println!("{} Try again in {} seconds.", "Note:".yellow(), secs);
+                                }
                             }
                         }
                     }
@@ -149,6 +157,48 @@ pub async fn execute(
             println!();
         }
     }
-    
+
+    Ok(())
+}
+
+fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {
+    match &proof_data.proof {
+        Proof::Plonk(plonk_proof) => {
+            if plonk_proof.A.len() != 2 {
+                return Err(anyhow::anyhow!("Invalid PLONK proof: A field must have 2 elements, found {}", plonk_proof.A.len()));
+            }
+            if plonk_proof.B.len() != 2 || plonk_proof.B[0].len() != 2 || plonk_proof.B[1].len() != 2 {
+                return Err(anyhow::anyhow!("Invalid PLONK proof: B field must be 2x2 array"));
+            }
+            if plonk_proof.C.len() != 2 {
+                return Err(anyhow::anyhow!("Invalid PLONK proof: C field must have 2 elements, found {}", plonk_proof.C.len()));
+            }
+            if plonk_proof.Z.len() != 3 {
+                return Err(anyhow::anyhow!("Invalid PLONK proof: Z field must have 3 elements, found {}", plonk_proof.Z.len()));
+            }
+            if plonk_proof.T1.len() != 2 || plonk_proof.T2.len() != 2 || plonk_proof.T3.len() != 2 {
+                return Err(anyhow::anyhow!("Invalid PLONK proof: T1, T2, T3 fields must each have 2 elements"));
+            }
+            if plonk_proof.WXi.is_empty() {
+                return Err(anyhow::anyhow!("Invalid PLONK proof: WXi field cannot be empty"));
+            }
+        }
+        Proof::Groth16(groth16_proof) => {
+            if groth16_proof.a.len() != 2 {
+                return Err(anyhow::anyhow!("Invalid Groth16 proof: a field must have 2 elements, found {}", groth16_proof.a.len()));
+            }
+            if groth16_proof.b.len() != 2 || groth16_proof.b[0].len() != 2 || groth16_proof.b[1].len() != 2 {
+                return Err(anyhow::anyhow!("Invalid Groth16 proof: b field must be 2x2 array"));
+            }
+            if groth16_proof.c.len() != 2 {
+                return Err(anyhow::anyhow!("Invalid Groth16 proof: c field must have 2 elements, found {}", groth16_proof.c.len()));
+            }
+        }
+    }
+
+    if proof_data.public_signals.len() != 3 {
+        return Err(anyhow::anyhow!("Invalid proof: public_signals must have 3 elements, found {}", proof_data.public_signals.len()));
+    }
+
     Ok(())
 }

@@ -2,15 +2,12 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use rayon::prelude::*;
 
-#[allow(dead_code)]
 pub const TREE_HEIGHT: u8 = 26;
 pub const MAX_LEAVES: usize = 1 << 26; // 2^26 = 67,108,864
 
-#[allow(dead_code)]
 const FIELD_PRIME: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
-#[allow(dead_code)]
 fn field_prime() -> BigUint {
     BigUint::from_str_radix(FIELD_PRIME, 10).unwrap()
 }
@@ -39,11 +36,15 @@ impl MerkleTree {
         }
     }
 
-    pub fn insert(&mut self, leaf: [u8; 32]) {
+    pub fn insert(&mut self, leaf: [u8; 32]) -> Result<(), String> {
         if self.leaves.len() >= MAX_LEAVES {
-            panic!("Tree is full, maximum leaves reached");
+            return Err(format!(
+                "Tree is full, maximum leaves reached (MAX_LEAVES={})",
+                MAX_LEAVES
+            ));
         }
         self.leaves.push(leaf);
+        Ok(())
     }
 
     pub fn finalize(&mut self) {
@@ -56,18 +57,18 @@ impl MerkleTree {
             return;
         }
 
-        let mut level = self.leaves.clone();
+        let mut level = std::mem::take(&mut self.leaves);
         self.nodes.clear();
 
-        for _ in 0..self.height {
+        for _depth in 0..self.height {
             self.nodes.push(level.clone());
 
             if level.len() == 1 {
-                self.root = level[0];
+                self.root = level.swap_remove(0);
                 return;
             }
 
-            let next_level: Vec<[u8; 32]> = level
+            level = level
                 .par_chunks(2)
                 .map(|pair| {
                     if pair.len() == 2 {
@@ -77,8 +78,6 @@ impl MerkleTree {
                     }
                 })
                 .collect();
-
-            level = next_level;
         }
 
         self.root = *level.first().unwrap_or(&[0u8; 32]);
@@ -133,7 +132,6 @@ impl MerkleTree {
         current == self.root
     }
 
-    #[allow(dead_code)]
     pub fn get_leaf_index(&self, leaf_hash: &[u8; 32]) -> Option<usize> {
         self.leaves.iter().position(|l| l == leaf_hash)
     }
@@ -167,7 +165,8 @@ pub fn build_merkle_tree(addresses: &[[u8; 20]], height: u8) -> Result<MerkleTre
 
     for address in addresses {
         let leaf = super::poseidon::hash_address(*address);
-        tree.insert(leaf);
+        tree.insert(leaf)
+            .map_err(|e| format!("Failed to insert leaf: {}", e))?;
         pb.inc(1);
     }
 
@@ -178,7 +177,6 @@ pub fn build_merkle_tree(addresses: &[[u8; 20]], height: u8) -> Result<MerkleTre
     Ok(tree)
 }
 
-#[allow(dead_code)]
 fn mod_field(bytes: &[u8; 32]) -> [u8; 32] {
     let value = BigUint::from_bytes_be(bytes);
     let reduced = &value % &field_prime();

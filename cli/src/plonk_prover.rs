@@ -110,16 +110,12 @@ pub fn generate_plonk_proof(
         F::from_be_bytes_mod_order(&bytes, true)
     };
 
+    let recipient_f = F::from_str(&recipient_field)
+        .with_context(|| format!("Failed to parse recipient field: {}", recipient_field))?;
+
     let public_inputs = PublicInputs {
         merkle_root: [merkle_root_field, F::zero(), F::zero()],
-        recipient: [
-            F::from_str(&recipient_field).unwrap_or_else(|e| {
-                tracing::warn!("Failed to parse recipient field: {}", e);
-                F::zero()
-            }),
-            F::zero(),
-            F::zero(),
-        ],
+        recipient: [recipient_f, F::zero(), F::zero()],
         nullifier: F::from_be_bytes_mod_order(nullifier.as_bytes(), true),
     };
 
