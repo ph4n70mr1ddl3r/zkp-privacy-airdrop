@@ -27,11 +27,20 @@ pub async fn execute(
 
     let recipient_addr = validate_address(&recipient).context("Invalid recipient address")?;
 
-    let proof_content =
-        std::fs::read_to_string(&proof_path).context("Failed to read proof file")?;
+    let proof_content = std::fs::read_to_string(&proof_path).with_context(|| {
+        format!(
+            "Failed to read proof file from {}",
+            proof_path.display()
+        )
+    })?;
 
-    let proof_data: ProofData =
-        serde_json::from_str(&proof_content).context("Failed to parse proof JSON")?;
+    let proof_data: ProofData = serde_json::from_str(&proof_content)
+        .with_context(|| {
+            format!(
+                "Failed to parse proof JSON from file {}",
+                proof_path.display()
+            )
+        })?;
 
     validate_proof_structure(&proof_data).context("Invalid proof structure")?;
 
@@ -84,13 +93,16 @@ pub async fn execute(
         .json(&request)
         .send()
         .await
-        .context("Failed to submit claim to relayer")?;
+        .context("Failed to send HTTP request to relayer")?;
 
     let status = response.status();
-    let response_text = response.text().await?;
+    let response_text = response
+        .text()
+        .await
+        .context("Failed to read response body from relayer")?;
 
     let submit_response: SubmitClaimResponse =
-        serde_json::from_str(&response_text).context("Failed to parse response")?;
+        serde_json::from_str(&response_text).context("Failed to parse response JSON")?;
 
     if !status.is_success() {
         println!(

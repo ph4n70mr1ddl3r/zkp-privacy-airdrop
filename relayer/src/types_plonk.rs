@@ -206,7 +206,6 @@ pub struct MerklePathResponse {
     pub root: String,
 }
 
-#[allow(dead_code)]
 pub enum RateLimitType {
     SubmitClaim,
     GetMerklePath,

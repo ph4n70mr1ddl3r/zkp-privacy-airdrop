@@ -133,9 +133,12 @@ pub async fn submit_claim(
         });
     }
 
-    // Validate proof structure
     if !claim.proof.is_valid_structure() {
-        warn!("Invalid {} proof structure", claim.proof.type_name());
+        warn!(
+            "Invalid {} proof structure from nullifier: {}",
+            claim.proof.type_name(),
+            claim.nullifier
+        );
         let error_code = if claim.proof.type_name() == "Plonk" {
             "PLONK_FORMAT_ERROR"
         } else {
@@ -204,7 +207,11 @@ pub async fn submit_claim(
     }
 }
 
-pub async fn check_status(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+pub async fn check_status(
+    req: HttpRequest,
+    state: web::Data<AppState>,
+    path: web::Path<String>,
+) -> impl Responder {
     let nullifier = path.into_inner();
 
     if !is_valid_nullifier(&nullifier) {
@@ -219,6 +226,19 @@ pub async fn check_status(state: web::Data<AppState>, path: web::Path<String>) -
     }
 
     info!("Checking status for nullifier: {}", nullifier);
+
+    if let Err(e) = state
+        .check_rate_limit(&req, &nullifier, RateLimitType::CheckStatus)
+        .await
+    {
+        warn!("Rate limit exceeded for check_status: {}", e);
+        return HttpResponse::TooManyRequests().json(ErrorResponse {
+            success: false,
+            error: "Rate limit exceeded. Try again later.".to_string(),
+            code: Some("RATE_LIMITED".to_string()),
+            retry_after: Some(60),
+        });
+    }
 
     match state.get_claim_status(&nullifier).await {
         Some(status) => HttpResponse::Ok().json(status),
@@ -285,10 +305,16 @@ pub async fn donate(claim: web::Json<DonateRequest>, state: web::Data<AppState>)
     }
 
     if let Err(e) = claim.amount.parse::<u128>() {
-        warn!("Invalid donation amount format from {}: {}", claim.donor, e);
+        warn!(
+            "Invalid donation amount format from {}: {}",
+            claim.donor, e
+        );
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
-            error: format!("Invalid donation amount: {}", e),
+            error: format!(
+                "Invalid donation amount '{}': {}",
+                claim.amount, e
+            ),
             code: Some("INVALID_AMOUNT".to_string()),
             retry_after: None,
         });

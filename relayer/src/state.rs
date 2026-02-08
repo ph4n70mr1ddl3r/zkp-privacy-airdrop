@@ -165,8 +165,9 @@ impl AppState {
 
         let limit = match limit_type {
             RateLimitType::SubmitClaim => self.config.rate_limit.claims_per_minute,
-            RateLimitType::GetMerklePath => self.config.rate_limit.requests_per_minute,
-            RateLimitType::CheckStatus => self.config.rate_limit.requests_per_minute,
+            RateLimitType::GetMerklePath | RateLimitType::CheckStatus => {
+                self.config.rate_limit.requests_per_minute
+            }
         };
 
         let redis_key = format!("rate_limit:{}", key);
@@ -200,14 +201,11 @@ impl AppState {
 
         let key = format!("nullifier:{}", nullifier);
         let mut redis = self.redis.lock().await;
-        
-        match redis.exists::<_, i64>(&key).await {
-            Ok(count) => count > 0,
-            Err(e) => {
-                tracing::error!("Failed to check nullifier existence in Redis: {}", e);
-                false
-            }
-        }
+
+        redis.exists::<_, i64>(&key).await.map(|count| count > 0).unwrap_or_else(|e| {
+            tracing::error!("Failed to check nullifier existence in Redis: {}", e);
+            false
+        })
     }
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
@@ -254,15 +252,15 @@ impl AppState {
 
         let key = format!("nullifier:{}", nullifier);
         let mut redis = self.redis.lock().await;
-        
+
         let recipient: Option<String> = redis.get(&key).await.ok().flatten()?;
-        
+
         let tx_key = format!("{}:tx_hash", key);
         let tx_hash: Option<String> = redis.get(&tx_key).await.ok().flatten();
-        
+
         let block_key = format!("{}:block", key);
         let block_number: Option<u64> = redis.get(&block_key).await.ok().flatten();
-        
+
         let timestamp_key = format!("{}:timestamp", key);
         let timestamp: Option<String> = redis.get(&timestamp_key).await.ok().flatten();
 

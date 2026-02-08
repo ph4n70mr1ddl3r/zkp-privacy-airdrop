@@ -10,17 +10,22 @@ use std::path::PathBuf;
 
 use crate::types::ProofData;
 
+const NULLIFIER_DOMAIN_SEPARATOR: &[u8] = b"zkp_airdrop_nullifier_v1";
+const DOMAIN_SEPARATOR_LEN: usize = NULLIFIER_DOMAIN_SEPARATOR.len();
+const PRIVATE_KEY_LEN: usize = 32;
+const NULLIFIER_PADDING_LEN: usize = 41;
+const NULLIFIER_INPUT_LEN: usize = 96;
+
 pub fn generate_nullifier(private_key: &[u8; 32]) -> String {
-    let domain_separator = b"zkp_airdrop_nullifier_v1";
-
-    let mut nullifier_input = Vec::with_capacity(96);
-    nullifier_input.extend_from_slice(domain_separator);
+    let mut nullifier_input = Vec::with_capacity(NULLIFIER_INPUT_LEN);
+    nullifier_input.extend_from_slice(NULLIFIER_DOMAIN_SEPARATOR);
     nullifier_input.extend_from_slice(private_key);
-    nullifier_input.extend_from_slice(&[0u8; 41]);
+    nullifier_input.extend_from_slice(&[0u8; NULLIFIER_PADDING_LEN]);
 
-    if nullifier_input.len() != 96 {
+    if nullifier_input.len() != NULLIFIER_INPUT_LEN {
         tracing::error!(
-            "Nullifier input length mismatch: expected 96, got {}",
+            "Nullifier input length mismatch: expected {}, got {}",
+            NULLIFIER_INPUT_LEN,
             nullifier_input.len()
         );
     }
@@ -131,11 +136,6 @@ pub fn validate_nullifier(nullifier: &str) -> Result<()> {
     Ok(())
 }
 
-#[allow(dead_code)]
-fn poseidon_hash(input: &[u8]) -> String {
-    keccak_hash(input)
-}
-
 fn keccak_hash(input: &[u8]) -> String {
     let mut hasher = Keccak256::new();
     hasher.update(input);
@@ -152,17 +152,17 @@ pub fn poseidon_hash_field(input: &[u8; 32]) -> Result<String> {
     Ok(field_element_to_decimal(&hash_array))
 }
 
+const BN254_SCALAR_FIELD_MODULUS: &str =
+    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
+
 fn field_element_to_decimal(bytes: &[u8; 32]) -> String {
     use num_bigint::BigUint;
     use num_traits::{Num, Zero};
 
     let big_int = BigUint::from_bytes_be(bytes);
 
-    let modulus = BigUint::from_str_radix(
-        "21888242871839275222246405745257275088548364400416034343698204186575808495617",
-        10,
-    )
-    .unwrap();
+    let modulus =
+        BigUint::from_str_radix(BN254_SCALAR_FIELD_MODULUS, 10).expect("Invalid modulus constant");
 
     let reduced = big_int % modulus;
     reduced.to_str_radix(10)
