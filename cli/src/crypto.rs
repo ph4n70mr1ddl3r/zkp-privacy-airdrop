@@ -22,13 +22,13 @@ pub fn generate_nullifier(private_key: &[u8; 32]) -> String {
     nullifier_input.extend_from_slice(private_key);
     nullifier_input.extend_from_slice(&[0u8; NULLIFIER_PADDING_LEN]);
 
-    if nullifier_input.len() != NULLIFIER_INPUT_LEN {
-        tracing::error!(
-            "Nullifier input length mismatch: expected {}, got {}",
-            NULLIFIER_INPUT_LEN,
-            nullifier_input.len()
-        );
-    }
+    assert_eq!(
+        nullifier_input.len(),
+        NULLIFIER_INPUT_LEN,
+        "Nullifier input length mismatch: expected {}, got {}",
+        NULLIFIER_INPUT_LEN,
+        nullifier_input.len()
+    );
 
     keccak_hash(&nullifier_input)
 }

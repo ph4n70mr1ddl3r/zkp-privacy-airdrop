@@ -69,13 +69,11 @@ async fn main() -> anyhow::Result<()> {
                             .cors
                             .allowed_headers
                             .iter()
-                            .filter_map(|h| {
-                                match HeaderName::from_bytes(h.as_bytes()) {
-                                    Ok(header_name) => Some(header_name),
-                                    Err(_) => {
-                                        tracing::warn!("Invalid header name: {}", h);
-                                        None
-                                    }
+                            .filter_map(|h| match HeaderName::from_bytes(h.as_bytes()) {
+                                Ok(header_name) => Some(header_name),
+                                Err(_) => {
+                                    tracing::warn!("Invalid header name: {}", h);
+                                    None
                                 }
                             })
                             .collect::<Vec<_>>(),
@@ -107,11 +105,11 @@ async fn main() -> anyhow::Result<()> {
     .run();
 
     let handle = server.handle();
-    
+
     tokio::spawn(async move {
         let mut sigterm = signal::unix::signal(signal::unix::SignalKind::terminate()).unwrap();
         let mut sigint = signal::unix::signal(signal::unix::SignalKind::interrupt()).unwrap();
-        
+
         tokio::select! {
             _ = sigterm.recv() => {
                 info!("Received SIGTERM, shutting down gracefully...");
@@ -120,7 +118,7 @@ async fn main() -> anyhow::Result<()> {
                 info!("Received SIGINT, shutting down gracefully...");
             }
         }
-        
+
         info!("Stopping server gracefully...");
         let _ = handle.stop(true).await;
     });

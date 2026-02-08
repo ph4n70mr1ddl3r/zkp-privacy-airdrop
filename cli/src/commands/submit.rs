@@ -6,7 +6,7 @@ use tokio::time::{sleep, Duration};
 use tracing::info;
 
 use crate::config::Config;
-use crate::crypto::{validate_address, validate_nullifier, validate_merkle_root};
+use crate::crypto::{validate_address, validate_merkle_root, validate_nullifier};
 use crate::types_plonk::{Proof, ProofData, SubmitClaimRequest, SubmitClaimResponse};
 
 pub async fn execute(
@@ -27,20 +27,15 @@ pub async fn execute(
 
     let recipient_addr = validate_address(&recipient).context("Invalid recipient address")?;
 
-    let proof_content = std::fs::read_to_string(&proof_path).with_context(|| {
+    let proof_content = std::fs::read_to_string(&proof_path)
+        .with_context(|| format!("Failed to read proof file from {}", proof_path.display()))?;
+
+    let proof_data: ProofData = serde_json::from_str(&proof_content).with_context(|| {
         format!(
-            "Failed to read proof file from {}",
+            "Failed to parse proof JSON from file {}",
             proof_path.display()
         )
     })?;
-
-    let proof_data: ProofData = serde_json::from_str(&proof_content)
-        .with_context(|| {
-            format!(
-                "Failed to parse proof JSON from file {}",
-                proof_path.display()
-            )
-        })?;
 
     validate_proof_structure(&proof_data).context("Invalid proof structure")?;
 
@@ -201,18 +196,17 @@ pub async fn execute(
             println!();
 
             if confirmed {
-                println!(
-                    "{} {}",
-                    "✓".green(),
-                    "Transaction confirmed successfully!"
-                );
+                println!("{} {}", "✓".green(), "Transaction confirmed successfully!");
             } else {
                 println!(
                     "\n{} {}",
                     "Timeout:".yellow(),
                     "Transaction not confirmed within timeout. Check manually:"
                 );
-                println!("  {}", format!("https://optimism.etherscan.io/tx/{}", tx_hash).cyan());
+                println!(
+                    "  {}",
+                    format!("https://optimism.etherscan.io/tx/{}", tx_hash).cyan()
+                );
             }
         }
     }

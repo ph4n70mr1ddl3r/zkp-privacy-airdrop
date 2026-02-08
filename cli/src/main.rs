@@ -144,7 +144,11 @@ async fn main() -> Result<()> {
     } else {
         dirs::home_dir()
             .map(|home_dir| home_dir.join(".zkp-airdrop").join("config.toml"))
-            .ok_or_else(|| anyhow::anyhow!("Could not determine home directory. Please specify config file with --config."))?
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Could not determine home directory. Please specify config file with --config."
+                )
+            })?
     };
 
     let config = Config::load_or_default(&config_path)?;

@@ -74,22 +74,26 @@ impl AppState {
 
     pub async fn get_relayer_balance(&self) -> u128 {
         let address_str = self.relayer_address();
-        match Address::from_str(&address_str) {
-            Ok(address) => match Provider::<Http>::try_from(self.config.network.rpc_url.as_str()) {
-                Ok(provider) => match provider.get_balance(address, None).await {
-                    Ok(balance) => balance.as_u128(),
-                    Err(e) => {
-                        tracing::warn!("Failed to query balance from RPC: {}, using fallback", e);
-                        0
-                    }
-                },
-                Err(e) => {
-                    tracing::warn!("Failed to create RPC provider: {}, using fallback", e);
-                    0
-                }
-            },
+        let address = match Address::from_str(&address_str) {
+            Ok(addr) => addr,
             Err(e) => {
                 tracing::warn!("Invalid relayer address: {}, using fallback", e);
+                return 0;
+            }
+        };
+
+        let provider = match Provider::<Http>::try_from(self.config.network.rpc_url.as_str()) {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::warn!("Failed to create RPC provider: {}, using fallback", e);
+                return 0;
+            }
+        };
+
+        match provider.get_balance(address, None).await {
+            Ok(balance) => balance.as_u128(),
+            Err(e) => {
+                tracing::warn!("Failed to query balance from RPC: {}, using fallback", e);
                 0
             }
         }
@@ -115,10 +119,7 @@ impl AppState {
     }
 
     pub async fn check_db_connection(&self) -> bool {
-        sqlx::query("SELECT 1")
-            .fetch_one(&self.db)
-            .await
-            .is_ok()
+        sqlx::query("SELECT 1").fetch_one(&self.db).await.is_ok()
     }
 
     pub async fn check_redis_connection(&self) -> bool {
@@ -202,10 +203,14 @@ impl AppState {
         let key = format!("nullifier:{}", nullifier);
         let mut redis = self.redis.lock().await;
 
-        redis.exists::<_, i64>(&key).await.map(|count| count > 0).unwrap_or_else(|e| {
-            tracing::error!("Failed to check nullifier existence in Redis: {}", e);
-            false
-        })
+        redis
+            .exists::<_, i64>(&key)
+            .await
+            .map(|count| count > 0)
+            .unwrap_or_else(|e| {
+                tracing::error!("Failed to check nullifier existence in Redis: {}", e);
+                false
+            })
     }
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
@@ -281,8 +286,10 @@ impl AppState {
         let mut redis = self.redis.lock().await;
 
         let leaf_index: Option<u64> = redis.get(format!("{}:index", key)).await.ok().flatten()?;
-        let merkle_path: Option<String> = redis.get(format!("{}:path", key)).await.ok().flatten()?;
-        let path_indices: Option<String> = redis.get(format!("{}:indices", key)).await.ok().flatten()?;
+        let merkle_path: Option<String> =
+            redis.get(format!("{}:path", key)).await.ok().flatten()?;
+        let path_indices: Option<String> =
+            redis.get(format!("{}:indices", key)).await.ok().flatten()?;
 
         let path_data: Vec<String> = serde_json::from_str(&merkle_path?).ok()?;
         let indices_data: Vec<u8> = serde_json::from_str(&path_indices?).ok()?;

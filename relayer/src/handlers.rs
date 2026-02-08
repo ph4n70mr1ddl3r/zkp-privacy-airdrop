@@ -18,40 +18,29 @@ fn sanitize_error_message(error: &str) -> String {
         "credentials",
         "auth",
     ];
-    
+
     let lower = error.to_lowercase();
-    
+
     for pattern in &sensitive_patterns {
         if lower.contains(pattern) {
             return "Internal error occurred".to_string();
         }
     }
-    
+
     error.to_string()
 }
 
 fn is_valid_hex_string(input: &str, expected_len: usize) -> bool {
-    if input.len() != expected_len {
-        return false;
-    }
-    if !input.starts_with("0x") && !input.starts_with("0X") {
-        return false;
-    }
-    hex::decode(&input[2..]).is_ok()
+    input.len() == expected_len
+        && (input.starts_with("0x") || input.starts_with("0X"))
+        && hex::decode(&input[2..]).is_ok()
 }
 
 pub fn is_valid_address(address: &str) -> bool {
-    if !is_valid_hex_string(address, 42) {
-        return false;
-    }
-    let address_bytes = match hex::decode(&address[2..]) {
-        Ok(bytes) => bytes,
-        Err(_) => return false,
-    };
-    if address_bytes.len() != 20 {
-        return false;
-    }
-    Address::from_str(address).is_ok()
+    is_valid_hex_string(address, 42)
+        && hex::decode(&address[2..])
+            .map(|bytes| bytes.len() == 20 && Address::from_str(address).is_ok())
+            .unwrap_or(false)
 }
 
 pub fn is_valid_nullifier(nullifier: &str) -> bool {
@@ -336,22 +325,19 @@ pub async fn donate(claim: web::Json<DonateRequest>, state: web::Data<AppState>)
     }
 
     if let Err(e) = claim.amount.parse::<u128>() {
-        warn!(
-            "Invalid donation amount format from {}: {}",
-            claim.donor, e
-        );
+        warn!("Invalid donation amount format from {}: {}", claim.donor, e);
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
-            error: format!(
-                "Invalid donation amount '{}': {}",
-                claim.amount, e
-            ),
+            error: format!("Invalid donation amount '{}': {}", claim.amount, e),
             code: Some("INVALID_AMOUNT".to_string()),
             retry_after: None,
         });
     }
 
-    info!("Received donation from {} amount: {}", claim.donor, claim.amount);
+    info!(
+        "Received donation from {} amount: {}",
+        claim.donor, claim.amount
+    );
 
     let donation_address = state.relayer_address();
 
