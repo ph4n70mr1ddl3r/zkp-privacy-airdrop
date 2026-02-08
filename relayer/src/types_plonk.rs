@@ -42,7 +42,12 @@ impl Proof {
                     && proof.b.iter().all(|row| row.iter().all(|s| !s.is_empty()))
             }
             Proof::Plonk(ref proof) => {
-                proof.proof.len() >= 8 && proof.proof.iter().all(|s| !s.is_empty())
+                const MAX_PROOF_SIZE: usize = 100;
+                const MIN_PROOF_SIZE: usize = 8;
+                let size_ok =
+                    proof.proof.len() >= MIN_PROOF_SIZE && proof.proof.len() <= MAX_PROOF_SIZE;
+                let content_ok = proof.proof.iter().all(|s| !s.is_empty() && s.len() < 1000);
+                size_ok && content_ok
             }
         }
     }

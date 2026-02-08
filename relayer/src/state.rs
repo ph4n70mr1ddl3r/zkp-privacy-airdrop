@@ -214,17 +214,6 @@ impl AppState {
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
-        redis
-            .set::<_, _, ()>(&key, &claim.recipient)
-            .await
-            .map_err(|e| e.to_string())?;
-
-        {
-            let mut stats = self.stats.write();
-            stats.total_claims += 1;
-            stats.successful_claims += 1;
-        }
-
         let tx_bytes = uuid::Uuid::new_v4().to_bytes_le();
         let tx_hash = format!("0x{}", hex::encode(&tx_bytes[..]));
 
@@ -241,6 +230,17 @@ impl AppState {
             .set::<_, _, ()>(&timestamp_key, &timestamp)
             .await
             .map_err(|e| e.to_string())?;
+
+        redis
+            .set::<_, _, ()>(&key, &claim.recipient)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        {
+            let mut stats = self.stats.write();
+            stats.total_claims += 1;
+            stats.successful_claims += 1;
+        }
 
         drop(redis);
 

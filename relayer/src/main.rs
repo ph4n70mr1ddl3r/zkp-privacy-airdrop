@@ -9,6 +9,7 @@ mod types_plonk;
 use actix_web::http::header::HeaderName;
 use actix_web::{middleware, web, App, HttpServer};
 use std::sync::Arc;
+use tokio::signal;
 use tracing::info;
 
 #[actix_web::main]
@@ -37,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
     info!("Listening on {}", bind_address);
     info!("CORS allowed origins: {:?}", config.cors.allowed_origins);
 
-    HttpServer::new(move || {
+    let server = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(app_state.clone()))
             .wrap(middleware::Logger::default())
@@ -103,8 +104,28 @@ async fn main() -> anyhow::Result<()> {
             .route("/metrics", web::get().to(metrics::metrics))
     })
     .bind(&bind_address)?
-    .run()
-    .await?;
+    .run();
+
+    let handle = server.handle();
+    
+    tokio::spawn(async move {
+        let mut sigterm = signal::unix::signal(signal::unix::SignalKind::terminate()).unwrap();
+        let mut sigint = signal::unix::signal(signal::unix::SignalKind::interrupt()).unwrap();
+        
+        tokio::select! {
+            _ = sigterm.recv() => {
+                info!("Received SIGTERM, shutting down gracefully...");
+            }
+            _ = sigint.recv() => {
+                info!("Received SIGINT, shutting down gracefully...");
+            }
+        }
+        
+        info!("Stopping server gracefully...");
+        let _ = handle.stop(true).await;
+    });
+
+    server.await?;
 
     Ok(())
 }

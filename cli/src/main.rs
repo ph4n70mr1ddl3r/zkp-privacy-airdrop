@@ -17,7 +17,7 @@ use config::Config;
 #[derive(Parser)]
 #[command(name = "zkp-airdrop")]
 #[command(about = "ZKP Privacy Airdrop CLI", long_about = None)]
-#[command(version = "1.0.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

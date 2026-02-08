@@ -7,19 +7,41 @@ use crate::state::AppState;
 use crate::types_plonk::*;
 
 fn sanitize_error_message(error: &str) -> String {
+    let sensitive_patterns = [
+        "private key",
+        "secret",
+        "password",
+        "0x",
+        "seed",
+        "mnemonic",
+        "wallet",
+        "credentials",
+        "auth",
+    ];
+    
     let lower = error.to_lowercase();
-    if lower.contains("private key") || lower.contains("secret") || lower.contains("password") {
-        "Internal error occurred".to_string()
-    } else {
-        error.to_string()
+    
+    for pattern in &sensitive_patterns {
+        if lower.contains(pattern) {
+            return "Internal error occurred".to_string();
+        }
     }
+    
+    error.to_string()
+}
+
+fn is_valid_hex_string(input: &str, expected_len: usize) -> bool {
+    if input.len() != expected_len {
+        return false;
+    }
+    if !input.starts_with("0x") && !input.starts_with("0X") {
+        return false;
+    }
+    hex::decode(&input[2..]).is_ok()
 }
 
 pub fn is_valid_address(address: &str) -> bool {
-    if address.len() != 42 {
-        return false;
-    }
-    if !address.starts_with("0x") && !address.starts_with("0X") {
+    if !is_valid_hex_string(address, 42) {
         return false;
     }
     let address_bytes = match hex::decode(&address[2..]) {
@@ -33,23 +55,11 @@ pub fn is_valid_address(address: &str) -> bool {
 }
 
 pub fn is_valid_nullifier(nullifier: &str) -> bool {
-    if nullifier.len() != 66 {
-        return false;
-    }
-    if !nullifier.starts_with("0x") && !nullifier.starts_with("0X") {
-        return false;
-    }
-    hex::decode(&nullifier[2..]).is_ok()
+    is_valid_hex_string(nullifier, 66)
 }
 
 pub fn is_valid_merkle_root(merkle_root: &str) -> bool {
-    if merkle_root.len() != 66 {
-        return false;
-    }
-    if !merkle_root.starts_with("0x") && !merkle_root.starts_with("0X") {
-        return false;
-    }
-    hex::decode(&merkle_root[2..]).is_ok()
+    is_valid_hex_string(merkle_root, 66)
 }
 
 pub async fn health(state: web::Data<AppState>) -> impl Responder {
@@ -79,7 +89,7 @@ pub async fn health(state: web::Data<AppState>) -> impl Responder {
     HttpResponse::build(http_status).json(HealthResponse {
         status,
         timestamp: chrono::Utc::now().to_rfc3339(),
-        version: "1.0.0".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
         services,
     })
 }
