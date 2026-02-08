@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use ark_bn254::Fq;
+use chrono::Utc;
 use ethers::types::{Address, H256};
 use serde::{Deserialize, Serialize};
 
@@ -79,7 +80,6 @@ pub fn generate_plonk_proof(
     private_key: &[u8; 32],
     recipient: Address,
     merkle_tree: &MerkleTree,
-    proving_key: &ProvingKey<Bn254>,
 ) -> Result<PLONKProofData> {
     let start = Instant::now();
 
@@ -103,6 +103,7 @@ pub fn generate_plonk_proof(
     // Step 5: Prepare public inputs
     // Note: PLONK requires 3 field elements for each public input
     // We need to pad properly
+    let merkle_root = merkle_tree.root;
     let merkle_root_field = {
         let mut bytes = [0u8; 32];
         merkle_root[..].copy_to_slice(&mut bytes);
@@ -156,7 +157,7 @@ pub fn generate_plonk_proof(
         nullifier,
         recipient,
         merkle_root: H256::from_slice(merkle_tree.root),
-        generated_at: chrono::Utc::now().to_rfc3339(),
+        generated_at: Utc::now().to_rfc3339(),
     })
 }
 

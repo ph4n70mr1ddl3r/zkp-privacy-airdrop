@@ -21,7 +21,7 @@ pub fn generate_nullifier(private_key: &[u8; 32]) -> String {
 
     assert_eq!(nullifier_input.len(), 96); // 23 + 32 + 41 = 96 bytes
 
-    poseidon_hash(&nullifier_input)
+    keccak_hash(&nullifier_input)
 }
 
 pub fn derive_address(private_key: &[u8; 32]) -> Result<Address> {
@@ -114,6 +114,8 @@ pub fn validate_nullifier(nullifier: &str) -> Result<()> {
     Ok(())
 }
 
+// Note: This is a placeholder that uses Keccak instead of actual Poseidon hash
+// TODO: Implement actual Poseidon hash from ark-poseidon or similar library
 fn poseidon_hash(input: &[u8]) -> String {
     keccak_hash(input)
 }
@@ -125,6 +127,8 @@ fn keccak_hash(input: &[u8]) -> String {
     hex::encode(result)
 }
 
+// Note: This is a placeholder that uses Keccak instead of actual Poseidon hash
+// TODO: Implement actual Poseidon hash from ark-poseidon or similar library
 pub fn poseidon_hash_field(input: &[u8; 32]) -> Result<String> {
     let hash = keccak_hash(input);
     let hash_bytes =

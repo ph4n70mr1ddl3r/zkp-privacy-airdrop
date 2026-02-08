@@ -19,7 +19,7 @@ pub async fn execute(
     config: &Config,
 ) -> Result<()> {
     let proof_system_lower = proof_system.to_lowercase();
-    let use_plonk = proof_system_lower == "plonk" || proof_system_lower == "plonk";
+    let use_plonk = proof_system_lower == "plonk" || proof_system_lower == "groth16";
     
     info!("Generating {} proof...", proof_system);
     

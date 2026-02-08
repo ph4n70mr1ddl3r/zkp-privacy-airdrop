@@ -52,8 +52,11 @@ impl MerkleTree {
         }
 
         let mut level = self.leaves.clone();
+        self.nodes.clear();
 
         for _ in 0..self.height {
+            self.nodes.push(level.clone());
+
             if level.len() == 1 {
                 self.root = level[0];
                 return;
@@ -91,14 +94,20 @@ impl MerkleTree {
             }
 
             let is_right = idx % 2 == 1;
-            indices.push(!is_right);
+            indices.push(is_right);
 
-            if is_right && idx > 0 {
-                siblings.push(level[idx - 1]);
-            } else if idx + 1 < level.len() {
-                siblings.push(level[idx + 1]);
+            if is_right {
+                if idx > 0 {
+                    siblings.push(level[idx - 1]);
+                } else {
+                    siblings.push([0u8; 32]);
+                }
             } else {
-                siblings.push([0u8; 32]);
+                if idx + 1 < level.len() {
+                    siblings.push(level[idx + 1]);
+                } else {
+                    siblings.push([0u8; 32]);
+                }
             }
 
             idx /= 2;

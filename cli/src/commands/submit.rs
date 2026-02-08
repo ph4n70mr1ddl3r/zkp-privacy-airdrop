@@ -108,9 +108,7 @@ pub async fn execute(
                 }
                 "INSUFFICIENT_FUNDS" => {
                     println!("{} The relayer is temporarily out of funds.", "Info:".blue());
-                    if let Some(donation_addr) = submit_response.error.as_ref() {
-                        println!("{} Donation address: {}", "Info:".blue(), donation_addr);
-                    }
+                    println!("{} Consider submitting directly to the contract or try another relayer.", "Info:".blue());
                 }
                 "PLONK_FORMAT_ERROR" => {
                     println!("{} PLONK proof format is invalid.", "Error:".red());
