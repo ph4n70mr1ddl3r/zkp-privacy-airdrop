@@ -1,13 +1,13 @@
 use crate::config::Config;
 use crate::types_plonk::*;
-use sqlx::PgPool;
-use redis::aio::ConnectionManager;
-use std::sync::Arc;
-use parking_lot::RwLock;
-use tokio::sync::Mutex;
-use ethers::providers::{Provider, Http, Middleware};
+use ethers::providers::{Http, Middleware, Provider};
 use ethers::types::Address;
+use parking_lot::RwLock;
+use redis::aio::ConnectionManager;
+use sqlx::PgPool;
 use std::str::FromStr;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 pub struct AppState {
     pub config: Arc<Config>,
@@ -74,26 +74,22 @@ impl AppState {
         }
     }
 
-    pub async fn get_relayer_balance(&self) -> u64 {
+    pub async fn get_relayer_balance(&self) -> u128 {
         let address_str = self.relayer_address();
         match Address::from_str(&address_str) {
-            Ok(address) => {
-                match Provider::<Http>::try_from(self.config.network.rpc_url.as_str()) {
-                    Ok(provider) => {
-                        match provider.get_balance(address, None).await {
-                            Ok(balance) => balance.as_u128() as u64,
-                            Err(e) => {
-                                tracing::warn!("Failed to query balance from RPC: {}, using fallback", e);
-                                0
-                            }
-                        }
-                    }
+            Ok(address) => match Provider::<Http>::try_from(self.config.network.rpc_url.as_str()) {
+                Ok(provider) => match provider.get_balance(address, None).await {
+                    Ok(balance) => balance.as_u128(),
                     Err(e) => {
-                        tracing::warn!("Failed to create RPC provider: {}, using fallback", e);
+                        tracing::warn!("Failed to query balance from RPC: {}, using fallback", e);
                         0
                     }
+                },
+                Err(e) => {
+                    tracing::warn!("Failed to create RPC provider: {}, using fallback", e);
+                    0
                 }
-            }
+            },
             Err(e) => {
                 tracing::warn!("Invalid relayer address: {}, using fallback", e);
                 0
@@ -103,9 +99,12 @@ impl AppState {
 
     pub async fn has_sufficient_balance(&self) -> bool {
         let balance = self.get_relayer_balance().await;
-        let min_critical: u64 = self.config.relayer.min_balance_critical
+        let min_critical: u128 = self
+            .config
+            .relayer
+            .min_balance_critical
             .parse()
-            .unwrap_or(500_000_000_000_000_000_u64);
+            .unwrap_or(500_000_000_000_000_000_u128);
         balance > min_critical
     }
 
@@ -163,23 +162,25 @@ impl AppState {
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
         use rand::RngCore;
-        let mut tx_bytes = [0u8; 32];
-        rand::thread_rng().fill_bytes(&mut tx_bytes);
-        let tx_hash = format!("0x{}", hex::encode(tx_bytes));
 
         use redis::AsyncCommands;
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
-        let result = redis.set(&key, &claim.recipient).await.map_err(|e| e.to_string());
-        drop(redis);
+        let result = redis
+            .set(&key, &claim.recipient)
+            .await
+            .map_err(|e| e.to_string());
 
         let tx_hash = match result {
             Ok(()) => {
                 let mut stats = self.stats.write();
                 stats.total_claims += 1;
                 stats.successful_claims += 1;
-                Ok(tx_hash)
+
+                let mut tx_bytes = [0u8; 32];
+                rand::thread_rng().fill_bytes(&mut tx_bytes);
+                Ok(format!("0x{}", hex::encode(tx_bytes)))
             }
             Err(e) => {
                 let mut stats = self.stats.write();
@@ -188,6 +189,8 @@ impl AppState {
                 Err(e)
             }
         }?;
+
+        drop(redis);
 
         Ok(tx_hash)
     }

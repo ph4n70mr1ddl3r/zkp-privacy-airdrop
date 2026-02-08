@@ -1,27 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-/**
- * @title Privacy Airdrop with PLONK Verification
- * @notice ZKP Privacy Airdrop contract using PLONK proofs
- * @dev Uses Perpetual Powers of Tau - no trusted setup ceremony required
- */
-abstract contract ReentrancyGuard {
-    uint256 private constant _NOT_ENTERED = 1;
-    uint256 private constant _ENTERED = 2;
-    uint256 private _status;
-
-    constructor() {
-        _status = _NOT_ENTERED;
-    }
-
-    modifier nonReentrant() {
-        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
-        _status = _ENTERED;
-        _;
-        _status = _NOT_ENTERED;
-    }
-}
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title PrivacyAirdropPLONK
@@ -29,7 +9,7 @@ abstract contract ReentrancyGuard {
  * @dev Allows users to claim tokens without revealing their address from the Merkle tree
  * Uses universal trusted setup (Perpetual Powers of Tau) instead of per-circuit trusted setup
  */
-contract PrivacyAirdropPLONK {
+contract PrivacyAirdropPLONK is ReentrancyGuard {
     bytes32 public immutable merkleRoot;
     mapping(bytes32 => bool) public nullifiers;
     address public immutable token;
@@ -122,19 +102,9 @@ contract PrivacyAirdropPLONK {
     /**
      * @notice Estimate gas required for a PLONK claim transaction
      * @dev PLONK verification requires more gas than Groth16 (~900K vs ~300K)
-     * @param proof PLONK proof (unused in estimate, kept for interface)
-     * @param nullifier Nullifier hash (unused in estimate, kept for interface)
-     * @param recipient Recipient address (unused in estimate, kept for interface)
      * @return Estimated gas in wei (conservative 1.3M with buffer)
      */
-    function estimateClaimGas(
-        PLONKProof calldata proof,
-        bytes32 nullifier,
-        address recipient
-    ) external view returns (uint256) {
-        proof;
-        nullifier;
-        recipient;
+    function estimateClaimGas() external pure returns (uint256) {
         return 1_300_000;
     }
 }

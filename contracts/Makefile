@@ -1,4 +1,4 @@
-.PHONY: build test clean deploy:testnet deploy:mainnet
+.PHONY: build test clean deploy_testnet deploy_mainnet
 
 build:
 	@echo "Compiling contracts..."
@@ -10,11 +10,11 @@ test:
 	@echo "Running contract tests..."
 	npx hardhat test
 
-deploy:testnet:
+deploy_testnet:
 	@echo "Deploying to Optimism Sepolia testnet..."
 	npm run deploy:testnet
 
-deploy:mainnet:
+deploy_mainnet:
 	@echo "Deploying to Optimism mainnet..."
 	npm run deploy:mainnet
 

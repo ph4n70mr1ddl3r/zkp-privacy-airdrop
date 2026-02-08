@@ -1,22 +1,20 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
-use tracing::{info, error, warn};
 use ethers::types::Address;
 use std::str::FromStr;
+use tracing::{error, info, warn};
 
 use crate::state::AppState;
 use crate::types_plonk::*;
 
-fn is_valid_address(address: &str) -> bool {
+pub fn is_valid_address(address: &str) -> bool {
     address.len() == 42 && address.starts_with("0x") && Address::from_str(address).is_ok()
 }
 
-fn is_valid_nullifier(nullifier: &str) -> bool {
+pub fn is_valid_nullifier(nullifier: &str) -> bool {
     nullifier.len() == 66 && nullifier.starts_with("0x") && hex::decode(&nullifier[2..]).is_ok()
 }
 
-pub async fn health(
-    state: web::Data<AppState>,
-) -> impl Responder {
+pub async fn health(state: web::Data<AppState>) -> impl Responder {
     let services = Services {
         database: "connected".to_string(),
         redis: "connected".to_string(),
@@ -29,7 +27,11 @@ pub async fn health(
     };
 
     HttpResponse::Ok().json(HealthResponse {
-        status: if state.is_healthy().await { "healthy".to_string() } else { "unhealthy".to_string() },
+        status: if state.is_healthy().await {
+            "healthy".to_string()
+        } else {
+            "unhealthy".to_string()
+        },
         timestamp: chrono::Utc::now().to_rfc3339(),
         version: "1.0.0".to_string(),
         services,
@@ -45,7 +47,8 @@ pub async fn submit_claim(
         warn!("Invalid nullifier format: {}", claim.nullifier);
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
-            error: "Invalid nullifier format. Expected 66-character hex string starting with 0x.".to_string(),
+            error: "Invalid nullifier format. Expected 66-character hex string starting with 0x."
+                .to_string(),
             code: Some("INVALID_NULLIFIER".to_string()),
             retry_after: None,
         });
@@ -61,10 +64,17 @@ pub async fn submit_claim(
         });
     }
 
-    info!("Received {} claim submission from nullifier: {}", claim.proof.type_name(), claim.nullifier);
+    info!(
+        "Received {} claim submission from nullifier: {}",
+        claim.proof.type_name(),
+        claim.nullifier
+    );
 
     // Rate limiting check
-    if let Err(e) = state.check_rate_limit(&req, &claim.nullifier, RateLimitType::SubmitClaim).await {
+    if let Err(e) = state
+        .check_rate_limit(&req, &claim.nullifier, RateLimitType::SubmitClaim)
+        .await
+    {
         warn!("Rate limit exceeded: {}", e);
         return HttpResponse::TooManyRequests().json(ErrorResponse {
             success: false,
@@ -79,7 +89,9 @@ pub async fn submit_claim(
         warn!("Nullifier already claimed: {}", claim.nullifier);
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
-            error: "This nullifier has already been used. Each qualified account can only claim once.".to_string(),
+            error:
+                "This nullifier has already been used. Each qualified account can only claim once."
+                    .to_string(),
             code: Some("ALREADY_CLAIMED".to_string()),
             retry_after: None,
         });
@@ -96,7 +108,10 @@ pub async fn submit_claim(
         let error_message = if claim.proof.type_name() == "Plonk" {
             "PLONK proof format is invalid. Expected 8 field elements.".to_string()
         } else {
-            format!("The provided {} proof is invalid. Please regenerate proof with correct inputs.", claim.proof.type_name())
+            format!(
+                "The provided {} proof is invalid. Please regenerate proof with correct inputs.",
+                claim.proof.type_name()
+            )
         };
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
@@ -127,7 +142,11 @@ pub async fn submit_claim(
     // Submit transaction
     match state.submit_claim(&claim).await {
         Ok(tx_hash) => {
-            info!("Claim submitted successfully ({}): {}", claim.proof.type_name(), tx_hash);
+            info!(
+                "Claim submitted successfully ({}): {}",
+                claim.proof.type_name(),
+                tx_hash
+            );
             HttpResponse::Ok().json(SubmitClaimResponse {
                 success: true,
                 tx_hash: Some(tx_hash),
@@ -149,17 +168,15 @@ pub async fn submit_claim(
     }
 }
 
-pub async fn check_status(
-    state: web::Data<AppState>,
-    path: web::Path<String>,
-) -> impl Responder {
+pub async fn check_status(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
     let nullifier = path.into_inner();
 
     if !is_valid_nullifier(&nullifier) {
         warn!("Invalid nullifier format: {}", nullifier);
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
-            error: "Invalid nullifier format. Expected 66-character hex string starting with 0x.".to_string(),
+            error: "Invalid nullifier format. Expected 66-character hex string starting with 0x."
+                .to_string(),
             code: Some("INVALID_NULLIFIER".to_string()),
             retry_after: None,
         });
@@ -180,9 +197,7 @@ pub async fn check_status(
     }
 }
 
-pub async fn get_merkle_root(
-    state: web::Data<AppState>,
-) -> impl Responder {
+pub async fn get_merkle_root(state: web::Data<AppState>) -> impl Responder {
     HttpResponse::Ok().json(MerkleRootResponse {
         merkle_root: state.config.merkle_tree.merkle_root.clone(),
         block_number: 0,
@@ -190,9 +205,7 @@ pub async fn get_merkle_root(
     })
 }
 
-pub async fn get_contract_info(
-    state: web::Data<AppState>,
-) -> impl Responder {
+pub async fn get_contract_info(state: web::Data<AppState>) -> impl Responder {
     HttpResponse::Ok().json(ContractInfoResponse {
         network: "optimism".to_string(),
         chain_id: state.config.network.chain_id,
@@ -207,7 +220,12 @@ pub async fn get_contract_info(
                 symbol: "ZKP".to_string(),
                 decimals: 18,
             },
-            relayer_registry: state.config.network.contracts.relayer_registry_address.clone()
+            relayer_registry: state
+                .config
+                .network
+                .contracts
+                .relayer_registry_address
+                .clone()
                 .map(|addr| ContractDetails {
                     address: addr,
                     deployed_at: None,
@@ -219,10 +237,7 @@ pub async fn get_contract_info(
     })
 }
 
-pub async fn donate(
-    claim: web::Json<DonateRequest>,
-    state: web::Data<AppState>,
-) -> impl Responder {
+pub async fn donate(claim: web::Json<DonateRequest>, state: web::Data<AppState>) -> impl Responder {
     if !is_valid_address(&claim.donor) {
         warn!("Invalid donor address: {}", claim.donor);
         return HttpResponse::BadRequest().json(ErrorResponse {
@@ -234,9 +249,9 @@ pub async fn donate(
     }
 
     info!("Received donation from {}", claim.donor);
-    
+
     let donation_address = state.relayer_address();
-    
+
     HttpResponse::Ok().json(DonateResponse {
         donation_address,
         amount_received: claim.amount.clone(),
@@ -245,9 +260,7 @@ pub async fn donate(
     })
 }
 
-pub async fn get_stats(
-    state: web::Data<AppState>,
-) -> impl Responder {
+pub async fn get_stats(state: web::Data<AppState>) -> impl Responder {
     let response_stats = state.get_stats().await;
     HttpResponse::Ok().json(response_stats)
 }
@@ -272,7 +285,11 @@ pub async fn get_merkle_path(
     info!("Getting Merkle path for address: {}", address);
 
     // Rate limiting
-    if state.check_rate_limit(&req, &address, RateLimitType::GetMerklePath).await.is_err() {
+    if state
+        .check_rate_limit(&req, &address, RateLimitType::GetMerklePath)
+        .await
+        .is_err()
+    {
         return HttpResponse::TooManyRequests().json(ErrorResponse {
             success: false,
             error: "Rate limit exceeded. Try again later.".to_string(),

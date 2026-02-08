@@ -1,15 +1,15 @@
 mod config;
+mod db;
 mod handlers;
 mod metrics;
-mod state;
-mod db;
 mod redis;
+mod state;
 mod types_plonk;
 
-use actix_web::{App, HttpServer, middleware, web};
 use actix_web::http::header::HeaderName;
-use tracing::info;
+use actix_web::{middleware, web, App, HttpServer};
 use std::sync::Arc;
+use tracing::info;
 
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
@@ -19,8 +19,7 @@ async fn main() -> anyhow::Result<()> {
         .with_max_level(tracing::Level::INFO)
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to set tracing subscriber");
+    tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
 
     info!("Starting ZKP Airdrop Relayer...");
 
@@ -32,11 +31,7 @@ async fn main() -> anyhow::Result<()> {
 
     let allowed_origins = Arc::new(config.cors.allowed_origins.clone());
 
-    let app_state = state::AppState::new(
-        config.clone(),
-        db_pool,
-        redis_client,
-    ).await?;
+    let app_state = state::AppState::new(config.clone(), db_pool, redis_client).await?;
 
     info!("Listening on {}", bind_address);
     info!("CORS allowed origins: {:?}", config.cors.allowed_origins);
@@ -52,23 +47,33 @@ async fn main() -> anyhow::Result<()> {
                 actix_cors::Cors::default()
                     .allowed_origin_fn(move |origin, _req_head| {
                         if let Ok(origin_str) = origin.to_str() {
-                            allowed_origins.iter().any(|allowed| {
-                                allowed == "*" || origin_str == *allowed
-                            })
+                            allowed_origins
+                                .iter()
+                                .any(|allowed| allowed == "*" || origin_str == *allowed)
                         } else {
                             false
                         }
                     })
                     .allowed_methods(
-                        config.cors.allowed_methods.iter().map(|s| s.as_str()).collect::<Vec<_>>()
+                        config
+                            .cors
+                            .allowed_methods
+                            .iter()
+                            .map(|s| s.as_str())
+                            .collect::<Vec<_>>(),
                     )
                     .allowed_headers(
-                        config.cors.allowed_headers.iter().map(|h| {
-                            HeaderName::from_bytes(h.as_bytes()).unwrap_or_else(|_| {
-                                eprintln!("Invalid header name: {}", h);
-                                HeaderName::from_static("content-type")
+                        config
+                            .cors
+                            .allowed_headers
+                            .iter()
+                            .map(|h| {
+                                HeaderName::from_bytes(h.as_bytes()).unwrap_or_else(|_| {
+                                    eprintln!("Invalid header name: {}", h);
+                                    HeaderName::from_static("content-type")
+                                })
                             })
-                        }).collect::<Vec<_>>()
+                            .collect::<Vec<_>>(),
                     )
                     .max_age(config.cors.max_age)
                     .supports_credentials()
@@ -78,12 +83,18 @@ async fn main() -> anyhow::Result<()> {
                 web::scope("/api/v1")
                     .route("/health", web::get().to(handlers::health))
                     .route("/submit-claim", web::post().to(handlers::submit_claim))
-                    .route("/check-status/{nullifier}", web::get().to(handlers::check_status))
+                    .route(
+                        "/check-status/{nullifier}",
+                        web::get().to(handlers::check_status),
+                    )
                     .route("/merkle-root", web::get().to(handlers::get_merkle_root))
                     .route("/contract-info", web::get().to(handlers::get_contract_info))
                     .route("/donate", web::post().to(handlers::donate))
                     .route("/stats", web::get().to(handlers::get_stats))
-                    .route("/merkle-path/{address}", web::get().to(handlers::get_merkle_path))
+                    .route(
+                        "/merkle-path/{address}",
+                        web::get().to(handlers::get_merkle_path),
+                    ),
             )
             .route("/metrics", web::get().to(metrics::metrics))
     })

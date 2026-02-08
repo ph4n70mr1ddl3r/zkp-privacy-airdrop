@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 /**
  * @title IVerifier
  * @notice Interface for Groth16 proof verification
@@ -23,32 +25,11 @@ interface IVerifier {
 }
 
 /**
- * @title ReentrancyGuard
- * @notice Contract module that helps prevent reentrant calls
- */
-abstract contract ReentrancyGuard {
-    uint256 private constant _NOT_ENTERED = 1;
-    uint256 private constant _ENTERED = 2;
-    uint256 private _status;
-
-    constructor() {
-        _status = _NOT_ENTERED;
-    }
-
-    modifier nonReentrant() {
-        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
-        _status = _ENTERED;
-        _;
-        _status = _NOT_ENTERED;
-    }
-}
-
-/**
  * @title PrivacyAirdrop
  * @notice Privacy-preserving ERC20 token airdrop using Groth16 ZK proofs
  * @dev Allows users to claim tokens without revealing their address from the Merkle tree
  */
-contract PrivacyAirdrop {
+contract PrivacyAirdrop is ReentrancyGuard {
     bytes32 public immutable merkleRoot;
     mapping(bytes32 => bool) public nullifiers;
     address public immutable token;
@@ -116,10 +97,10 @@ contract PrivacyAirdrop {
 
         nullifiers[nullifier] = true;
 
-        (bool success, ) = address(token).call(
+        (bool success, bytes memory data) = address(token).call(
             abi.encodeWithSelector(IERC20.transfer.selector, recipient, claimAmount)
         );
-        require(success, "Token transfer failed");
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "Token transfer failed");
 
         emit Claimed(nullifier, recipient, block.timestamp);
     }
@@ -135,19 +116,9 @@ contract PrivacyAirdrop {
 
     /**
      * @notice Estimate gas required for a claim transaction
-     * @param proof Groth16 proof (unused in estimate, kept for interface)
-     * @param nullifier Nullifier hash (unused in estimate, kept for interface)
-     * @param recipient Recipient address (unused in estimate, kept for interface)
      * @return Estimated gas in wei (conservative 700K with buffer)
      */
-    function estimateClaimGas(
-        Proof calldata proof,
-        bytes32 nullifier,
-        address recipient
-    ) external view returns (uint256) {
-        proof;
-        nullifier;
-        recipient;
+    function estimateClaimGas() external pure returns (uint256) {
         return 700_000;
     }
 }

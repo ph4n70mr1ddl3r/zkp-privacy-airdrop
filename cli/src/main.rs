@@ -2,15 +2,15 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use std::path::PathBuf;
-use tracing::{info, error, warn};
+use tracing::{error, info, warn};
 use tracing_subscriber;
 
 mod commands;
 mod config;
 mod crypto;
-mod types;
 mod plonk_prover;
 mod tree;
+mod types;
 
 use config::Config;
 
@@ -36,39 +36,39 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
-    enum Commands {
-        GenerateProof {
-            #[arg(long)]
-            private_key: Option<String>,
-            #[arg(long)]
-            private_key_file: Option<PathBuf>,
-            #[arg(long)]
-            private_key_stdin: bool,
-            #[arg(long)]
-            recipient: String,
-            #[arg(long)]
-            merkle_tree: String,
-            #[arg(long)]
-            output: Option<PathBuf>,
-            #[arg(long, default_value = "json")]
-            format: String,
-        },
-        GenerateProofPlonk {
-            #[arg(long)]
-            private_key: Option<String>,
-            #[arg(long)]
-            private_key_file: Option<PathBuf>,
-            #[arg(long)]
-            private_key_stdin: bool,
-            #[arg(long)]
-            recipient: String,
-            #[arg(long)]
-            merkle_tree: String,
-            #[arg(long)]
-            output: Option<PathBuf>,
-            #[arg(long, default_value = "json")]
-            format: String,
-        },
+enum Commands {
+    GenerateProof {
+        #[arg(long)]
+        private_key: Option<String>,
+        #[arg(long)]
+        private_key_file: Option<PathBuf>,
+        #[arg(long)]
+        private_key_stdin: bool,
+        #[arg(long)]
+        recipient: String,
+        #[arg(long)]
+        merkle_tree: String,
+        #[arg(long)]
+        output: Option<PathBuf>,
+        #[arg(long, default_value = "json")]
+        format: String,
+    },
+    GenerateProofPlonk {
+        #[arg(long)]
+        private_key: Option<String>,
+        #[arg(long)]
+        private_key_file: Option<PathBuf>,
+        #[arg(long)]
+        private_key_stdin: bool,
+        #[arg(long)]
+        recipient: String,
+        #[arg(long)]
+        merkle_tree: String,
+        #[arg(long)]
+        output: Option<PathBuf>,
+        #[arg(long, default_value = "json")]
+        format: String,
+    },
     VerifyProof {
         #[arg(long)]
         proof: PathBuf,
@@ -160,16 +160,19 @@ async fn main() -> Result<()> {
             merkle_tree,
             output,
             format,
-        } => commands::generate_proof::execute(
-            private_key,
-            private_key_file,
-            private_key_stdin,
-            recipient,
-            merkle_tree,
-            output,
-            format,
-            &config,
-        ).await,
+        } => {
+            commands::generate_proof::execute(
+                private_key,
+                private_key_file,
+                private_key_stdin,
+                recipient,
+                merkle_tree,
+                output,
+                format,
+                &config,
+            )
+            .await
+        }
         Commands::GenerateProofPlonk {
             private_key,
             private_key_file,
@@ -178,26 +181,25 @@ async fn main() -> Result<()> {
             merkle_tree,
             output,
             format,
-        } => commands::generate_proof_plonk::execute(
-            private_key,
-            private_key_file,
-            private_key_stdin,
-            recipient,
-            merkle_tree,
-            output,
-            format,
-            cli.proof_system.unwrap_or_else(|| "groth16".to_string()),
-            &config,
-        ).await,
+        } => {
+            commands::generate_proof_plonk::execute(
+                private_key,
+                private_key_file,
+                private_key_stdin,
+                recipient,
+                merkle_tree,
+                output,
+                format,
+                cli.proof_system.unwrap_or_else(|| "groth16".to_string()),
+                &config,
+            )
+            .await
+        }
         Commands::VerifyProof {
             proof,
             merkle_root,
             verification_key,
-        } => commands::verify_proof::execute(
-            proof,
-            merkle_root,
-            verification_key,
-        ),
+        } => commands::verify_proof::execute(proof, merkle_root, verification_key),
 
         Commands::Submit {
             proof,
@@ -205,25 +207,13 @@ async fn main() -> Result<()> {
             recipient,
             wait,
             timeout,
-        } => commands::submit::execute(
-            proof,
-            relayer_url,
-            recipient,
-            wait,
-            timeout,
-            &config,
-        ).await,
+        } => commands::submit::execute(proof, relayer_url, recipient, wait, timeout, &config).await,
 
         Commands::CheckStatus {
             nullifier,
             relayer_url,
             rpc_url,
-        } => commands::check_status::execute(
-            nullifier,
-            relayer_url,
-            rpc_url,
-            &config,
-        ).await,
+        } => commands::check_status::execute(nullifier, relayer_url, rpc_url, &config).await,
 
         Commands::DownloadTree {
             source,
@@ -232,20 +222,12 @@ async fn main() -> Result<()> {
             verify,
             resume,
             chunk_size,
-        } => commands::download_tree::execute(
-            source,
-            output,
-            format,
-            verify,
-            resume,
-            chunk_size,
-        ).await,
+        } => {
+            commands::download_tree::execute(source, output, format, verify, resume, chunk_size)
+                .await
+        }
 
-        Commands::Config { action } => commands::config_cmd::execute(
-            action,
-            &config_path,
-            &config,
-        ),
+        Commands::Config { action } => commands::config_cmd::execute(action, &config_path, &config),
     };
 
     if let Err(e) = &result {

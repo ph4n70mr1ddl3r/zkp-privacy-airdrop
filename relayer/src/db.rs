@@ -1,6 +1,6 @@
-use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use anyhow::Result;
+use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 use std::time::Duration;
 
 pub async fn create_pool(database_url: &str) -> Result<PgPool> {

@@ -1,5 +1,5 @@
 use actix_web::HttpResponse;
-use prometheus::{TextEncoder, Encoder};
+use prometheus::{Encoder, TextEncoder};
 use tracing::error;
 
 pub async fn metrics() -> HttpResponse {

@@ -1,5 +1,6 @@
 """Integration tests for ZKP Privacy Airdrop"""
 
+import os
 import pytest
 import requests
 from web3 import Web3
@@ -7,7 +8,7 @@ from web3 import Web3
 
 @pytest.fixture
 def relayer_url():
-    return "http://localhost:8080"
+    return os.getenv("RELAYER_URL", "http://localhost:8080")
 
 
 def test_health_endpoint(relayer_url):

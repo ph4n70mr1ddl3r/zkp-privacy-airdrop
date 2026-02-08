@@ -1,6 +1,7 @@
 """Integration tests for PLONK proof system"""
 
 import pytest
+import os
 import requests
 from web3 import Web3
 from typing import Dict, Any
@@ -8,7 +9,7 @@ from typing import Dict, Any
 
 @pytest.fixture
 def relayer_url() -> str:
-    return "http://localhost:8080"
+    return os.getenv("RELAYER_URL", "http://localhost:8080")
 
 
 @pytest.fixture
