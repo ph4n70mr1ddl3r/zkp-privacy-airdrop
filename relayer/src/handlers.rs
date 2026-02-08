@@ -42,6 +42,16 @@ pub fn is_valid_nullifier(nullifier: &str) -> bool {
     hex::decode(&nullifier[2..]).is_ok()
 }
 
+pub fn is_valid_merkle_root(merkle_root: &str) -> bool {
+    if merkle_root.len() != 66 {
+        return false;
+    }
+    if !merkle_root.starts_with("0x") && !merkle_root.starts_with("0X") {
+        return false;
+    }
+    hex::decode(&merkle_root[2..]).is_ok()
+}
+
 pub async fn health(state: web::Data<AppState>) -> impl Responder {
     let services = Services {
         database: state.get_db_status().to_string(),
@@ -96,6 +106,17 @@ pub async fn submit_claim(
             success: false,
             error: "Invalid Ethereum address format for recipient.".to_string(),
             code: Some("INVALID_ADDRESS".to_string()),
+            retry_after: None,
+        });
+    }
+
+    if !is_valid_merkle_root(&claim.merkle_root) {
+        warn!("Invalid merkle_root format: {}", claim.merkle_root);
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Invalid merkle_root format. Expected 66-character hex string starting with 0x."
+                .to_string(),
+            code: Some("INVALID_MERKLE_ROOT".to_string()),
             retry_after: None,
         });
     }

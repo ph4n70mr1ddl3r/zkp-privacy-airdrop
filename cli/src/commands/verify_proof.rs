@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use std::path::PathBuf;
 
+use crate::crypto::validate_nullifier;
+
 pub fn execute(
     proof_path: PathBuf,
     merkle_root: String,
@@ -19,6 +21,8 @@ pub fn execute(
         .as_str()
         .context("Missing nullifier in proof")?;
 
+    validate_nullifier(proof_nullifier).context("Invalid nullifier in proof")?;
+
     let proof_root = proof_data["merkle_root"]
         .as_str()
         .context("Missing merkle_root in proof")?;
@@ -31,6 +35,8 @@ pub fn execute(
         proof_data["recipient"].as_str().unwrap_or("N/A")
     );
     println!("  {} {}", "Merkle Root:".green(), proof_root);
+
+    crate::crypto::validate_merkle_root(merkle_root).context("Invalid merkle_root format")?;
 
     if proof_root.to_lowercase() != merkle_root.to_lowercase() {
         println!("\n{} {}", "Error:".red(), "Merkle root mismatch!");

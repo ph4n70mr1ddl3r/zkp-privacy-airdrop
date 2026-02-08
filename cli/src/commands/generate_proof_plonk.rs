@@ -56,10 +56,6 @@ pub async fn execute(
     let proof_data = if use_plonk {
         generate_plonk_proof(&private_key, &recipient, &merkle_tree)?
     } else {
-        // Fall back to Groth16 (original implementation)
-        crate::crypto::generate_nullifier(&private_key);
-        // The rest would use the old proof generation logic
-        // For now, return an error to use the original command
         anyhow::bail!("PLONK proof generation not fully implemented yet. Please use --proof-system groth16 for now, or complete Week 2 CLI integration tasks.")
     };
 

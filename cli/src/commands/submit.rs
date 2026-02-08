@@ -6,7 +6,7 @@ use tokio::time::{sleep, Duration};
 use tracing::info;
 
 use crate::config::Config;
-use crate::crypto::{validate_address, validate_nullifier};
+use crate::crypto::{validate_address, validate_nullifier, validate_merkle_root};
 use crate::types_plonk::{Proof, ProofData, SubmitClaimRequest, SubmitClaimResponse};
 
 pub async fn execute(
@@ -53,6 +53,8 @@ pub async fn execute(
     }
 
     validate_nullifier(&proof_data.nullifier).context("Invalid nullifier in proof file")?;
+
+    validate_merkle_root(&proof_data.merkle_root).context("Invalid merkle_root in proof file")?;
 
     println!("{} {}", "Relayer:".cyan(), relayer_url);
     println!("{} {}", "Proof:".cyan(), proof_path.display());
@@ -181,29 +183,52 @@ pub async fn execute(
         if let Some(tx_hash) = submit_response.tx_hash {
             println!("\n{}", "Waiting for confirmation...".yellow());
 
+            let rpc_url = config.get_rpc_url().context("Failed to get RPC URL")?;
+
             let start = std::time::Instant::now();
+            let mut confirmed = false;
+
             while start.elapsed().as_secs() < timeout {
                 sleep(Duration::from_secs(5)).await;
                 print!(".");
                 std::io::stdout().flush()?;
 
-                // TODO: Implement actual transaction status checking via RPC
-                // For now, we'll simulate by breaking after the first poll
-                break;
+                if check_transaction_status(&rpc_url, &tx_hash).await {
+                    confirmed = true;
+                    break;
+                }
             }
             println!();
 
-            if start.elapsed().as_secs() >= timeout {
+            if confirmed {
+                println!(
+                    "{} {}",
+                    "✓".green(),
+                    "Transaction confirmed successfully!"
+                );
+            } else {
                 println!(
                     "\n{} {}",
                     "Timeout:".yellow(),
-                    "Transaction not confirmed within timeout"
+                    "Transaction not confirmed within timeout. Check manually:"
                 );
+                println!("  {}", format!("https://optimism.etherscan.io/tx/{}", tx_hash).cyan());
             }
         }
     }
 
     Ok(())
+}
+
+async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
+    use ethers::providers::{Http, Provider};
+
+    if let Ok(provider) = Provider::<Http>::try_from(rpc_url) {
+        if let Ok(Some(_receipt)) = provider.get_transaction_receipt(tx_hash).await {
+            return true;
+        }
+    }
+    false
 }
 
 fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {

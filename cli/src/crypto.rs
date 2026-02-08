@@ -136,6 +136,32 @@ pub fn validate_nullifier(nullifier: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn validate_merkle_root(merkle_root: &str) -> Result<()> {
+    if merkle_root.len() != 66 {
+        return Err(anyhow::anyhow!(
+            "Invalid merkle_root length: expected 66 chars (0x + 64 hex), got {}",
+            merkle_root.len()
+        ));
+    }
+
+    if !merkle_root.starts_with("0x") && !merkle_root.starts_with("0X") {
+        return Err(anyhow::anyhow!(
+            "Invalid merkle_root format: must start with 0x"
+        ));
+    }
+
+    let decoded =
+        hex::decode(&merkle_root[2..]).context("Invalid merkle_root: invalid hex encoding")?;
+    if decoded.len() != 32 {
+        return Err(anyhow::anyhow!(
+            "Invalid merkle_root: expected 32 bytes, got {}",
+            decoded.len()
+        ));
+    }
+
+    Ok(())
+}
+
 fn keccak_hash(input: &[u8]) -> String {
     let mut hasher = Keccak256::new();
     hasher.update(input);
