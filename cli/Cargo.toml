@@ -1,0 +1,44 @@
+[package]
+name = "zkp-airdrop-cli"
+version = "1.0.0"
+edition = "2021"
+description = "CLI tool for ZKP Privacy Airdrop"
+license = "MIT"
+
+[[bin]]
+name = "zkp-airdrop"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+tokio = { version = "1.35", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.11", features = ["json"] }
+anyhow = "1.0"
+thiserror = "1.0"
+hex = "0.4"
+sha3 = "0.10"
+ethers = "2.0"
+zeroize = "1.7"
+dirs = "5.0"
+toml = "0.8"
+indicatif = "0.17"
+colored = "2.1"
+ark-circom = { version = "0.5", features = ["circom-2"] }
+ark-bn254 = "0.4"
+ark-plonk = "0.4"  # PLONK proof system (replaces ark-groth16)
+ark-serialize = "0.4"
+ark-ff = "0.4"
+ark-ec = "0.4"
+ark-std = "0.4"
+ark-poly = "0.4"
+rand = "0.8"
+parking_lot = "0.12"
+once_cell = "1.19"
+secp256k1 = "0.28"
+k256 = { version = "0.13", features = ["ecdsa"] }
+num-bigint = "0.4"
+num-traits = "0.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

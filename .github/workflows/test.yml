@@ -1,0 +1,58 @@
+name: ZKP Privacy Airdrop
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [contracts, cli, relayer, tree-builder]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      if: matrix.component == 'contracts'
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Set up Rust
+      if: matrix.component != 'contracts'
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    
+    - name: Install Circom
+      if: matrix.component == 'circuits'
+      run: |
+        npm install -g circom
+        git clone https://github.com/iden3/circomlib.git
+    
+    - name: Install dependencies
+      run: |
+        if [ "${{ matrix.component }}" = "contracts" ]; then
+          cd contracts && npm install
+        elif [ "${{ matrix.component }}" = "circuits" ]; then
+          cd circuits && npm install
+        elif [ "${{ matrix.component }}" = "cli" ]; then
+          cd cli && cargo build --release
+        elif [ "${{ matrix.component }}" = "relayer" ]; then
+          cd relayer && cargo build --release
+        elif [ "${{ matrix.component }}" = "tree-builder" ]; then
+          cd tree-builder && cargo build --release
+        fi
+    
+    - name: Run tests
+      run: |
+        if [ "${{ matrix.component }}" = "contracts" ]; then
+          cd contracts && npm test
+        elif [ "${{ matrix.component }}" = "circuits" ]; then
+          cd circuits && npm test
+        elif [ "${{ matrix.component }}" = "cli" ]; then
+          cd cli && cargo test
+        elif [ "${{ matrix.component }}" = "relayer" ]; then
+          cd relayer && cargo test
+        elif [ "${{ matrix.component }}" = "tree-builder" ]; then
+          cd tree-builder && cargo test
+        fi

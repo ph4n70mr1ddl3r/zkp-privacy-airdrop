@@ -1,1 +1,36 @@
+# Data files
 accounts.csv
+*.csv
+merkle_tree.bin
+
+# Build artifacts
+node_modules/
+build/
+artifacts/
+cache/
+target/
+Cargo.lock
+
+# Environment files
+.env
+*.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+*.cover
+*.log
+
+# Temporary files
+*.tmp
+*.temp

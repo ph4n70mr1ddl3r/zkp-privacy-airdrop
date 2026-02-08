@@ -1,0 +1,7 @@
+build/
+node_modules/
+*.wasm
+*.r1cs
+*.sym
+*.cpp
+*.dat

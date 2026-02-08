@@ -1,0 +1,18 @@
+{
+  "name": "merkle-membership",
+  "version": "1.0.0",
+  "description": "ZKP Merkle Membership Circuit",
+  "main": "build/merkle_membership.r1cs",
+  "scripts": {
+    "build": "circom src/merkle_membership.circom --r1cs --wasm --sym --c -o build",
+    "test": "node test/test.js",
+    "clean": "rm -rf build"
+  },
+  "dependencies": {
+    "circom": "^2.1.0",
+    "circomlib": "^2.0.5"
+  },
+  "devDependencies": {
+    "snarkjs": "^0.7.0"
+  }
+}

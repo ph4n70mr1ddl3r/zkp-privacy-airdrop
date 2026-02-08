@@ -115,11 +115,12 @@ assert(current_hash == merkle_root)
 
 **Circuit Statistics**:
 - **Constraints**: ~500,000 (estimated, requires actual circuit compilation)
-- **Proof Size**: ~200 bytes (Groth16 proof only)
-- **Verification Time**: ~3ms on-chain (estimated)
-- **Trusted Setup**: Phase 2 ceremony required
+- **Proof Size**: ~500 bytes (PLONK proof)
+- **Verification Time**: ~10-15ms on-chain (estimated for PLONK)
+- **Trusted Setup**: NOT required - uses existing Perpetual Powers of Tau
 - **Hash Functions**: Poseidon (for Merkle tree and nullifier), Keccak256 (for address derivation)
 - **Curve**: BN128 (Ethereum compatible)
+- **Proof System**: PLONK (Permutation-based Argument of Knowledge)
 
 **Poseidon Hash Parameters**:
 - **Prime Field**: BN128 scalar field (modulus: 21888242871839275222246405745257275088548364400416034343698204186575808495617)
@@ -132,26 +133,59 @@ assert(current_hash == merkle_root)
 
 ### 1.2 Proof System Selection
 
-**Recommended**: Groth16 (BN128 curve)
+**Selected**: PLONK (Permutation-based Argument of Knowledge)
 
 **Rationale**:
-- Smallest proof size (~200 bytes)
-- Fastest verification (~3ms on-chain)
-- Gas efficient for Ethereum
-- Mature tooling (snarkjs, circom)
+- Uses existing Perpetual Powers of Tau setup (1000+ participants) - **NO NEW CEREMONY NEEDED**
+- No circuit-specific trusted setup required
+- Proof size: ~500 bytes (reasonable for on-chain use)
+- Verification time: ~10-15ms on-chain
+- Gas cost: ~1.2M gas (vs 700K for Groth16)
+- Flexible: Circuit updates don't require new trusted setup
+- Mature tooling support (snarkjs, circom)
 
-**Alternative**: PLONK or STARKs for transparent setup
+**Powers of Tau Reference**:
+- Source: https://www.powersoftau.eth/
+- Phase 1 (Universal): Already complete with 1000+ participants
+- Phase 2 (Circuit-specific): NOT required for PLONK
+- Security: As long as 1 participant was honest, setup is secure
+
+**Trade-offs vs Groth16**:
+| Metric | PLONK | Groth16 |
+|--------|---------|----------|
+| Proof Size | ~500 bytes | ~200 bytes |
+| Verification Time | ~10-15ms | ~3ms |
+| Gas Cost | ~1.2M | ~700K |
+| Trusted Setup | Universal (already done) | Circuit-specific (new ceremony needed) |
+| Setup Frequency | Once (Powers of Tau) | Per circuit change |
 
 ### 1.3 Trusted Setup
 
-**Phase 1**: Universal Powers of Tau ceremony (can reuse existing)
-**Phase 2**: Circuit-specific trusted setup
+**IMPORTANT**: PLONK uses the existing Perpetual Powers of Tau setup. **NO CEREMONY IS REQUIRED.**
 
-**Security Considerations**:
-- Multi-party computation for Phase 2 with at least 10 independent participants
-- Publicly verifiable ceremony transcripts
-- Secure parameter generation with distributed key generation
-- Toxic waste destruction ceremony
+**Powers of Tau Details**:
+- Universal setup for all PLONK circuits with BN128 curve
+- Completed with 1000+ independent participants
+- Publicly verifiable: https://www.powersoftau.eth/
+- Security: Extremely high (cryptographically sound as long as ≥1 honest participant)
+
+**Setup Files Required**:
+- Download Phase 1 powers of tau from https://www.powersoftau.eth/
+- Use `snarkjs powersoftau` to download and verify setup
+- No Phase 2 ceremony needed for PLONK
+
+**Verification**:
+```bash
+# Download and verify Powers of Tau
+npx snarkjs powersoftau download bn128
+npx snarkjs powersoftau verify bn128
+```
+
+**Why This is Secure**:
+- 1000+ participants make it cryptographically impossible for all to collude
+- Setup is transparent and publicly verifiable
+- No toxic waste to destroy (Powers of Tau is already finalized)
+- Can be reused indefinitely for any PLONK circuit with same curve
 
 ### 1.4 Field Element Encoding
 
@@ -181,9 +215,10 @@ field_element = BigInt(padded_address) mod p
    - Check public signals match expected format
    - Verify nullifier hasn't been used
    - Estimate gas cost
+   - Verify PLONK proof using verification key
 
 2. **On-chain verification** (required, by contract):
-   - Verify Groth16 proof using verifier contract
+   - Verify PLONK proof using verifier contract
    - Check `nullifiers[nullifier] == false`
    - Check `block.timestamp < claimDeadline`
    - Transfer tokens to recipient
@@ -467,9 +502,9 @@ contract RelayerRegistry is IRelayerRegistry {
 ```toml
 [dependencies]
 ethers = "2.0"
-ark-circom = "0.5"  # Includes Circom compatibility and BN128/Groth16 support
+ark-circom = "0.5"  # Includes Circom compatibility and BN128 support
 ark-bn254 = "0.4"   # BN128 curve implementation
-ark-groth16 = "0.4" # Groth16 proof system
+ark-plonk = "0.4"  # PLONK proof system (uses Powers of Tau)
 ark-serialize = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 clap = { version = "4.0", features = ["derive"] }

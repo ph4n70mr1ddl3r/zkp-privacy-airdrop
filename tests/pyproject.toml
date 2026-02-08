@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "zkp-airdrop-tests"
+version = "1.0.0"
+description = "Integration tests for ZKP Privacy Airdrop"
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pytest = "^7.4"
+pytest-asyncio = "^0.21"
+web3 = "^6.11"
+ethers = "^2.0"
+requests = "^2.31"
+hexbytes = "^0.2"
+pydantic = "^2.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

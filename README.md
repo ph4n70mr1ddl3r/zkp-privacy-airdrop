@@ -96,16 +96,28 @@ docker-compose up -d
 
 ## Documentation
 
-**Important**: All technical constants, specifications, and data formats are defined in the [Unified Specification](docs/00-specification.md), which is the single source of truth. Other documents reference and elaborate on these specifications.
+**Important**: All technical constants, specifications, and data formats are defined in [Unified Specification](docs/00-specification.md), which is single source of truth. Other documents reference and elaborate on these specifications.
 
+### Core Documentation
 - [Unified Specification](docs/00-specification.md) - **Single source of truth** for all technical details, constants, and interfaces
 - [Project Overview](docs/01-overview.md) - High-level introduction and architecture
-- [Technical Specification](docs/02-technical-specification.md) - Detailed implementation specifications
+- [Technical Specification](docs/02-technical-specification.md) - Detailed implementation specifications (PLONK)
 - [Implementation Roadmap](docs/03-implementation-roadmap.md) - Development timeline and phases
+
+### API & Integration
 - [API Reference](docs/04-api-reference.md) - External interfaces and data formats
+
+### Security & Privacy
 - [Security & Privacy](docs/05-security-privacy.md) - Security considerations and threat model
-- [Privacy Analysis & Limitations](docs/06-privacy-analysis.md) - Privacy guarantees and limitations
-- [Consistency Checklist](docs/07-consistency-checklist.md) - Verification guide for documentation consistency
+- [Privacy Analysis](docs/06-privacy-analysis.md) - Privacy guarantees and limitations
+- [Consistency Checklist](docs/07-consistency-checklist.md) - Verification guide
+
+### PLONK Implementation
+- [PLONK README](PLONK-README.md) - **Quick start guide for PLONK implementation** ⭐
+- [PLONK Migration Guide](docs/08-plonk-migration.md) - Complete migration roadmap
+- [PLONK Prototype Summary](docs/09-plonk-prototype-summary.md) - Phase 2 achievements
+- [Week 2: CLI Integration Guide](docs/10-week2-cli-integration.md) - Week 2 implementation tasks
+- [Phase 3 Progress Report](docs/11-phase3-progress-report.md) - Production implementation status
 
 ## Project Structure
 
@@ -116,7 +128,8 @@ docker-compose up -d
 ├── cli/                # Rust CLI tool
 ├── relayer/            # API relayer service (no frontend)
 ├── tree-builder/       # Merkle tree construction
-└── tests/              # Test suite
+├── tests/              # Test suite
+└── .github/            # CI/CD workflows
 ```
 
 ## Development
@@ -139,14 +152,21 @@ This file contains 65,249,064 Ethereum addresses (20 bytes each, 1.216 GiB total
 ### Build
 
 ```bash
-# Build everything
+# Build all components
 make build
 
-# Run tests
+# Run all tests
 make test
 
 # Run integration tests
 make test-integration
+
+# Build individual components
+make -C contracts build
+make -C circuits build
+make -C cli build
+make -C relayer build
+make -C tree-builder build
 ```
 
 ## Security

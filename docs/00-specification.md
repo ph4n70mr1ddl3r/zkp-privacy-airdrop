@@ -53,8 +53,8 @@ This document provides a single source of truth for all technical specifications
 | **Address-only file** | 1.216 GiB | 16 byte header + 65,249,064 × 20 bytes = 1,304,981,280 bytes | Raw addresses for distribution |
 | **Hash-only file** | 1.945 GiB | 16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes | Leaf hashes for verification |
 | **Merkle path per claim** | 832 bytes | 26 × 32 bytes for Merkle path siblings | Required for proof generation |
-| **Groth16 proof** | ~200 bytes | Variable based on circuit constraints | ZK proof size |
-| **Complete proof package** | ~1,032 bytes | ~200 bytes (proof) + 832 bytes (path) | Total data per claim submission |
+| **PLONK proof** | ~500 bytes | Variable based on circuit constraints | ZK proof size |
+| **Complete proof package** | ~1,332 bytes | ~500 bytes (proof) + 832 bytes (path) | Total data per claim submission |
 | **Precomputed proofs** | ~52.8 GiB | 65,249,064 leaves × 868 bytes (832 bytes path + 32 bytes leaf hash + 4 bytes path indices) where 26 bits (one per tree level) are packed into 4 bytes | Optional for API service |
 | **Proof JSON** | ~1.5 KB | Variable based on field element encoding | Human-readable proof format |
 
@@ -403,13 +403,15 @@ nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
 
 #### Smart Contracts
 - **Solidity Version**: 0.8.19+
-- **Proof Verification Gas**: 300,000 gas (Groth16 verification)
+- **Proof Verification Gas**: 900,000 gas (PLONK verification)
 - **Storage/Transfer Gas**: 200,000 gas (token mint + nullifier storage)
-- **Total Claim Transaction Gas**: 500,000 gas (verification + storage + transfer)
+- **Total Claim Transaction Gas**: 1,100,000 gas (verification + storage + transfer)
 - **Relayer Buffer**: 200,000 gas additional buffer for gas price fluctuations
-- **Estimated Gas per Claim**: 700,000 gas (verification + storage + transfer + buffer)
-- **Maximum Gas per Claim**: 1,000,000 gas (absolute maximum with 100% buffer)
+- **Estimated Gas per Claim**: 1,300,000 gas (verification + storage + transfer + buffer)
+- **Maximum Gas per Claim**: 1,500,000 gas (absolute maximum with 100% buffer)
 - **Optimism Cost Advantage**: Gas prices on Optimism are 10-100x cheaper than Ethereum L1, making claims affordable even for users submitting directly
+
+**Note**: PLONK verification uses more gas than Groth16, but avoids need for a trusted setup ceremony.
 
 **See section 10.3 for complete gas estimate constants.**
 
@@ -613,10 +615,11 @@ nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
 ## 9. Compliance & Standards
 
 ### 9.1 Cryptographic Standards
-- **ZK Proofs**: Groth16 (BN128)
+- **ZK Proofs**: PLONK (Permutation-based Argument of Knowledge) using BN128 curve
 - **Hash Functions**: Poseidon (ZK-friendly), Keccak-256 (address derivation)
 - **Elliptic Curves**: secp256k1 (Ethereum), BN128 (pairing)
 - **Randomness**: Cryptographically secure RNG
+- **Trusted Setup**: Uses existing Perpetual Powers of Tau (1000+ participants) - no ceremony required
 
 ### 9.2 Code Standards
 - **Solidity**: Solidity Style Guide
@@ -687,18 +690,30 @@ uint256 constant SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF4
 **Gas units remain the same on Optimism, but costs are 10-100x cheaper due to lower gas prices.**
 
 ```solidity
-uint256 constant VERIFY_PROOF_GAS = 300_000;     // Gas for Groth16 proof verification
+uint256 constant VERIFY_PROOF_GAS = 900_000;     // Gas for PLONK proof verification
 uint256 constant STORAGE_TRANSFER_GAS = 200_000; // Gas for storage updates and token transfer
-uint256 constant CLAIM_GAS = 500_000;            // Total gas for claim transaction (verification + storage + transfer = 300K + 200K)
+uint256 constant CLAIM_GAS = 1_100_000;          // Total gas for claim transaction (verification + storage + transfer = 900K + 200K)
 uint256 constant RELAYER_BUFFER = 200_000;       // Additional buffer for relayers to handle gas price fluctuations
-uint256 constant ESTIMATED_CLAIM_GAS = 700_000;  // Estimated gas with buffer (500K + 200K)
-uint256 constant MAX_CLAIM_GAS = 1_000_000;      // Maximum gas allowance per claim (absolute maximum with 100% buffer)
+uint256 constant ESTIMATED_CLAIM_GAS = 1_300_000;  // Estimated gas with buffer (1.1M + 200K)
+uint256 constant MAX_CLAIM_GAS = 1_500_000;      // Maximum gas allowance per claim (absolute maximum with 100% buffer)
 ```
 
+**Note**: PLONK verification uses approximately 3x more gas than Groth16, but eliminates the need for a circuit-specific trusted setup ceremony.
+
 **Cost Comparison (Approximate)**:
-- **Ethereum L1**: ~700,000 gas × 50 gwei = 0.035 ETH ($~105 at $3,000 ETH)
-- **Optimism**: ~700,000 gas × 0.001 gwei = 0.0007 ETH ($~2.10 at $3,000 ETH)
+- **Ethereum L1**: ~1,100,000 gas × 50 gwei = 0.055 ETH ($~165 at $3,000 ETH)
+- **Optimism**: ~1,100,000 gas × 0.001 gwei = 0.0011 ETH ($~3.30 at $3,000 ETH)
 - **Savings**: ~50x cheaper on Optimism
+
+**Trade-off Analysis**:
+| Factor | PLONK | Groth16 |
+|--------|---------|----------|
+| Proof Size | ~500 bytes | ~200 bytes |
+| Verification Gas | ~900,000 | ~300,000 |
+| Total Claim Gas | ~1,100,000 | ~500,000 |
+| Trusted Setup | None (uses existing Powers of Tau) | Circuit-specific ceremony required |
+| Setup Complexity | Low (download existing setup) | High (10+ participant ceremony) |
+| Flexibility | High (circuit changes don't require new setup) | Low (circuit changes need new setup) |
 
 ## 11. Glossary
 
@@ -715,22 +730,23 @@ uint256 constant MAX_CLAIM_GAS = 1_000_000;      // Maximum gas allowance per cl
 - **Hash Format**: 32-byte hashes as 64-character hex strings with `0x` prefix.
 
 ### 11.3 System Components
-- **Relayer**: Optional service that submits proofs on behalf of users and pays gas fees. Users can also submit directly to the contract.
-- **Proof Package**: Complete proof data including Groth16 proof (`a`, `b`, `c` arrays) and public signals.
+- **Relayer**: Optional service that submits proofs on behalf of users and pays gas fees. Users can also submit directly to contract.
+- **Proof Package**: Complete proof data including PLONK proof and public signals.
 - **Merkle Tree**: Binary tree of height 26 containing 65,249,064 leaves (hashes of qualified addresses).
 
 ### 11.4 Cryptographic Parameters
 - **Poseidon Hash**: Width=3, full_rounds=8, partial_rounds=57, alpha=5 over BN128 scalar field.
-- **BN128 Curve**: Elliptic curve used for Groth16 proof system (Ethereum precompile compatible).
+- **BN128 Curve**: Elliptic curve used for PLONK proof system (Ethereum precompile compatible).
 - **secp256k1**: Curve used for Ethereum address derivation from private keys.
+- **PLONK**: Permutation-based Argument of Knowledge using existing Perpetual Powers of Tau setup.
 
 ### 11.5 Gas Estimates
-- **VERIFY_PROOF_GAS**: 300,000 gas for Groth16 proof verification
+- **VERIFY_PROOF_GAS**: 900,000 gas for PLONK proof verification
 - **STORAGE_TRANSFER_GAS**: 200,000 gas for storage updates and token transfer
-- **CLAIM_GAS**: 500,000 gas total for verification + storage + transfer
+- **CLAIM_GAS**: 1,100,000 gas total for verification + storage + transfer
 - **RELAYER_BUFFER**: 200,000 gas additional buffer for gas price fluctuations
-- **ESTIMATED_CLAIM_GAS**: 700,000 gas estimated with buffer (500K + 200K)
-- **MAX_CLAIM_GAS**: 1,000,000 gas maximum allowance (absolute maximum with 100% buffer)
+- **ESTIMATED_CLAIM_GAS**: 1,300,000 gas estimated with buffer (1.1M + 200K)
+- **MAX_CLAIM_GAS**: 1,500,000 gas maximum allowance (absolute maximum with 100% buffer)
 
 ---
 
