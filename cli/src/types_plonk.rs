@@ -12,7 +12,7 @@ pub struct Groth16Proof {
 
 /// PLONK proof format (new format for universal trusted setup)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PLONKProof {
+pub struct PlonkProof {
     pub A: [String; 2],
     pub B: [[String; 2]; 2],
     pub C: [String; 2],
@@ -23,7 +23,7 @@ pub struct PLONKProof {
     pub WXi: Vec<[String; 2]>, // W^i(xi) evaluations
 }
 
-impl PLONKProof {
+impl PlonkProof {
     /// Convert PLONK proof to flat array for API transmission
     pub fn to_flat_array(&self) -> Vec<String> {
         let mut proof_vec = Vec::with_capacity(8);
@@ -71,7 +71,7 @@ pub struct ProofData {
 #[serde(untagged)]
 pub enum Proof {
     Groth16(Groth16Proof),
-    PLONK(PLONKProof),
+    Plonk(PlonkProof),
 }
 
 impl Proof {
@@ -79,7 +79,7 @@ impl Proof {
     pub fn type_name(&self) -> &str {
         match self {
             Proof::Groth16(_) => "Groth16",
-            Proof::PLONK(_) => "PLONK",
+            Proof::Plonk(_) => "Plonk",
         }
     }
 
@@ -87,7 +87,7 @@ impl Proof {
     pub fn estimated_size_bytes(&self) -> usize {
         match self {
             Proof::Groth16(_) => 200, // ~200 bytes for Groth16
-            Proof::PLONK(_) => 500,   // ~500 bytes for PLONK
+            Proof::Plonk(_) => 500,   // ~500 bytes for Plonk
         }
     }
 }

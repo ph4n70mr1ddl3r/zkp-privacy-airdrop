@@ -41,11 +41,15 @@ pub fn read_private_key(
     private_key_file: Option<PathBuf>,
     private_key_stdin: bool,
 ) -> Result<Vec<u8>> {
-    let key_str = if private_key_stdin {
+    use zeroize::Zeroize;
+
+    let mut key_str = if private_key_stdin {
         use std::io::{self, Read};
         let mut input = String::new();
         io::stdin().read_to_string(&mut input)?;
-        input.trim().to_string()
+        let trimmed = input.trim().to_string();
+        input.zeroize();
+        trimmed
     } else if let Some(file) = private_key_file {
         std::fs::read_to_string(file)?.trim().to_string()
     } else if let Some(key) = private_key_opt {
@@ -69,6 +73,8 @@ pub fn read_private_key(
     }
     .context("Invalid hex private key")?;
 
+    key_str.zeroize();
+
     if key_bytes.len() != 32 {
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
@@ -87,6 +93,25 @@ pub fn validate_address(address: &str) -> Result<Address> {
     }
 
     Ok(addr)
+}
+
+pub fn validate_nullifier(nullifier: &str) -> Result<()> {
+    if nullifier.len() != 66 {
+        return Err(anyhow::anyhow!(
+            "Invalid nullifier length: expected 66 chars (0x + 64 hex), got {}",
+            nullifier.len()
+        ));
+    }
+
+    if !nullifier.starts_with("0x") && !nullifier.starts_with("0X") {
+        return Err(anyhow::anyhow!(
+            "Invalid nullifier format: must start with 0x"
+        ));
+    }
+
+    hex::decode(&nullifier[2..]).context("Invalid nullifier: invalid hex encoding")?;
+
+    Ok(())
 }
 
 fn poseidon_hash(input: &[u8]) -> String {

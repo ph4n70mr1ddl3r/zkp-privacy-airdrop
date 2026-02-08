@@ -6,7 +6,7 @@ use tracing::info;
 use tokio::time::{sleep, Duration};
 
 use crate::config::Config;
-use crate::crypto::validate_address;
+use crate::crypto::{validate_address, validate_nullifier};
 use crate::types_plonk::{ProofData, SubmitClaimRequest, SubmitClaimResponse, Proof};
 
 pub async fn execute(
@@ -31,6 +31,17 @@ pub async fn execute(
     let proof_data: ProofData = serde_json::from_str(&proof_content)
         .context("Failed to parse proof JSON")?;
     
+    if proof_data.recipient.to_lowercase() != recipient.to_lowercase() {
+        return Err(anyhow::anyhow!(
+            "Proof recipient mismatch: proof is for {}, but submitting for {}",
+            proof_data.recipient,
+            recipient
+        ));
+    }
+
+    validate_nullifier(&proof_data.nullifier)
+        .context("Invalid nullifier in proof file")?;
+    
     println!("{} {}", "Relayer:".cyan(), relayer_url);
     println!("{} {}", "Proof:".cyan(), proof_path.display());
     println!("{} {}", "Recipient:".cyan(), recipient);
@@ -49,7 +60,7 @@ pub async fn execute(
     println!("\n{} {} proof with {}-element structure", 
              "Proof Type:".cyan(), proof_type, 
              match proof_type {
-                 "PLONK" => "8-field",
+                 "Plonk" => "8-field",
                  _ => "3-field"
              });
     
@@ -79,8 +90,11 @@ pub async fn execute(
             match code.as_str() {
                 "RATE_LIMITED" => {
                     if let Some(retry_after) = response.headers().get("Retry-After") {
-                        let seconds: u64 = retry_after.to_str()?.parse()?;
-                        println!("{} Try again in {} seconds.", "Note:".yellow(), seconds);
+                        if let Ok(seconds_str) = retry_after.to_str() {
+                            if let Ok(seconds) = seconds_str.parse::<u64>() {
+                                println!("{} Try again in {} seconds.", "Note:".yellow(), seconds);
+                            }
+                        }
                     }
                 }
                 "ALREADY_CLAIMED" => {
@@ -88,7 +102,7 @@ pub async fn execute(
                 }
                 "INVALID_PROOF" => {
                     println!("{} Please regenerate the proof.", "Info:".blue());
-                    if proof_type == "PLONK" {
+                    if proof_type == "Plonk" {
                         println!("{} PLONK proofs must use 8-field element structure.", "Note:".yellow());
                     }
                 }
@@ -111,7 +125,7 @@ pub async fn execute(
     println!("\n{} {}", "✓ Claim submitted successfully!".green(), 
              submit_response.tx_hash.unwrap_or_else(|| "N/A".to_string()));
     
-    if proof_type == "PLONK" {
+    if proof_type == "Plonk" {
         println!("{} Note: PLONK verification uses ~1.3M gas (higher than Groth16)", "Info:".blue());
     }
     

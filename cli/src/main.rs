@@ -33,9 +33,9 @@ struct Cli {
 
     #[arg(short, long, global = true)]
     proof_system: Option<String>,
-    }
+}
 
-    #[derive(Subcommand)]
+#[derive(Subcommand)]
     enum Commands {
         GenerateProof {
             #[arg(long)]

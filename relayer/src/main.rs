@@ -4,12 +4,10 @@ mod metrics;
 mod state;
 mod db;
 mod redis;
-mod types;
 mod types_plonk;
 
 use actix_web::{App, HttpServer, middleware, web};
-use tracing::{info, error};
-use tracing_subscriber;
+use tracing::info;
 
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {

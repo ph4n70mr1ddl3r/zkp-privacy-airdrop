@@ -10,7 +10,7 @@ pub struct Groth16Proof {
 
 /// PLONK proof format (new format for universal trusted setup)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PLONKProof {
+pub struct PlonkProof {
     pub proof: Vec<String>, // Flat array of 8+ field elements
 }
 
@@ -19,7 +19,7 @@ pub struct PLONKProof {
 #[serde(untagged)]
 pub enum Proof {
     Groth16(Groth16Proof),
-    PLONK(PLONKProof),
+    Plonk(PlonkProof),
 }
 
 impl Proof {
@@ -27,7 +27,7 @@ impl Proof {
     pub fn type_name(&self) -> &str {
         match self {
             Proof::Groth16(_) => "Groth16",
-            Proof::PLONK(_) => "PLONK",
+            Proof::Plonk(_) => "Plonk",
         }
     }
 
@@ -39,7 +39,7 @@ impl Proof {
                     && proof.c.iter().all(|s| !s.is_empty())
                     && proof.b.iter().all(|row| row.iter().all(|s| !s.is_empty()))
             }
-            Proof::PLONK(ref proof) => {
+            Proof::Plonk(ref proof) => {
                 proof.proof.len() >= 8 && proof.proof.iter().all(|s| !s.is_empty())
             }
         }
@@ -55,10 +55,11 @@ pub struct SubmitClaimRequest {
 }
 
 impl SubmitClaimRequest {
+    #[allow(dead_code)]
     /// Create a minimal PLONK request for testing
     pub fn plonk_minimal() -> Self {
         Self {
-            proof: Proof::PLONK(PLONKProof {
+            proof: Proof::Plonk(PlonkProof {
                 proof: vec!["0".to_string(); 8],
             }),
             recipient: "0x1234567890123456789012345678901234567890".to_string(),
@@ -205,5 +206,6 @@ pub struct MerklePathResponse {
 pub enum RateLimitType {
     SubmitClaim,
     GetMerklePath,
+    #[allow(dead_code)]
     CheckStatus,
 }

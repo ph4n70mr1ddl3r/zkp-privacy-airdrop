@@ -59,12 +59,12 @@ pub async fn submit_claim(
     // Validate proof structure
     if !claim.proof.is_valid_structure() {
         warn!("Invalid {} proof structure", claim.proof.type_name());
-        let error_code = if claim.proof.type_name() == "PLONK" {
+        let error_code = if claim.proof.type_name() == "Plonk" {
             "PLONK_FORMAT_ERROR"
         } else {
             "INVALID_PROOF"
         };
-        let error_message = if claim.proof.type_name() == "PLONK" {
+        let error_message = if claim.proof.type_name() == "Plonk" {
             "PLONK proof format is invalid. Expected 8 field elements.".to_string()
         } else {
             format!("The provided {} proof is invalid. Please regenerate proof with correct inputs.", claim.proof.type_name())
@@ -80,7 +80,7 @@ pub async fn submit_claim(
     info!("Validated {} proof successfully", claim.proof.type_name());
 
     // PLONK-specific warning
-    if claim.proof.type_name() == "PLONK" {
+    if claim.proof.type_name() == "Plonk" {
         info!("PLONK proof detected - verification gas estimate: ~1.3M");
     }
 
@@ -182,10 +182,14 @@ pub async fn get_contract_info(
 
 pub async fn donate(
     claim: web::Json<DonateRequest>,
+    state: web::Data<AppState>,
 ) -> impl Responder {
     info!("Received donation from {}", claim.donor);
+    
+    let donation_address = state.relayer_address();
+    
     HttpResponse::Ok().json(DonateResponse {
-        donation_address: "0x0000000000000000000000000000000000000000".to_string(),
+        donation_address,
         amount_received: claim.amount.clone(),
         tx_hash: None,
         thank_you: "Thank you for supporting privacy!".to_string(),
@@ -209,7 +213,7 @@ pub async fn get_merkle_path(
     info!("Getting Merkle path for address: {}", address);
 
     // Rate limiting
-    if let Err(_) = state.check_rate_limit(&req, &address, RateLimitType::GetMerklePath).await {
+    if state.check_rate_limit(&req, &address, RateLimitType::GetMerklePath).await.is_err() {
         return HttpResponse::TooManyRequests().json(ErrorResponse {
             success: false,
             error: "Rate limit exceeded. Try again later.".to_string(),

@@ -28,6 +28,7 @@ pub struct RelayerStats {
     pub total_claims: u64,
     pub successful_claims: u64,
     pub failed_claims: u64,
+    #[allow(dead_code)]
     pub total_gas_used: u64,
     pub start_time: std::time::Instant,
 }
@@ -141,21 +142,27 @@ impl AppState {
     }
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
-        let mut stats = self.stats.write();
-        stats.total_claims += 1;
+        {
+            let mut stats = self.stats.write();
+            stats.total_claims += 1;
+        }
 
         use rand::RngCore;
         let mut tx_bytes = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut tx_bytes);
-        let tx_hash = format!("0x{}", hex::encode(&tx_bytes));
+        let tx_hash = format!("0x{}", hex::encode(tx_bytes));
 
         // Mark as claimed
         use redis::AsyncCommands;
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
         let _: () = redis.set(&key, &claim.recipient).await.map_err(|e| e.to_string())?;
+        drop(redis);
 
-        stats.successful_claims += 1;
+        {
+            let mut stats = self.stats.write();
+            stats.successful_claims += 1;
+        }
 
         Ok(tx_hash)
     }
@@ -193,17 +200,24 @@ impl AppState {
     }
 
     pub async fn get_stats(&self) -> StatsResponse {
-        let stats = self.stats.read();
-        let uptime = stats.start_time.elapsed().as_secs_f64();
+        let (total_claims, successful_claims, failed_claims, uptime) = {
+            let stats = self.stats.read();
+            (
+                stats.total_claims,
+                stats.successful_claims,
+                stats.failed_claims,
+                stats.start_time.elapsed().as_secs_f64(),
+            )
+        };
 
         StatsResponse {
-            total_claims: stats.total_claims,
-            successful_claims: stats.successful_claims,
-            failed_claims: stats.failed_claims,
-            total_tokens_distributed: (stats.successful_claims * 1000 * 10u64.pow(18)).to_string(),
-            unique_recipients: stats.successful_claims,
+            total_claims,
+            successful_claims,
+            failed_claims,
+            total_tokens_distributed: (successful_claims * 1000 * 10u64.pow(18)).to_string(),
+            unique_recipients: successful_claims,
             average_gas_price: "25000000000".to_string(),
-            total_gas_used: (stats.successful_claims * 700000).to_string(),
+            total_gas_used: (successful_claims * 700000).to_string(),
             relayer_balance: self.get_relayer_balance().await.to_string(),
             uptime_percentage: if uptime > 0.0 { 100.0 } else { 0.0 },
             response_time_ms: ResponseTime {
