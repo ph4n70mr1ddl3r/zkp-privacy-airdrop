@@ -4,6 +4,12 @@
 **Last Updated**: 2026-02-07  
 **Based on**: [Unified Specification](./00-specification.md)
 
+## Version History
+| Version | Date | Changes | Author |
+|---------|------|---------|--------|
+| 1.1.0 | 2026-02-07 | Updated to match specification v1.5.0 | Documentation Review |
+| 1.0.0 | 2026-02-02 | Initial version | Core Team |
+
 > **Note**: This document is derived from the [Unified Specification](./00-specification.md). Any discrepancies should be resolved in favor of the unified specification. For detailed technical specifications, cryptographic constants, and data formats, always refer to the unified specification.
 
 ## Project Summary
@@ -109,7 +115,7 @@ The 65,249,064 eligible accounts are Ethereum mainnet addresses that paid at lea
 - **Token Name**: ZKP
 - **Token Type**: ERC20 (18 decimals)
 - **Total Supply**: 65,249,064,000 ZKP (65,249,064 accounts × 1,000 ZKP each)
-- **Claim Amount**: 1000 ZKP per qualified account
+- **Claim Amount**: 1,000 ZKP per qualified account
 - **Distribution Method**: Privacy-preserving claim
 - **Claim Period**: 90 days from deployment
 

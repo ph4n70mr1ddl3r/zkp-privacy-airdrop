@@ -4,6 +4,11 @@
 **Last Updated**: 2026-02-07  
 **Based on**: [Technical Specification](../docs/02-technical-specification.md) and [Unified Specification](../docs/00-specification.md)
 
+## Version History
+| Version | Date | Changes | Author |
+|---------|------|---------|--------|
+| 1.0.0 | 2026-02-07 | Initial version | Core Team |
+
 ## Threat Model
 
 ### Actors
@@ -239,11 +244,12 @@ At no point is address revealed
 // Nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)
 // Same private key → Same nullifier → Only one claim allowed
 let domain_separator = b"zkp_airdrop_nullifier_v1";  // 23 bytes
-let padding = vec![0u8; 41];  // 41 bytes of zeros
+let zeros = vec![0u8; 41];  // 41 bytes of zeros
 let mut nullifier_input = Vec::new();
 nullifier_input.extend_from_slice(domain_separator);
 nullifier_input.extend_from_slice(&private_key);
-nullifier_input.extend_from_slice(&padding);
+nullifier_input.extend_from_slice(&zeros);
+assert_eq!(nullifier_input.len(), 96);  // 23 + 32 + 41 = 96 bytes
 let nullifier = poseidon_hash(&nullifier_input);  // 32 bytes output
 ```
 

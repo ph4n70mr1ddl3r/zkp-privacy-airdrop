@@ -4,6 +4,11 @@
 **Last Updated**: 2026-02-07  
 **Based on**: [Security & Privacy Considerations](./05-security-privacy.md)
 
+## Version History
+| Version | Date | Changes | Author |
+|---------|------|---------|--------|
+| 1.0.0 | 2026-02-07 | Initial version | Core Team |
+
 ## Executive Summary
 
 The ZKP Privacy Airdrop provides strong privacy guarantees through zero-knowledge proofs, but has inherent limitations that users should understand. This document analyzes privacy properties, potential attack vectors, and realistic threat models.

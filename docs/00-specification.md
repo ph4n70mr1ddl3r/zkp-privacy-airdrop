@@ -3,6 +3,16 @@
 ## Version: 1.5.0
 ## Date: 2026-02-07
 
+## Version History
+| Version | Date | Changes | Author |
+|---------|------|---------|--------|
+| 1.5.0 | 2026-02-07 | Fixed nullifier padding specification (41 bytes zeros), corrected precomputed proofs storage (968 bytes), standardized gas price randomization formula | Documentation Review |
+| 1.4.0 | 2026-02-06 | Added gas estimates, rate limiting details, and API specifications | Core Team |
+| 1.3.0 | 2026-02-05 | Enhanced security parameters and compliance sections | Core Team |
+| 1.2.0 | 2026-02-04 | Updated cryptographic specifications and field element encoding | Core Team |
+| 1.1.0 | 2026-02-03 | Added deployment specifications and testing requirements | Core Team |
+| 1.0.0 | 2026-02-02 | Initial specification | Core Team |
+
 This document provides a single source of truth for all technical specifications, constants, and interfaces for the ZKP Privacy Airdrop system.
 
 ## 1. System Constants
@@ -43,7 +53,7 @@ This document provides a single source of truth for all technical specifications
 | **Merkle path per claim** | 832 bytes | 26 × 32 bytes for Merkle path siblings | Required for proof generation |
 | **Groth16 proof** | ~200 bytes | Variable based on circuit constraints | ZK proof size |
 | **Complete proof package** | ~1,032 bytes | ~200 bytes (proof) + 832 bytes (path) | Total data per claim submission |
-| **Precomputed proofs** | 56.88 GiB | 65,249,064 leaves × 936 bytes (832 path + 32 hash + 104 indices) | Optional for API service |
+| **Precomputed proofs** | ~58.9 GiB | 65,249,064 leaves × 968 bytes (832 path + 32 hash + 104 indices) | Optional for API service |
 | **Proof JSON** | ~1.5 KB | Variable based on field element encoding | Human-readable proof format |
 
 **Notes**:
@@ -146,7 +156,7 @@ nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)
 where:
 - `private_key` is the 32-byte Ethereum private key (secp256k1 scalar)
 - `"zkp_airdrop_nullifier_v1"` is a 23-byte domain separator (ASCII)
-- `zeros` is padding to reach 96 bytes total (Poseidon width=3 requires 3×32=96 bytes)
+- `zeros` is 41 bytes of zeros (padding to reach 96 bytes total: 23 + 32 + 41 = 96 bytes)
 - `||` denotes concatenation
 
 **Exact Implementation**:
@@ -155,7 +165,7 @@ where:
 domain_separator = b"zkp_airdrop_nullifier_v1"  # 23 bytes
 private_key = 0x1234... (32 bytes)
 # Pad to 96 bytes: 23 + 32 + 41 = 96 bytes
-padded_input = domain_separator + private_key + bytes(41)
+padded_input = domain_separator + private_key + bytes(41)  # Exactly 96 bytes
 nullifier = poseidon_hash(padded_input)  # 32 bytes output
 ```
 
@@ -258,12 +268,12 @@ interface IRelayerRegistry {
 ```
 
 **Field Element Encoding**:
-- **Primary Format**: Decimal strings (not hex)
+- **Primary Format**: Decimal strings (not hex) - **This is the canonical format**
 - **Alternative Format**: Hex strings with `0x` prefix (for developer convenience)
 - **Validation**: Must be valid BN128 field elements: `0 <= x < p` where `p = 21888242871839275222246405745257275088548364400416034343698204186575808495617`
 - **Examples**: 
-  - Decimal: `"13862987149607610235678184535533251295074929736392939725598345555223684473689"`
-  - Hex: `"0x1eab1f9d8c9a0e3a9a1b9c8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d"`
+  - Decimal (primary): `"13862987149607610235678184535533251295074929736392939725598345555223684473689"`
+  - Hex (alternative): `"0x1eab1f9d8c9a0e3a9a1b9c8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d"`
 - **Validation Code Example** (Python):
   ```python
   p = 21888242871839275222246405745257275088548364400416034343698204186575808495617
@@ -316,7 +326,7 @@ interface IRelayerRegistry {
   For i in 0..num_leaves-1:
     address: [20 bytes]  // Ethereum address
     leaf_hash: [32 bytes] // Poseidon(address)
-    path_data: [936 bytes] // 26 × 32-bit indices (104 bytes) + 26 × 32-byte siblings (832 bytes) = 936 bytes total
+    path_data: [968 bytes] // 26 × 32-byte siblings (832 bytes) + 32 bytes leaf hash + 26 × 4-byte indices (104 bytes) = 968 bytes total
 ```
 
 ### 4.3 API Request/Response Formats
@@ -370,7 +380,7 @@ See API Reference (docs/04-api-reference.md) for detailed schemas.
 private_key = 0x1234... (32 bytes)
 domain_separator = "zkp_airdrop_nullifier_v1"  # ASCII string, 23 bytes
 # Pad to 96 bytes: 23 + 32 + 41 = 96 bytes
-padded_input = domain_separator || private_key || zeros  # 96 bytes total
+padded_input = domain_separator || private_key || zeros  # 96 bytes total (23 + 32 + 41)
 nullifier = poseidon_hash(padded_input)  # 32 bytes output
 ```
 
@@ -379,7 +389,7 @@ nullifier = poseidon_hash(padded_input)  # 32 bytes output
 private_key = 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef (32 bytes)
 domain_separator = "zkp_airdrop_nullifier_v1"  # ASCII string, 23 bytes
 # Pad to 96 bytes: 23 + 32 + 41 = 96 bytes
-padded_input = domain_separator || private_key || [0x00]*41  # 96 bytes total
+padded_input = domain_separator || private_key || [0x00]*41  # 96 bytes total (23 + 32 + 41)
 nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
 ```
 
@@ -391,12 +401,15 @@ nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
 
 #### Smart Contracts
 - **Solidity Version**: 0.8.19+
-- **Proof Verification Gas**: ~300,000 gas (Groth16 verification)
-- **Total Claim Transaction Gas**: ~500,000 gas (verification + storage + transfer)
+- **Proof Verification Gas**: 300,000 gas (Groth16 verification)
+- **Storage/Transfer Gas**: 200,000 gas (token mint + nullifier storage)
+- **Total Claim Transaction Gas**: 500,000 gas (verification + storage + transfer)
 - **Relayer Buffer**: 200,000 gas additional buffer for gas price fluctuations
 - **Estimated Gas per Claim**: 700,000 gas (verification + storage + transfer + buffer)
 - **Maximum Gas per Claim**: 1,000,000 gas (absolute maximum with 100% buffer)
 - **Optimism Cost Advantage**: Gas prices on Optimism are 10-100x cheaper than Ethereum L1, making claims affordable even for users submitting directly
+
+**See section 10.3 for complete gas estimate constants.**
 
 ### 5.2 Rate Limiting
 - **Per Nullifier**: 1 request per 60 seconds (all endpoints)
@@ -483,7 +496,7 @@ nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
   - Privacy Enhancement: Add random 0-5% variance (inclusive) to break timing correlations
   - Maximum: 0.1 gwei cap to prevent excessive fees (Optimism gas is much cheaper)
   - Relayers should use: `gas_price = min(base_fee * 1.1 * (1 + random_factor), 0.1 gwei)` where `random_factor` is uniformly distributed in [0.00, 0.05] inclusive
-  - **Exact implementation**: `random_factor = random(0, 6) / 100` where `random(0, 6)` generates integers 0 through 5 inclusive
+  - **Exact implementation**: `random_factor = random(0, 6) / 100` where `random(0, 6)` generates integers 0 through 5 inclusive (0, 1, 2, 3, 4, 5)
 
 ### 6.2 Infrastructure Requirements
 - **Relayer Servers**: 3+ instances (medium/large)
@@ -647,12 +660,12 @@ Users must acknowledge:
 
 ### 10.1 Numerical Constants
 ```solidity
-uint256 constant CLAIM_AMOUNT = 1000 * 10**18; // 1000 ZKP tokens
+uint256 constant CLAIM_AMOUNT = 1000 * 10**18; // 1,000 ZKP tokens
 uint256 constant CLAIM_DEADLINE = 90 days;
 uint256 constant MERKLE_TREE_HEIGHT = 26;
 uint256 constant MAX_LEAVES = 2**26; // 67,108,864 (maximum capacity)
 uint256 constant TOTAL_QUALIFIED_ACCOUNTS = 65_249_064; // From accounts.csv
-uint256 constant TOTAL_TOKEN_SUPPLY = 65_249_064_000 * 10**18; // 65,249,064 × 1000 ZKP tokens
+uint256 constant TOTAL_TOKEN_SUPPLY = 65_249_064_000 * 10**18; // 65,249,064 × 1,000 ZKP tokens
 ```
 
 ### 10.2 Hash Constants

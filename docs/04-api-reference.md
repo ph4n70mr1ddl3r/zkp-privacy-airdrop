@@ -4,6 +4,12 @@
 **Last Updated**: 2026-02-07  
 **Based on**: [Unified Specification](../docs/00-specification.md)
 
+## Version History
+| Version | Date | Changes | Author |
+|---------|------|---------|--------|
+| 1.1.0 | 2026-02-07 | Updated nullifier specification and field element format clarification | Documentation Review |
+| 1.0.0 | 2026-02-02 | Initial version | Core Team |
+
 > **Note**: All data formats and constants are defined in the [Unified Specification](../docs/00-specification.md).
 > 
 > **Implementation Status**: This is a specification document. Implementation timeline is detailed in the [Implementation Roadmap](./03-implementation-roadmap.md).
@@ -70,9 +76,9 @@ Content-Type: application/json
 ```
 
 **Note**: The `public_signals` array contains three elements in this order:
-1. `merkle_root` (field element in decimal string format)
-2. `recipient` (address converted to field element in decimal string format)  
-3. `nullifier` (field element in decimal string format)
+1. `merkle_root` (field element in decimal string format - **primary**, hex with `0x` prefix is alternative)
+2. `recipient` (address converted to field element in decimal string format - **primary**, hex with `0x` prefix is alternative)  
+3. `nullifier` (field element in decimal string format - **primary**, hex with `0x` prefix is alternative)
 
 The `nullifier` and `merkle_root` fields are also provided as hex strings for convenience, but the `public_signals` array uses decimal string format for field elements.
 
@@ -188,7 +194,7 @@ GET /api/v1/contract-info
       "address": "0x..."
     }
   },
-  "claim_amount": "1000000000000000000000", // 1000 ZKP tokens (18 decimals)
+  "claim_amount": "1000000000000000000000", // 1,000 ZKP tokens (18 decimals)
   "claim_deadline": "2024-04-01T00:00:00Z"
 }
 ```
@@ -868,7 +874,7 @@ nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)
 where:
 - `private_key` is the 32-byte Ethereum private key (secp256k1 scalar)
 - `"zkp_airdrop_nullifier_v1"` is a 23-byte domain separator (ASCII)
-- `zeros` is padding to reach 96 bytes total (Poseidon width=3 requires 3×32=96 bytes)
+- `zeros` is 41 bytes of zeros (padding to reach 96 bytes total: 23 + 32 + 41 = 96 bytes)
 - `||` denotes concatenation
 
 **Important Properties**:
@@ -885,11 +891,12 @@ where:
 private_key = 0x1234... (32 bytes)
 domain_separator = b"zkp_airdrop_nullifier_v1"  # 23 bytes
 # Pad to 96 bytes: 23 + 32 + 41 = 96 bytes
-padded_input = domain_separator + private_key + b'\x00' * 41
+padded_input = domain_separator + private_key + b'\x00' * 41  # Exactly 96 bytes
 nullifier = poseidon_hash(padded_input)  # 32 bytes output
 ```
 
 **Security Notes**:
 - The nullifier must be computed exactly the same way in the ZK circuit and in the CLI
 - The domain separator `"zkp_airdrop_nullifier_v1"` MUST be used consistently across all implementations
+- The input must be exactly 96 bytes: 23 bytes domain separator + 32 bytes private key + 41 bytes zeros
 - This prevents cross-protocol nullifier collisions if the same private key is used in different systems

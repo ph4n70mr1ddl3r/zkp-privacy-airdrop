@@ -1,7 +1,12 @@
 # Consistency Checklist
 
 **Version**: 1.0.0  
-**Last Updated**: 2026-02-07  
+**Last Updated**: 2026-02-07
+
+## Version History
+| Version | Date | Changes | Author |
+|---------|------|---------|--------|
+| 1.0.0 | 2026-02-07 | Initial version with comprehensive cross-references | Documentation Review |  
 
 This document serves as a verification guide to ensure all documentation and implementations remain consistent with the [Unified Specification](./00-specification.md), which is the single source of truth.
 
@@ -57,27 +62,27 @@ Check these values match across all documents:
 ## Critical Cross-Reference Checks
 
 ### 1. Nullifier Calculation
-**Source**: `docs/00-specification.md:133-150`
+**Source**: `docs/00-specification.md:142-150` (lines 142-150)
 
 Must match:
-- `docs/00-specification.md:103` - `nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
-- `docs/02-technical-specification.md:101` - `poseidon_hash("zkp_airdrop_nullifier_v1" || private_key || zeros)`
-- `docs/04-api-reference.md:844-876` - `Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
-- `docs/05-security-privacy.md:241` - `poseidon_hash("zkp_airdrop_nullifier_v1" || private_key || zeros)`
+- `docs/00-specification.md:103` (line 103) - `nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
+- `docs/02-technical-specification.md:101` (line 101) - `poseidon_hash("zkp_airdrop_nullifier_v1" || private_key || zeros)`
+- `docs/04-api-reference.md:864-876` (lines 864-876) - `Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
+- `docs/05-security-privacy.md:239-248` (lines 239-248) - `poseidon_hash("zkp_airdrop_nullifier_v1" || private_key || zeros)`
 
 **Formula**: `nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)`
 where:
 - `private_key` is 32-byte Ethereum private key
 - `"zkp_airdrop_nullifier_v1"` is 23-byte ASCII domain separator
-- `zeros` is 41 bytes of zeros (padding to reach 96 bytes total for Poseidon width=3)
-- Input length must be exactly 96 bytes (23 + 32 + 41)
+- `zeros` is 41 bytes of zeros (padding to reach 96 bytes total: 23 + 32 + 41)
+- Input length must be exactly 96 bytes (23 + 32 + 41 = 96)
 
 ### 2. Proof Format
-**Source**: `docs/00-specification.md:218-232`
+**Source**: `docs/00-specification.md:244-262` (lines 244-262)
 
 Must match:
-- `docs/04-api-reference.md:40-58` - JSON structure
-- `docs/04-api-reference.md:770-801` - JSON schema
+- `docs/04-api-reference.md:40-69` (lines 40-69) - JSON structure
+- `docs/04-api-reference.md:770-861` (lines 770-861) - JSON schema
 
 **Structure**:
 ```json
@@ -104,7 +109,7 @@ Must match:
 - Must be < BN128 prime modulus
 
 ### 4. Merkle Tree Structure
-**Source**: `docs/00-specification.md:26-45`
+**Source**: `docs/00-specification.md:26-45` (lines 26-45)
 
 Must match:
 - Height: 26 levels
@@ -114,13 +119,18 @@ Must match:
 - Empty leaf: `Poseidon(32 zero bytes)`
 
 ### 5. Rate Limiting
-**Source**: `docs/00-specification.md:77-86`
+**Source**: `docs/00-specification.md:404-414` (lines 404-414)
 
 Must match:
-- Per nullifier: 1 request per 60 seconds
-- Per IP: 100 requests per 60 seconds
-- Global: 1,000 requests per 60 seconds
+- Per nullifier: 1 request per 60 seconds (all endpoints)
+- Per IP: 100 requests per 60 seconds (all endpoints)
+- Global: 1,000 requests per 60 seconds (all endpoints)
 - Burst allowance: 2x limit for 10 seconds
+- Endpoint-specific limits:
+  - `POST /api/v1/submit-claim`: 1 request per 60 seconds per nullifier
+  - `GET /api/v1/check-status/{nullifier}`: 10 requests per 60 seconds per nullifier
+  - `GET /api/v1/merkle-path/{address}`: 60 requests per 60 seconds per IP
+  - Other endpoints: 100 requests per 60 seconds per IP
 
 ## Implementation Consistency
 
@@ -235,7 +245,7 @@ Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 | Audit requirements | 3+ independent firms | `00-specification.md:392` |
 
 ### 12.2 Gas Estimates (Optimism)
-**Source**: `00-specification.md:383-395` (single source of truth)
+**Source**: `00-specification.md:393-400` and `00-specification.md:675-681` (single source of truth)
 
 | Operation | Gas Units | Notes |
 |-----------|-----------|-------|
@@ -292,19 +302,22 @@ Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 
 ### 12.3 Field Element Format
 **Incorrect**: Always hex with `0x` prefix
-**Correct**: Decimal strings primary, hex alternative
+**Correct**: Decimal strings primary (canonical format), hex with `0x` prefix alternative (developer convenience)
 
 ### 12.4 Nullifier Calculation
 **Incorrect**: `Poseidon(private_key)` without domain separator
-**Correct**: `Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)` with domain separator
+**Correct**: `Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)` with domain separator and 41 bytes zeros
+**Note**: Input must be exactly 96 bytes: 23 bytes domain separator + 32 bytes private key + 41 bytes zeros
 
 ### 12.5 Proof Array Sizes
 **Incorrect**: 3-element arrays for Groth16 on BN128
 **Correct**: 2-element arrays for `a` and `c`, 2x2 for `b`
 
-### 12.6 Merkle Path Size
-**Incorrect**: Variable or incorrect size
-**Correct**: 832 bytes (26 × 32 bytes for siblings)
+### 12.6 Precomputed Proofs Storage
+**Incorrect**: 936 bytes per leaf (56.88 GiB total)
+**Correct**: 968 bytes per leaf (~58.9 GiB total)
+**Calculation**: 832 bytes (26 × 32-byte siblings) + 32 bytes (leaf hash) + 104 bytes (26 × 4-byte indices) = 968 bytes
+**Total**: 65,249,064 leaves × 968 bytes = ~58.9 GiB
 
 ## Update Procedure
 
@@ -334,7 +347,8 @@ Consider implementing automated checks:
 grep -r "65,249,064" docs/ | wc -l
 grep -r "gas price cap" docs/ | grep -E "0\.1 gwei|100000000"
 # Check gas price randomization formula
-grep -r "random_factor" docs/ | grep -E "0-5%|\[0.00, 0.05\]"
+grep -r "random_factor" docs/ | grep -E "0-5%|\[0.00, 0.05\]|inclusive"
+# Verify: random_factor ∈ [0.00, 0.05] inclusive, generated as random(0, 6) / 100
 
 # Check nullifier calculation
 grep -r "zkp_airdrop_nullifier_v1" docs/ | wc -l
@@ -347,15 +361,15 @@ grep -r "hex strings" docs/00-specification.md | grep "alternative"
 
 ## Version Control
 
-| Document | Current Version | Last Updated |
-|----------|----------------|--------------|
-| `00-specification.md` | 1.5.0 | 2026-02-07 |
-| `01-overview.md` | 1.1.0 | 2026-02-07 |
-| `02-technical-specification.md` | 1.1.0 | 2026-02-07 |
-| `03-implementation-roadmap.md` | 1.0.0 | 2026-02-07 |
-| `04-api-reference.md` | 1.1.0 | 2026-02-07 |
-| `05-security-privacy.md` | 1.0.0 | 2026-02-07 |
-| `06-privacy-analysis.md` | 1.0.0 | 2026-02-07 |
-| `07-consistency-checklist.md` | 1.0.0 | 2026-02-07 |
+| Document | Current Version | Last Updated | Based On |
+|----------|----------------|--------------|----------|
+| `00-specification.md` | 1.5.0 | 2026-02-07 | - (source of truth) |
+| `01-overview.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
+| `02-technical-specification.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
+| `03-implementation-roadmap.md` | 1.0.0 | 2026-02-07 | `02-technical-specification.md` |
+| `04-api-reference.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
+| `05-security-privacy.md` | 1.0.0 | 2026-02-07 | `00-specification.md` + `02-technical-specification.md` |
+| `06-privacy-analysis.md` | 1.0.0 | 2026-02-07 | `05-security-privacy.md` |
+| `07-consistency-checklist.md` | 1.0.0 | 2026-02-07 | All documents |
 
-**Rule**: When `00-specification.md` version changes, update all dependent document versions.
+**Rule**: When `00-specification.md` version changes, update all dependent document versions and update this table.

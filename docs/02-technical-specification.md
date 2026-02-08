@@ -4,6 +4,12 @@
 **Last Updated**: 2026-02-07  
 **Based on**: [Unified Specification](../docs/00-specification.md)
 
+## Version History
+| Version | Date | Changes | Author |
+|---------|------|---------|--------|
+| 1.1.0 | 2026-02-07 | Updated nullifier padding, gas price randomization, precomputed proofs storage calculation | Documentation Review |
+| 1.0.0 | 2026-02-02 | Initial version | Core Team |
+
 > **Note**: This document provides detailed technical specifications. For authoritative constants and interfaces, refer to the [Unified Specification](../docs/00-specification.md).
 > 
 > **Implementation Status**: This is a specification document. Implementation timeline is detailed in the [Implementation Roadmap](./03-implementation-roadmap.md).
@@ -97,8 +103,8 @@ assert(current_hash == merkle_root)
 
 // 6. Compute nullifier (hash of private key with domain separation)
     # private_key is already available as circuit input
-    # Use domain separator "zkp_airdrop_nullifier_v1" (23 bytes) + private_key (32 bytes) + padding (41 bytes)
-    # Total input: 96 bytes (3 field elements for Poseidon width=3)
+    # Use domain separator "zkp_airdrop_nullifier_v1" (23 bytes) + private_key (32 bytes) + zeros (41 bytes)
+    # Total input: 96 bytes (23 + 32 + 41 = 96 bytes) for Poseidon width=3
     padded_input = "zkp_airdrop_nullifier_v1" || private_key || zeros  # 96 bytes total
     computed_nullifier = poseidon_hash(padded_input)  # 32 bytes output
     assert(computed_nullifier == nullifier)
@@ -211,8 +217,8 @@ See [Unified Specification](../docs/00-specification.md#13-storage-requirements)
 
 - **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
 - **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
-- **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path)
-- **Precomputed Proofs Storage**: 56.88 GiB (65,249,064 leaves × 936 bytes per leaf including Merkle path siblings (832 bytes), leaf hash (32 bytes), and path indices (104 bytes))
+- **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path siblings)
+- **Precomputed Proofs Storage**: ~58.9 GiB (65,249,064 leaves × 968 bytes per leaf including Merkle path siblings (832 bytes), leaf hash (32 bytes), and path indices (104 bytes))
 - **Merkle Tree File Sizes**:
   - Binary format with addresses only: 1.216 GiB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,280 bytes)
   - Binary format with hashes only: 1.945 GiB (16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes)
@@ -514,15 +520,15 @@ pub fn generate_proof(
     
     // 4. Generate nullifier (Poseidon hash of private key with domain separation)
     // private_key is the 32-byte Ethereum private key
-    // Use domain separator "zkp_airdrop_nullifier_v1" (23 bytes) + private_key (32 bytes) + padding (41 bytes) = 96 bytes total
+    // Use domain separator "zkp_airdrop_nullifier_v1" (23 bytes) + private_key (32 bytes) + zeros (41 bytes) = 96 bytes total
     // This prevents cross-protocol nullifier collisions
     // Formula: nullifier = Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)
     let domain_separator = b"zkp_airdrop_nullifier_v1";  // 23 bytes
-    let padding = vec![0u8; 41];  // 41 bytes of zeros
+    let zeros = vec![0u8; 41];  // 41 bytes of zeros
     let mut nullifier_input = Vec::new();
     nullifier_input.extend_from_slice(domain_separator);
     nullifier_input.extend_from_slice(&private_key);
-    nullifier_input.extend_from_slice(&padding);
+    nullifier_input.extend_from_slice(&zeros);
     assert_eq!(nullifier_input.len(), 96);  // 23 + 32 + 41 = 96 bytes
     let nullifier = poseidon_hash(&nullifier_input);
     
@@ -734,7 +740,7 @@ relayer:
   min_balance_warning: "1000000000000000000"  # 1.0 ETH (warning threshold)
   min_balance_critical: "500000000000000000"   # 0.5 ETH (stop accepting claims)
   gas_price_multiplier: 1.1  # 10% premium over base fee
-  gas_price_randomization: 0.05  # 0-5% random variance for privacy
+  gas_price_randomization: 0.05  # 0-5% random variance for privacy (inclusive: random_factor ∈ [0.00, 0.05])
   max_gas_price: "100000000"  # 0.1 gwei cap (Optimism gas is much cheaper than Ethereum)
   
 rate_limit:
