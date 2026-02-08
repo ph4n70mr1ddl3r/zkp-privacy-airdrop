@@ -11,28 +11,22 @@ pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
 
     let mut last_error = None;
     for attempt in 1..=MAX_RETRIES {
-        match ConnectionManager::new_with_connection_config(
-            client.clone(),
-            redis::aio::ConnectionConfig {
-                connection_timeout: Duration::from_secs(5),
-                exponent_base: 2,
-                max_retries: MAX_RETRIES,
-                retry_factor: 2,
-                wait_initial: Duration::from_millis(RETRY_DELAY_MS),
-                ..Default::default()
-            },
-        )
-        .await
-        {
-            Ok(manager) => return Ok(manager),
+        match ConnectionManager::new(client.clone()).await {
+            Ok(manager) => {
+                tracing::info!("Successfully connected to Redis");
+                return Ok(manager);
+            }
             Err(e) => {
                 last_error = Some(e);
-                tracing::warn!(
-                    "Redis connection attempt {} failed, retrying in {}ms...",
-                    attempt,
-                    RETRY_DELAY_MS * attempt as u64
-                );
-                tokio::time::sleep(Duration::from_millis(RETRY_DELAY_MS * attempt as u64)).await;
+                if attempt < MAX_RETRIES {
+                    tracing::warn!(
+                        "Redis connection attempt {} failed, retrying in {}ms...",
+                        attempt,
+                        RETRY_DELAY_MS * attempt as u64
+                    );
+                    tokio::time::sleep(Duration::from_millis(RETRY_DELAY_MS * attempt as u64))
+                        .await;
+                }
             }
         }
     }
