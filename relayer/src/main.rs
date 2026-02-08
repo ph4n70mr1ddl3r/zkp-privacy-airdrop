@@ -67,11 +67,14 @@ async fn main() -> anyhow::Result<()> {
                             .cors
                             .allowed_headers
                             .iter()
-                            .map(|h| {
-                                HeaderName::from_bytes(h.as_bytes()).unwrap_or_else(|_| {
-                                    eprintln!("Invalid header name: {}", h);
-                                    HeaderName::from_static("content-type")
-                                })
+                            .filter_map(|h| {
+                                match HeaderName::from_bytes(h.as_bytes()) {
+                                    Ok(header_name) => Some(header_name),
+                                    Err(_) => {
+                                        tracing::warn!("Invalid header name: {}", h);
+                                        None
+                                    }
+                                }
                             })
                             .collect::<Vec<_>>(),
                     )

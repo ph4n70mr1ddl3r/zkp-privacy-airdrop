@@ -17,8 +17,8 @@ Cargo.lock
 .env.*
 
 # Secrets
-secrets/*.txt
-secrets/*.key
+secrets/
+*.key
 
 # OS files
 .DS_Store

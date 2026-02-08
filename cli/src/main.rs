@@ -140,13 +140,11 @@ async fn main() -> Result<()> {
         .context("Failed to set tracing subscriber")?;
 
     let config_path = cli.config.unwrap_or_else(|| {
-        dirs::home_dir()
-            .unwrap_or_else(|| {
-                eprintln!("Error: Could not determine home directory. Please specify config file with --config.");
-                std::process::exit(1);
-            })
-            .join(".zkp-airdrop")
-            .join("config.toml")
+        let home_dir = dirs::home_dir().unwrap_or_else(|| {
+            eprintln!("Error: Could not determine home directory. Please specify config file with --config.");
+            std::process::exit(1);
+        });
+        home_dir.join(".zkp-airdrop").join("config.toml")
     });
 
     let config = Config::load_or_default(&config_path)?;

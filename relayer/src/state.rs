@@ -69,7 +69,7 @@ impl AppState {
         use std::str::FromStr;
 
         if let Ok(wallet) = LocalWallet::from_str(&self.config.relayer.private_key) {
-            format!("{:?}", wallet.address())
+            format!("{:#x}", wallet.address())
         } else {
             "0x0000000000000000000000000000000000000000".to_string()
         }
@@ -158,13 +158,19 @@ impl AppState {
 
         let key = format!("nullifier:{}", nullifier);
         let mut redis = self.redis.lock().await;
-        redis.exists(&key).await.unwrap_or(0) > 0
+        
+        match redis.exists::<_, i64>(&key).await {
+            Ok(count) => count > 0,
+            Err(e) => {
+                tracing::error!("Failed to check nullifier existence in Redis: {}", e);
+                false
+            }
+        }
     }
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
-        use rand::RngCore;
-
         use redis::AsyncCommands;
+        
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
@@ -179,9 +185,18 @@ impl AppState {
                 stats.total_claims += 1;
                 stats.successful_claims += 1;
 
-                let mut tx_bytes = [0u8; 32];
-                rand::thread_rng().fill_bytes(&mut tx_bytes);
-                Ok(format!("0x{}", hex::encode(tx_bytes)))
+                let tx_bytes = uuid::Uuid::new_v4().to_bytes_le();
+                let tx_hash = format!("0x{}", hex::encode(&tx_bytes[..]));
+                
+                let timestamp = chrono::Utc::now().to_rfc3339();
+                
+                let tx_key = format!("{}:tx_hash", key);
+                let _: () = redis.set(&tx_key, &tx_hash).await.map_err(|e| e.to_string())?;
+                
+                let timestamp_key = format!("{}:timestamp", key);
+                let _: () = redis.set(&timestamp_key, &timestamp).await.map_err(|e| e.to_string())?;
+                
+                Ok(tx_hash)
             }
             Err(e) => {
                 let mut stats = self.stats.write();
@@ -201,29 +216,46 @@ impl AppState {
 
         let key = format!("nullifier:{}", nullifier);
         let mut redis = self.redis.lock().await;
+        
         let recipient: Option<String> = redis.get(&key).await.ok().flatten()?;
+        
+        let tx_key = format!("{}:tx_hash", key);
+        let tx_hash: Option<String> = redis.get(&tx_key).await.ok().flatten();
+        
+        let block_key = format!("{}:block", key);
+        let block_number: Option<u64> = redis.get(&block_key).await.ok().flatten();
+        
+        let timestamp_key = format!("{}:timestamp", key);
+        let timestamp: Option<String> = redis.get(&timestamp_key).await.ok().flatten();
 
         Some(CheckStatusResponse {
             nullifier: nullifier.to_string(),
             claimed: true,
-            tx_hash: Some(format!("0x{}", hex::encode(rand::random::<[u8; 32]>()))),
+            tx_hash,
             recipient,
-            timestamp: Some(chrono::Utc::now().to_rfc3339()),
-            block_number: Some(rand::random()),
+            timestamp,
+            block_number,
         })
     }
 
-    pub async fn get_merkle_path(&self, _address: &str) -> Option<MerklePathResponse> {
-        // In production, look up actual Merkle path
+    pub async fn get_merkle_path(&self, address: &str) -> Option<MerklePathResponse> {
+        use redis::AsyncCommands;
+
+        let key = format!("merkle_path:{}", address);
+        let mut redis = self.redis.lock().await;
+
+        let leaf_index: Option<u64> = redis.get(format!("{}:index", key)).await.ok().flatten()?;
+        let merkle_path: Option<String> = redis.get(format!("{}:path", key)).await.ok().flatten()?;
+        let path_indices: Option<String> = redis.get(format!("{}:indices", key)).await.ok().flatten()?;
+
+        let path_data: Vec<String> = serde_json::from_str(&merkle_path?).ok()?;
+        let indices_data: Vec<u8> = serde_json::from_str(&path_indices?).ok()?;
+
         Some(MerklePathResponse {
-            address: _address.to_string(),
-            leaf_index: 1_234_567,
-            merkle_path: vec![
-                "0xabc".to_string(),
-                "0xdef".to_string(),
-                "0x123".to_string(),
-            ],
-            path_indices: vec![0, 1, 0],
+            address: address.to_string(),
+            leaf_index: leaf_index?,
+            merkle_path: path_data,
+            path_indices: indices_data,
             root: self.config.merkle_tree.merkle_root.clone(),
         })
     }
