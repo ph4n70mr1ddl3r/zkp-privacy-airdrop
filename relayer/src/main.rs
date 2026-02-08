@@ -24,6 +24,7 @@ async fn main() -> anyhow::Result<()> {
     info!("Starting ZKP Airdrop Relayer...");
 
     let config = config::Config::from_env()?;
+    config.validate()?;
     let db_pool = db::create_pool(&config.database_url).await?;
     let redis_client = redis::connect(&config.redis_url).await?;
 

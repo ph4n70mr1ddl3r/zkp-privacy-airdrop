@@ -6,6 +6,15 @@ use tracing::{error, info, warn};
 use crate::state::AppState;
 use crate::types_plonk::*;
 
+fn sanitize_error_message(error: &str) -> String {
+    let lower = error.to_lowercase();
+    if lower.contains("private key") || lower.contains("secret") || lower.contains("password") {
+        "Internal error occurred".to_string()
+    } else {
+        error.to_string()
+    }
+}
+
 pub fn is_valid_address(address: &str) -> bool {
     if address.len() != 42 {
         return false;
@@ -187,7 +196,7 @@ pub async fn submit_claim(
             error!("Failed to submit claim: {} - Error: {}", claim.nullifier, e);
             HttpResponse::InternalServerError().json(ErrorResponse {
                 success: false,
-                error: "Failed to submit claim. Please try again later.".to_string(),
+                error: sanitize_error_message(&format!("Failed to submit claim: {}", e)),
                 code: Some("INTERNAL_ERROR".to_string()),
                 retry_after: Some(60),
             })
@@ -275,7 +284,17 @@ pub async fn donate(claim: web::Json<DonateRequest>, state: web::Data<AppState>)
         });
     }
 
-    info!("Received donation from {}", claim.donor);
+    if let Err(e) = claim.amount.parse::<u128>() {
+        warn!("Invalid donation amount format from {}: {}", claim.donor, e);
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: format!("Invalid donation amount: {}", e),
+            code: Some("INVALID_AMOUNT".to_string()),
+            retry_after: None,
+        });
+    }
+
+    info!("Received donation from {} amount: {}", claim.donor, claim.amount);
 
     let donation_address = state.relayer_address();
 

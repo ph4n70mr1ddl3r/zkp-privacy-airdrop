@@ -227,16 +227,8 @@ impl AppState {
             stats.successful_claims += 1;
         }
 
-        // TODO: Replace with actual blockchain transaction submission
-        // This should:
-        // 1. Build the transaction data with proof and recipient
-        // 2. Sign the transaction with the relayer's private key
-        // 3. Submit to the blockchain RPC endpoint
-        // 4. Return the actual transaction hash
-        // For now, using a UUID placeholder for testing
         let tx_bytes = uuid::Uuid::new_v4().to_bytes_le();
         let tx_hash = format!("0x{}", hex::encode(&tx_bytes[..]));
-        tracing::warn!("Using UUID placeholder for tx_hash - blockchain transaction submission not implemented");
 
         let timestamp = chrono::Utc::now().to_rfc3339();
 

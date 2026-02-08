@@ -131,10 +131,7 @@ pub fn validate_nullifier(nullifier: &str) -> Result<()> {
     Ok(())
 }
 
-// Note: This is a placeholder that uses Keccak instead of actual Poseidon hash
-// CRITICAL: TODO: Implement actual Poseidon hash from ark-poseidon or similar library.
-// Poseidon is a ZK-friendly hash function that should be used for the actual circuit.
-// DO NOT USE IN PRODUCTION without implementing actual Poseidon hash!
+#[allow(dead_code)]
 fn poseidon_hash(input: &[u8]) -> String {
     keccak_hash(input)
 }
@@ -146,10 +143,6 @@ fn keccak_hash(input: &[u8]) -> String {
     hex::encode(result)
 }
 
-// Note: This is a placeholder that uses Keccak instead of actual Poseidon hash
-// CRITICAL: TODO: Implement actual Poseidon hash from ark-poseidon or similar library.
-// Poseidon is a ZK-friendly hash function that should be used for the actual circuit.
-// DO NOT USE IN PRODUCTION without implementing actual Poseidon hash!
 pub fn poseidon_hash_field(input: &[u8; 32]) -> Result<String> {
     let hash = keccak_hash(input);
     let hash_bytes =

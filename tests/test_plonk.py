@@ -9,7 +9,9 @@ from typing import Dict, Any
 
 @pytest.fixture
 def relayer_url() -> str:
-    return os.getenv("RELAYER_URL", "http://localhost:8080")
+    return os.getenv(
+        "RELAYER_URL", os.getenv("TEST_RELAYER_URL", "http://localhost:8080")
+    )
 
 
 @pytest.fixture

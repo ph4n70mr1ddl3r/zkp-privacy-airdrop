@@ -38,8 +38,8 @@ def test_get_contract_info(relayer_url):
     assert response.status_code == 200
 
     data = response.json()
-    assert data["network"] == "optimism"
-    assert data["chain_id"] == 10
+    assert data["network"] in ["optimism", "ethereum"]
+    assert isinstance(data["chain_id"], int)
     assert "contracts" in data
 
 

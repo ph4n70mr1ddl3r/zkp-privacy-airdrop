@@ -77,6 +77,7 @@ contract PrivacyAirdrop is ReentrancyGuard {
      * @param proof Groth16 proof of Merkle tree membership
      * @param nullifier Unique identifier derived from private key (prevents double-claims)
      * @param recipient Address to receive the claimed tokens
+     * @dev Emits Claimed event on successful claim
      */
     function claim(
         Proof calldata proof,

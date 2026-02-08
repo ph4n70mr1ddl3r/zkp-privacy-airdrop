@@ -31,6 +31,18 @@ pub struct NetworkConfig {
     pub contracts: ContractsConfig,
 }
 
+impl NetworkConfig {
+    pub fn validate(&self) -> Result<()> {
+        if self.rpc_url.trim().is_empty() {
+            return Err(anyhow::anyhow!("RPC_URL cannot be empty"));
+        }
+        if self.chain_id == 0 {
+            return Err(anyhow::anyhow!("CHAIN_ID must be non-zero"));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContractsConfig {
     pub airdrop_address: String,
@@ -75,7 +87,7 @@ pub struct MerkleTreeConfig {
 
 impl Config {
     pub fn from_env() -> Result<Self> {
-        Ok(Self {
+        let config = Self {
             host: std::env::var("RELAYER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
             port: std::env::var("RELAYER_PORT")
                 .unwrap_or_else(|_| "8080".to_string())
@@ -207,6 +219,17 @@ impl Config {
                     .parse()
                     .unwrap_or(false),
             },
-        })
+        };
+        Ok(config)
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.relayer.private_key.trim().is_empty() {
+            return Err(anyhow::anyhow!("RELAYER_PRIVATE_KEY cannot be empty"));
+        }
+
+        self.network.validate()?;
+
+        Ok(())
     }
 }

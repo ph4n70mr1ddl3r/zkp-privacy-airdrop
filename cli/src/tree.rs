@@ -12,11 +12,11 @@ impl MerkleTree {
         Ok(None)
     }
 
-    pub fn get_leaf_hash(&self, _address: &Address) -> Result<[u8; 32]> {
+    pub fn get_leaf_hash(&self, address: &Address) -> Result<[u8; 32]> {
         Ok([0u8; 32])
     }
 
-    pub fn get_path(&self, _address: &[u8; 32]) -> Result<(Vec<[u8; 32]>, Vec<u8>)> {
+    pub fn get_path(&self, address: &[u8; 32]) -> Result<(Vec<[u8; 32]>, Vec<u8>)> {
         Ok((vec![], vec![]))
     }
 }
