@@ -1,12 +1,13 @@
 # Security & Privacy Considerations
 
-**Version**: 1.0.1
+**Version**: 1.0.2
 **Last Updated**: 2026-02-08
-**Based on**: [Technical Specification v1.1.1](./02-technical-specification.md) and [Unified Specification v1.5.1](./00-specification.md)
+**Based on**: [Technical Specification v1.1.3](./02-technical-specification.md) and [Unified Specification v1.5.2](./00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.0.2 | 2026-02-08 | Updated to match specification v1.5.2 | Documentation Review |
 | 1.0.1 | 2026-02-08 | Updated to match specification v1.5.1 (version alignment, clarified gas price randomization range) | Documentation Review |
 | 1.0.0 | 2026-02-07 | Initial version | Core Team |
 

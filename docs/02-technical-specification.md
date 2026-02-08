@@ -1,12 +1,14 @@
 # Technical Specification
 
-**Version**: 1.1.1
+**Version**: 1.1.3
 **Last Updated**: 2026-02-08
-**Based on**: [Unified Specification v1.5.1](./00-specification.md)
+**Based on**: [Unified Specification v1.5.2](./00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.1.3 | 2026-02-08 | Corrected precomputed proofs storage calculation to ~52.8 GiB | Documentation Review |
+| 1.1.2 | 2026-02-08 | Updated to match specification v1.5.2 (rate limiting clarification) | Documentation Review |
 | 1.1.1 | 2026-02-08 | Updated to match specification v1.5.1 (version alignment and path fix) | Documentation Review |
 | 1.1.0 | 2026-02-07 | Updated nullifier padding, gas price randomization, precomputed proofs storage calculation | Documentation Review |
 | 1.0.0 | 2026-02-02 | Initial version | Core Team |
@@ -219,7 +221,7 @@ For complete storage details, refer to the [Unified Specification section on sto
 - **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
 - **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
 - **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path siblings)
-- **Precomputed Proofs Storage**: ~50.8 GiB (65,249,064 leaves × 868 bytes per leaf including Merkle path siblings (832 bytes), leaf hash (32 bytes), and path indices (4 bytes for 26 bits packed))
+- **Precomputed Proofs Storage**: ~52.8 GiB (65,249,064 leaves × 868 bytes per leaf including Merkle path siblings (832 bytes), leaf hash (32 bytes), and path indices (4 bytes for 26 bits packed))
 - **Merkle Tree File Sizes**:
   - Binary format with addresses only: 1.216 GiB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,280 bytes)
   - Binary format with hashes only: 1.945 GiB (16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes)
@@ -675,7 +677,7 @@ pub async fn submit_claim(
 
 ### 5.4 Rate Limiting & Anti-Spam
 
-- **Per Nullifier**: 1 request per 60 seconds (all endpoints)
+- **Per Nullifier**: 1 request per 60 seconds (default, overridden by specific endpoints)
 - **Per IP Address**: 100 requests per 60 seconds (all endpoints)
 - **Global**: 1,000 requests per 60 seconds (all endpoints)
 - **Endpoint-Specific Limits**:

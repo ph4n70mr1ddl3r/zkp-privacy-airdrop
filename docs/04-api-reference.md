@@ -1,12 +1,13 @@
 # API Reference
 
-**Version**: 1.1.1
+**Version**: 1.1.2
 **Last Updated**: 2026-02-08
-**Based on**: [Unified Specification v1.5.1](./00-specification.md)
+**Based on**: [Unified Specification v1.5.2](./00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.1.2 | 2026-02-08 | Updated to match specification v1.5.2 | Documentation Review |
 | 1.1.1 | 2026-02-08 | Updated to match specification v1.5.1 (version alignment, added path_data field) | Documentation Review |
 | 1.1.0 | 2026-02-07 | Updated nullifier specification and field element format clarification | Documentation Review |
 | 1.0.0 | 2026-02-02 | Initial version | Core Team |

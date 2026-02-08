@@ -1,11 +1,13 @@
 # Consistency Checklist
 
-**Version**: 1.0.3
+**Version**: 1.0.6
 **Last Updated**: 2026-02-08
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.0.6 | 2026-02-08 | Updated storage calculation checks to 52.8 GiB, bumped version tracking | Documentation Review |
+| 1.0.5 | 2026-02-08 | Updated to match specification v1.5.2 (rate limiting clarification) | Documentation Review |
 | 1.0.4 | 2026-02-08 | Fixed cross-reference paths in multiple documents, updated roadmap and privacy analysis to v1.0.1 | Documentation Review |
 | 1.0.3 | 2026-02-08 | Updated version control table to reflect all documents now referencing spec v1.5.1 | Documentation Review |
 | 1.0.2 | 2026-02-08 | Updated to reflect docs/00-specification.md v1.5.1 (gas price terminology fix, removed dead references) | Documentation Review |
@@ -126,7 +128,7 @@ Must match:
 **Source**: `docs/00-specification.md:415-424` (lines 415-424)
 
 Must match:
-- Per nullifier: 1 request per 60 seconds (all endpoints)
+- Per nullifier: 1 request per 60 seconds (default, overridden by specific endpoints)
 - Per IP: 100 requests per 60 seconds (all endpoints)
 - Global: 1,000 requests per 60 seconds (all endpoints)
 - Burst allowance: 2x limit for 10 seconds
@@ -324,9 +326,9 @@ Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 **Correct**: 2-element arrays for `a` and `c`, 2x2 for `b`
 
 ### 12.7 Precomputed Proofs Storage
-**Correct**: 868 bytes per leaf (~50.8 GiB total) 
+**Correct**: 868 bytes per leaf (~52.8 GiB total) 
 **Calculation**: 832 bytes (26 × 32-byte siblings) + 32 bytes (leaf hash) + 4 bytes (26 bits packed into 4 bytes for path indices) = 868 bytes total
-**Total**: 65,249,064 leaves × 868 bytes = ~50.8 GiB
+**Total**: 65,249,064 leaves × 868 bytes = ~52.8 GiB
 **Verification**: Check 00-specification.md:56 for exact storage calculation
 
 ### 12.8 Terminology Consistency
@@ -381,13 +383,13 @@ grep -r "hex strings" docs/00-specification.md | grep "alternative"
 
 | Document | Current Version | Last Updated | Based On |
 |----------|----------------|--------------|----------|
-| `00-specification.md` | 1.5.1 | 2026-02-08 | - (source of truth) |
-| `01-overview.md` | 1.1.1 | 2026-02-08 | `00-specification.md` v1.5.1 |
-| `02-technical-specification.md` | 1.1.1 | 2026-02-08 | `00-specification.md` v1.5.1 |
-| `03-implementation-roadmap.md` | 1.0.1 | 2026-02-08 | `02-technical-specification.md` v1.1.1 |
-| `04-api-reference.md` | 1.1.1 | 2026-02-08 | `00-specification.md` v1.5.1 |
-| `05-security-privacy.md` | 1.0.1 | 2026-02-08 | `00-specification.md` v1.5.1 + `02-technical-specification.md` v1.1.1 |
+| `00-specification.md` | 1.5.2 | 2026-02-08 | - (source of truth) |
+| `01-overview.md` | 1.1.2 | 2026-02-08 | `00-specification.md` v1.5.2 |
+| `02-technical-specification.md` | 1.1.3 | 2026-02-08 | `00-specification.md` v1.5.2 |
+| `03-implementation-roadmap.md` | 1.0.2 | 2026-02-08 | `02-technical-specification.md` v1.1.3 |
+| `04-api-reference.md` | 1.1.2 | 2026-02-08 | `00-specification.md` v1.5.2 |
+| `05-security-privacy.md` | 1.0.2 | 2026-02-08 | `00-specification.md` v1.5.2 + `02-technical-specification.md` v1.1.3 |
 | `06-privacy-analysis.md` | 1.0.1 | 2026-02-08 | `05-security-privacy.md` v1.0.1 |
-| `07-consistency-checklist.md` | 1.0.4 | 2026-02-08 | All documents |
+| `07-consistency-checklist.md` | 1.0.6 | 2026-02-08 | All documents |
 
 **Rule**: When `00-specification.md` version changes, update all dependent document versions and update this table.

@@ -1,13 +1,14 @@
 # ZKP Privacy Airdrop - Unified Specification
 
-## Version: 1.5.1
+## Version: 1.5.2
 ## Date: 2026-02-08
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.5.2 | 2026-02-08 | Clarified rate limiting rules to resolve inconsistency between global nullifier limit and status check limit | Documentation Review |
 | 1.5.1 | 2026-02-08 | Fixed gas price terminology (changed "premium" to "multiplier"), removed references to non-existent documentation-fixes-summary.md | Documentation Review |
-| 1.5.0 | 2026-02-07 | Fixed nullifier padding specification (41 bytes zeros), corrected precomputed proofs storage (968 bytes), standardized gas price randomization formula | Documentation Review |
+| 1.5.0 | 2026-02-07 | Fixed nullifier padding specification (41 bytes zeros), corrected precomputed proofs storage (868 bytes), standardized gas price randomization formula | Documentation Review |
 | 1.4.0 | 2026-02-06 | Added gas estimates, rate limiting details, and API specifications | Core Team |
 | 1.3.0 | 2026-02-05 | Enhanced security parameters and compliance sections | Core Team |
 | 1.2.0 | 2026-02-04 | Updated cryptographic specifications and field element encoding | Core Team |
@@ -54,7 +55,7 @@ This document provides a single source of truth for all technical specifications
 | **Merkle path per claim** | 832 bytes | 26 × 32 bytes for Merkle path siblings | Required for proof generation |
 | **Groth16 proof** | ~200 bytes | Variable based on circuit constraints | ZK proof size |
 | **Complete proof package** | ~1,032 bytes | ~200 bytes (proof) + 832 bytes (path) | Total data per claim submission |
-| **Precomputed proofs** | ~50.8 GiB | 65,249,064 leaves × 868 bytes (832 bytes path + 32 bytes leaf hash + 4 bytes path indices) where 26 bits (one per tree level) are packed into 4 bytes | Optional for API service |
+| **Precomputed proofs** | ~52.8 GiB | 65,249,064 leaves × 868 bytes (832 bytes path + 32 bytes leaf hash + 4 bytes path indices) where 26 bits (one per tree level) are packed into 4 bytes | Optional for API service |
 | **Proof JSON** | ~1.5 KB | Variable based on field element encoding | Human-readable proof format |
 
 **Notes**:
@@ -413,7 +414,7 @@ nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
 **See section 10.3 for complete gas estimate constants.**
 
 ### 5.2 Rate Limiting
-- **Per Nullifier**: 1 request per 60 seconds (all endpoints)
+- **Per Nullifier**: 1 request per 60 seconds (default, overridden by specific endpoints)
 - **Per IP Address**: 100 requests per 60 seconds (all endpoints)
 - **Global**: 1,000 requests per 60 seconds (all endpoints)
 - **Endpoint-Specific Limits**:
