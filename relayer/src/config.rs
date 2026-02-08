@@ -110,13 +110,20 @@ impl Config {
                             "CRITICAL ERROR: RELAYER_PRIVATE_KEY environment variable not set!"
                         )
                     })?;
-                    if key == "0x0000000000000000000000000000000000000000000000000000000000000000"
-                        || key == "0000000000000000000000000000000000000000000000000000000000000000"
-                        || key.to_lowercase() == "your_private_key_here"
-                    {
+                    let normalized_key = key.trim().to_lowercase();
+                    let insecure_keys = vec![
+                        "0x0000000000000000000000000000000000000000000000000000000000000000",
+                        "0000000000000000000000000000000000000000000000000000000000000000",
+                        "your_private_key_here",
+                        "example_private_key",
+                        "0000000000000000000000000000000000000000000000000000000000000001",
+                        "0x0000000000000000000000000000000000000000000000000000000000000001",
+                    ];
+                    if insecure_keys.contains(&normalized_key.as_str()) {
                         return Err(anyhow::anyhow!(
                             "CRITICAL ERROR: Insecure default private key detected! \
-                             Please set RELAYER_PRIVATE_KEY to a secure private key."
+                             Please set RELAYER_PRIVATE_KEY to a secure, randomly generated private key. \
+                             Never use example or all-zero private keys in production!"
                         ));
                     }
                     key

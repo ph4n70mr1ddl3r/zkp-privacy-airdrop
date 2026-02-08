@@ -169,19 +169,20 @@ pub fn generate_plonk_proof(
 }
 
 /// Internal PLONK proof generation
-/// CRITICAL: This is a placeholder - actual implementation would use the proving key
+/// SECURITY WARNING: This is a placeholder implementation!
+/// DO NOT USE IN PRODUCTION!
+/// The generated proof will NOT pass actual verification!
 /// TODO: Implement actual PLONK proof generation using proving key
-/// DO NOT USE IN PRODUCTION without implementing actual proof generation!
+/// Must:
+/// 1. Compute witness from circuit inputs
+/// 2. Generate PLONK proof using proving key from trusted setup
+/// 3. Verify proof structure before returning
 fn generate_plonk_proof_internal(
     _private_inputs: &PrivateInputs,
     _public_inputs: &PublicInputs,
 ) -> Result<PLONKProof> {
-    // In production, this would:
-    // 1. Compute witness from circuit inputs
-    // 2. Generate PLONK proof using proving key
-    // 3. Verify proof structure
-
-    // For now, return a minimal proof for testing
+    // SECURITY WARNING: Placeholder - returns dummy proof that will fail verification!
+    // In production, must use actual proving key to generate valid PLONK proof
     Ok(PLONKProof::minimal())
 }
 

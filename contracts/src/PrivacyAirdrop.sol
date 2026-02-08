@@ -1,7 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+/**
+ * @title IVerifier
+ * @notice Interface for Groth16 proof verification
+ */
 interface IVerifier {
+    /**
+     * @notice Verify a Groth16 zero-knowledge proof
+     * @param _pA First proof value (2 elements)
+     * @param _pB Second proof value (2x2 matrix)
+     * @param _pC Third proof value (2 elements)
+     * @param _pubSignals Public signals (3 elements: merkle_root, recipient, nullifier)
+     * @return True if proof is valid
+     */
     function verifyProof(
         uint[2] calldata _pA,
         uint[2][2] calldata _pB,
@@ -10,6 +22,10 @@ interface IVerifier {
     ) external view returns (bool);
 }
 
+/**
+ * @title ReentrancyGuard
+ * @notice Contract module that helps prevent reentrant calls
+ */
 abstract contract ReentrancyGuard {
     uint256 private constant _NOT_ENTERED = 1;
     uint256 private constant _ENTERED = 2;
@@ -27,6 +43,11 @@ abstract contract ReentrancyGuard {
     }
 }
 
+/**
+ * @title PrivacyAirdrop
+ * @notice Privacy-preserving ERC20 token airdrop using Groth16 ZK proofs
+ * @dev Allows users to claim tokens without revealing their address from the Merkle tree
+ */
 contract PrivacyAirdrop {
     bytes32 public immutable merkleRoot;
     mapping(bytes32 => bool) public nullifiers;
@@ -43,6 +64,14 @@ contract PrivacyAirdrop {
         uint[2] c;
     }
 
+    /**
+     * @notice Initialize the airdrop contract
+     * @param _token Address of the ERC20 token to distribute
+     * @param _merkleRoot Root of the Merkle tree containing eligible addresses
+     * @param _claimAmount Number of tokens each eligible address can claim
+     * @param _claimDeadline Unix timestamp after which claims are no longer accepted
+     * @param _verifier Address of the Groth16 verifier contract
+     */
     constructor(
         address _token,
         bytes32 _merkleRoot,
@@ -62,6 +91,12 @@ contract PrivacyAirdrop {
         verifier = IVerifier(_verifier);
     }
 
+    /**
+     * @notice Claim tokens by presenting a zero-knowledge proof
+     * @param proof Groth16 proof of Merkle tree membership
+     * @param nullifier Unique identifier derived from private key (prevents double-claims)
+     * @param recipient Address to receive the claimed tokens
+     */
     function claim(
         Proof calldata proof,
         bytes32 nullifier,
@@ -89,15 +124,44 @@ contract PrivacyAirdrop {
         emit Claimed(nullifier, recipient, block.timestamp);
     }
 
+    /**
+     * @notice Check if a nullifier has already been claimed
+     * @param nullifier The nullifier to check
+     * @return True if the nullifier has already been used
+     */
     function isClaimed(bytes32 nullifier) external view returns (bool) {
         return nullifiers[nullifier];
     }
 
+    /**
+     * @notice Estimate gas required for a claim transaction
+     * @param proof Groth16 proof (unused in estimate, kept for interface)
+     * @param nullifier Nullifier hash (unused in estimate, kept for interface)
+     * @param recipient Recipient address (unused in estimate, kept for interface)
+     * @return Estimated gas in wei (conservative 700K with buffer)
+     */
     function estimateClaimGas(
         Proof calldata proof,
         bytes32 nullifier,
         address recipient
     ) external view returns (uint256) {
-        return 700_000; // Conservative estimate with buffer
+        proof;
+        nullifier;
+        recipient;
+        return 700_000;
     }
+}
+
+/**
+ * @title IERC20
+ * @notice Interface for ERC20 token transfers
+ */
+interface IERC20 {
+    /**
+     * @notice Transfer tokens from contract to recipient
+     * @param to Recipient address
+     * @param amount Number of tokens to transfer
+     * @return True if transfer successful
+     */
+    function transfer(address to, uint256 amount) external returns (bool);
 }

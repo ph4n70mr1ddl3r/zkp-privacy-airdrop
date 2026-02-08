@@ -24,6 +24,7 @@ pub enum Proof {
 
 impl Proof {
     /// Get proof type name
+    #[must_use]
     pub fn type_name(&self) -> &str {
         match self {
             Proof::Groth16(_) => "Groth16",
@@ -32,6 +33,7 @@ impl Proof {
     }
 
     /// Validate proof structure
+    #[must_use]
     pub fn is_valid_structure(&self) -> bool {
         match self {
             Proof::Groth16(ref proof) => {
@@ -57,6 +59,7 @@ pub struct SubmitClaimRequest {
 impl SubmitClaimRequest {
     #[allow(dead_code)]
     /// Create a minimal PLONK request for testing
+    #[must_use]
     pub fn plonk_minimal() -> Self {
         Self {
             proof: Proof::Plonk(PlonkProof {

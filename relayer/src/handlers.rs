@@ -248,8 +248,8 @@ pub async fn donate(
 pub async fn get_stats(
     state: web::Data<AppState>,
 ) -> impl Responder {
-    let stats = state.get_stats().await;
-    HttpResponse::Ok().json(stats)
+    let response_stats = state.get_stats().await;
+    HttpResponse::Ok().json(response_stats)
 }
 
 pub async fn get_merkle_path(

@@ -106,7 +106,7 @@ impl AppState {
         let balance = self.get_relayer_balance().await;
         let min_critical: u64 = self.config.relayer.min_balance_critical
             .parse()
-            .unwrap_or(500000000000000000u64);
+            .unwrap_or(500_000_000_000_000_000_u64);
         balance > min_critical
     }
 
@@ -209,7 +209,7 @@ impl AppState {
         // In production, look up actual Merkle path
         Some(MerklePathResponse {
             address: _address.to_string(),
-            leaf_index: 1234567,
+            leaf_index: 1_234_567,
             merkle_path: vec![
                 "0xabc".to_string(),
                 "0xdef".to_string(),
@@ -238,7 +238,7 @@ impl AppState {
             total_tokens_distributed: (successful_claims * 1000 * 10u64.pow(18)).to_string(),
             unique_recipients: successful_claims,
             average_gas_price: "25000000000".to_string(),
-            total_gas_used: (successful_claims * 700000).to_string(),
+            total_gas_used: (successful_claims * 700_000).to_string(),
             relayer_balance: self.get_relayer_balance().await.to_string(),
             uptime_percentage: if uptime > 0.0 { 100.0 } else { 0.0 },
             response_time_ms: ResponseTime {

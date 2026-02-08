@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Read, Write};
 use std::path::Path;
@@ -72,11 +73,11 @@ pub fn write_tree(tree: &crate::tree::MerkleTree, output: &Path) -> Result<()> {
         version: 1,
         height: tree.height,
         reserved: [0, 0],
+        #[allow(clippy::cast_possible_truncation)]
         num_leaves: tree.leaves.len() as u32,
         root_hash: tree.root,
     };
 
-    use byteorder::{BigEndian, WriteBytesExt};
     writer.write_all(&header.magic)?;
     writer.write_u8(header.version)?;
     writer.write_u8(header.height)?;
@@ -98,8 +99,6 @@ pub fn read_tree(path: &Path) -> Result<crate::tree::MerkleTree> {
     let file = File::open(path).context("Failed to open tree file")?;
 
     let mut reader = BufReader::new(file);
-
-    use byteorder::{BigEndian, ReadBytesExt};
 
     let mut magic = [0u8; 4];
     reader.read_exact(&mut magic)?;

@@ -23,6 +23,12 @@ abstract contract ReentrancyGuard {
     }
 }
 
+/**
+ * @title PrivacyAirdropPLONK
+ * @notice Privacy-preserving ERC20 token airdrop using PLONK ZK proofs
+ * @dev Allows users to claim tokens without revealing their address from the Merkle tree
+ * Uses universal trusted setup (Perpetual Powers of Tau) instead of per-circuit trusted setup
+ */
 contract PrivacyAirdropPLONK {
     bytes32 public immutable merkleRoot;
     mapping(bytes32 => bool) public nullifiers;
@@ -30,24 +36,24 @@ contract PrivacyAirdropPLONK {
     uint256 public immutable claimAmount;
     uint256 public immutable claimDeadline;
     IPLONKVerifier public immutable verifier;
-    
+
     event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
-    
+
     /**
      * @notice PLONK proof structure
-     * @dev Different from Groth16 - has 8 elements instead of 3
+     * @dev Contains 8 field elements: A, B, C, Z, T1, T2, T3, WXi
      */
     struct PLONKProof {
-        uint256[8] proof;  // A, B, C, Z, T1, T2, T3, WXi...
+        uint256[8] proof;
     }
-    
+
     /**
-     * @notice Initialize contract
-     * @param _token Address of ZKP token contract
-     * @param _merkleRoot Merkle tree root
-     * @param _claimAmount Tokens per claim (1000 ZKP)
-     * @param _claimDeadline Unix timestamp for end of claim period
-     * @param _verifier Address of PLONK verifier contract
+     * @notice Initialize the PLONK airdrop contract
+     * @param _token Address of the ERC20 token to distribute
+     * @param _merkleRoot Root of the Merkle tree containing eligible addresses
+     * @param _claimAmount Number of tokens each eligible address can claim
+     * @param _claimDeadline Unix timestamp after which claims are no longer accepted
+     * @param _verifier Address of the PLONK verifier contract
      */
     constructor(
         address _token,
@@ -67,12 +73,12 @@ contract PrivacyAirdropPLONK {
         claimDeadline = _claimDeadline;
         verifier = IPLONKVerifier(_verifier);
     }
-    
+
     /**
-     * @notice Claim tokens using PLONK proof
-     * @param proof PLONK zero-knowledge proof
-     * @param nullifier Unique identifier (prevents double-claims)
-     * @param recipient Address to receive tokens
+     * @notice Claim tokens by presenting a PLONK zero-knowledge proof
+     * @param proof PLONK proof of Merkle tree membership (8 field elements)
+     * @param nullifier Unique identifier derived from private key (prevents double-claims)
+     * @param recipient Address to receive the claimed tokens
      */
     function claim(
         PLONKProof calldata proof,
@@ -83,23 +89,19 @@ contract PrivacyAirdropPLONK {
         require(recipient != address(0), "Invalid recipient");
         require(!nullifiers[nullifier], "Already claimed");
 
-        // Prepare public inputs: [merkle_root, recipient, nullifier]
         uint256[3] memory instances = [
             uint256(merkleRoot),
             uint256(uint160(recipient)),
             uint256(nullifier)
         ];
 
-        // Verify PLONK proof
         require(
             verifier.verifyProof(proof.proof, instances),
             "Invalid proof"
         );
 
-        // Mark as claimed
         nullifiers[nullifier] = true;
 
-        // Transfer tokens
         (bool success, bytes memory data) = address(token).call(
             abi.encodeWithSelector(IERC20.transfer.selector, recipient, claimAmount)
         );
@@ -107,38 +109,47 @@ contract PrivacyAirdropPLONK {
 
         emit Claimed(nullifier, recipient, block.timestamp);
     }
-    
+
     /**
-     * @notice Check if nullifier has been claimed
+     * @notice Check if a nullifier has already been claimed
      * @param nullifier The nullifier to check
-     * @return True if already claimed
+     * @return True if the nullifier has already been used
      */
     function isClaimed(bytes32 nullifier) external view returns (bool) {
         return nullifiers[nullifier];
     }
-    
+
     /**
-     * @notice Estimate gas for claim transaction
-     * @dev Updated for PLONK - higher gas cost than Groth16
-     * @return Estimated gas (1.3M for PLONK)
+     * @notice Estimate gas required for a PLONK claim transaction
+     * @dev PLONK verification requires more gas than Groth16 (~900K vs ~300K)
+     * @param proof PLONK proof (unused in estimate, kept for interface)
+     * @param nullifier Nullifier hash (unused in estimate, kept for interface)
+     * @param recipient Recipient address (unused in estimate, kept for interface)
+     * @return Estimated gas in wei (conservative 1.3M with buffer)
      */
     function estimateClaimGas(
         PLONKProof calldata proof,
         bytes32 nullifier,
         address recipient
     ) external view returns (uint256) {
-        // PLONK verification costs ~900K gas (vs 300K for Groth16)
-        // Plus storage + transfer (~200K)
-        // Plus buffer (~200K)
-        return 1_300_000; // Conservative estimate with buffer
+        proof;
+        nullifier;
+        recipient;
+        return 1_300_000;
     }
 }
 
 /**
- * @title ERC20 Interface
- * @notice Standard ERC20 interface
+ * @title IERC20
+ * @notice Interface for ERC20 token transfers
  */
 interface IERC20 {
+    /**
+     * @notice Transfer tokens from contract to recipient
+     * @param to Recipient address
+     * @param amount Number of tokens to transfer
+     * @return True if transfer successful
+     */
     function transfer(address to, uint256 amount) external returns (bool);
 }
 
