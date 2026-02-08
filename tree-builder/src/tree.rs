@@ -1,14 +1,19 @@
 use num_bigint::BigUint;
-use num_traits::{Num, Zero};
+use num_traits::Num;
 use rayon::prelude::*;
-use std::collections::HashMap;
 
+#[allow(dead_code)]
 pub const TREE_HEIGHT: u8 = 26;
 pub const MAX_LEAVES: usize = 1 << 26; // 2^26 = 67,108,864
 
+#[allow(dead_code)]
 const FIELD_PRIME: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
-const FIELD_PRIME_BIG: BigUint = BigUint::from_str_radix(FIELD_PRIME, 10).unwrap();
+
+#[allow(dead_code)]
+fn field_prime() -> BigUint {
+    BigUint::from_str_radix(FIELD_PRIME, 10).unwrap()
+}
 
 #[derive(Debug, Clone)]
 pub struct MerkleTree {
@@ -102,12 +107,10 @@ impl MerkleTree {
                 } else {
                     siblings.push([0u8; 32]);
                 }
+            } else if idx + 1 < level.len() {
+                siblings.push(level[idx + 1]);
             } else {
-                if idx + 1 < level.len() {
-                    siblings.push(level[idx + 1]);
-                } else {
-                    siblings.push([0u8; 32]);
-                }
+                siblings.push([0u8; 32]);
             }
 
             idx /= 2;
@@ -130,6 +133,7 @@ impl MerkleTree {
         current == self.root
     }
 
+    #[allow(dead_code)]
     pub fn get_leaf_index(&self, leaf_hash: &[u8; 32]) -> Option<usize> {
         self.leaves.iter().position(|l| l == leaf_hash)
     }
@@ -155,6 +159,8 @@ pub fn build_merkle_tree(addresses: &[[u8; 20]], height: u8) -> Result<MerkleTre
     pb.set_style(
         indicatif::ProgressStyle::default_bar()
             .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+            .map_err(|e| format!("Failed to set progress style: {}", e))
+            .unwrap()
             .progress_chars("=>-"),
     );
     pb.set_message("Hashing addresses...");
@@ -172,10 +178,13 @@ pub fn build_merkle_tree(addresses: &[[u8; 20]], height: u8) -> Result<MerkleTre
     Ok(tree)
 }
 
+#[allow(dead_code)]
 fn mod_field(bytes: &[u8; 32]) -> [u8; 32] {
     let value = BigUint::from_bytes_be(bytes);
-    let reduced = &value % &FIELD_PRIME_BIG;
-    let mut result = [0u8; 32];
-    reduced.to_bytes_be(&mut result);
-    result
+    let reduced = &value % &field_prime();
+    let mut result = vec![0u8; 32];
+    let bytes = reduced.to_bytes_be();
+    let offset = 32 - bytes.len();
+    result[offset..].copy_from_slice(&bytes);
+    result.try_into().unwrap()
 }

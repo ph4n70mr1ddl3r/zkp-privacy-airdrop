@@ -105,19 +105,19 @@ impl Config {
             },
             relayer: RelayerConfig {
                 private_key: {
-                    let key = std::env::var("RELAYER_PRIVATE_KEY").unwrap_or_else(|_| {
-                        eprintln!(
+                    let key = std::env::var("RELAYER_PRIVATE_KEY").map_err(|_| {
+                        anyhow::anyhow!(
                             "CRITICAL ERROR: RELAYER_PRIVATE_KEY environment variable not set!"
-                        );
-                        eprintln!("This service cannot start without a valid private key.");
-                        std::process::exit(1);
-                    });
+                        )
+                    })?;
                     if key == "0x0000000000000000000000000000000000000000000000000000000000000000"
                         || key == "0000000000000000000000000000000000000000000000000000000000000000"
+                        || key.to_lowercase() == "your_private_key_here"
                     {
-                        eprintln!("CRITICAL ERROR: Insecure default private key detected!");
-                        eprintln!("Please set RELAYER_PRIVATE_KEY to a secure private key.");
-                        std::process::exit(1);
+                        return Err(anyhow::anyhow!(
+                            "CRITICAL ERROR: Insecure default private key detected! \
+                             Please set RELAYER_PRIVATE_KEY to a secure private key."
+                        ));
                     }
                     key
                 },

@@ -1,8 +1,18 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use tracing::{info, error, warn};
+use ethers::types::Address;
+use std::str::FromStr;
 
 use crate::state::AppState;
 use crate::types_plonk::*;
+
+fn is_valid_address(address: &str) -> bool {
+    address.len() == 42 && address.starts_with("0x") && Address::from_str(address).is_ok()
+}
+
+fn is_valid_nullifier(nullifier: &str) -> bool {
+    nullifier.len() == 66 && nullifier.starts_with("0x") && hex::decode(&nullifier[2..]).is_ok()
+}
 
 pub async fn health(
     state: web::Data<AppState>,
@@ -31,6 +41,26 @@ pub async fn submit_claim(
     state: web::Data<AppState>,
     claim: web::Json<SubmitClaimRequest>,
 ) -> impl Responder {
+    if !is_valid_nullifier(&claim.nullifier) {
+        warn!("Invalid nullifier format: {}", claim.nullifier);
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Invalid nullifier format. Expected 66-character hex string starting with 0x.".to_string(),
+            code: Some("INVALID_NULLIFIER".to_string()),
+            retry_after: None,
+        });
+    }
+
+    if !is_valid_address(&claim.recipient) {
+        warn!("Invalid recipient address: {}", claim.recipient);
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Invalid Ethereum address format for recipient.".to_string(),
+            code: Some("INVALID_ADDRESS".to_string()),
+            retry_after: None,
+        });
+    }
+
     info!("Received {} claim submission from nullifier: {}", claim.proof.type_name(), claim.nullifier);
 
     // Rate limiting check
@@ -125,6 +155,16 @@ pub async fn check_status(
 ) -> impl Responder {
     let nullifier = path.into_inner();
 
+    if !is_valid_nullifier(&nullifier) {
+        warn!("Invalid nullifier format: {}", nullifier);
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Invalid nullifier format. Expected 66-character hex string starting with 0x.".to_string(),
+            code: Some("INVALID_NULLIFIER".to_string()),
+            retry_after: None,
+        });
+    }
+
     info!("Checking status for nullifier: {}", nullifier);
 
     match state.get_claim_status(&nullifier).await {
@@ -183,6 +223,16 @@ pub async fn donate(
     claim: web::Json<DonateRequest>,
     state: web::Data<AppState>,
 ) -> impl Responder {
+    if !is_valid_address(&claim.donor) {
+        warn!("Invalid donor address: {}", claim.donor);
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Invalid Ethereum address format.".to_string(),
+            code: Some("INVALID_ADDRESS".to_string()),
+            retry_after: None,
+        });
+    }
+
     info!("Received donation from {}", claim.donor);
     
     let donation_address = state.relayer_address();
@@ -208,6 +258,16 @@ pub async fn get_merkle_path(
     req: HttpRequest,
 ) -> impl Responder {
     let address = path.into_inner();
+
+    if !is_valid_address(&address) {
+        warn!("Invalid address format: {}", address);
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Invalid Ethereum address format.".to_string(),
+            code: Some("INVALID_ADDRESS".to_string()),
+            retry_after: None,
+        });
+    }
 
     info!("Getting Merkle path for address: {}", address);
 

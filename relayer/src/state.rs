@@ -5,6 +5,9 @@ use redis::aio::ConnectionManager;
 use std::sync::Arc;
 use parking_lot::RwLock;
 use tokio::sync::Mutex;
+use ethers::providers::{Provider, Http, Middleware};
+use ethers::types::Address;
+use std::str::FromStr;
 
 pub struct AppState {
     pub config: Arc<Config>,
@@ -73,14 +76,30 @@ impl AppState {
     }
 
     pub async fn get_relayer_balance(&self) -> u64 {
-        // TODO: Implement actual balance query from RPC
-        // This should query the actual balance of the relayer wallet from the blockchain
-        // Example implementation:
-        // use ethers::providers::{Provider, Http};
-        // let provider = Provider::<Http>::try_from(&self.config.network.rpc_url)?;
-        // let balance = provider.get_balance(self.relayer_address(), None).await?;
-        // Ok(balance.as_u64())
-        1000000000000000000 // 1 ETH - hardcoded for now
+        let address_str = self.relayer_address();
+        match Address::from_str(&address_str) {
+            Ok(address) => {
+                match Provider::<Http>::try_from(self.config.network.rpc_url.as_str()) {
+                    Ok(provider) => {
+                        match provider.get_balance(address, None).await {
+                            Ok(balance) => balance.as_u128() as u64,
+                            Err(e) => {
+                                tracing::warn!("Failed to query balance from RPC: {}, using fallback", e);
+                                0
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to create RPC provider: {}, using fallback", e);
+                        0
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Invalid relayer address: {}, using fallback", e);
+                0
+            }
+        }
     }
 
     pub async fn has_sufficient_balance(&self) -> bool {

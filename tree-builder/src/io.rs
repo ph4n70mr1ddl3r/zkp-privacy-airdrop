@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::io::{BufRead, BufReader, BufWriter, Read, Write};
 use std::path::Path;
 
 pub fn read_addresses(path: &Path) -> Result<Vec<[u8; 20]>> {
@@ -93,6 +93,7 @@ pub fn write_tree(tree: &crate::tree::MerkleTree, output: &Path) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn read_tree(path: &Path) -> Result<crate::tree::MerkleTree> {
     let file = File::open(path).context("Failed to open tree file")?;
 
