@@ -53,7 +53,7 @@ This document provides a single source of truth for all technical specifications
 | **Merkle path per claim** | 832 bytes | 26 × 32 bytes for Merkle path siblings | Required for proof generation |
 | **Groth16 proof** | ~200 bytes | Variable based on circuit constraints | ZK proof size |
 | **Complete proof package** | ~1,032 bytes | ~200 bytes (proof) + 832 bytes (path) | Total data per claim submission |
-| **Precomputed proofs** | ~58.9 GiB | 65,249,064 leaves × 968 bytes (832 path + 32 hash + 104 indices) | Optional for API service |
+| **Precomputed proofs** | ~50.8 GiB | 65,249,064 leaves × 868 bytes (832 bytes path + 32 bytes leaf hash + 4 bytes path indices) where 26 bits (one per tree level) are packed into 4 bytes | Optional for API service |
 | **Proof JSON** | ~1.5 KB | Variable based on field element encoding | Human-readable proof format |
 
 **Notes**:
@@ -326,7 +326,7 @@ interface IRelayerRegistry {
   For i in 0..num_leaves-1:
     address: [20 bytes]  // Ethereum address
     leaf_hash: [32 bytes] // Poseidon(address)
-    path_data: [968 bytes] // 26 × 32-byte siblings (832 bytes) + 32 bytes leaf hash + 26 × 4-byte indices (104 bytes) = 968 bytes total
+    path_data: [868 bytes] // 26 × 32-byte siblings (832 bytes) + 32 bytes leaf hash + 4 bytes path indices (26 bits packed into 4 bytes) = 868 bytes total
 ```
 
 ### 4.3 API Request/Response Formats
@@ -496,7 +496,7 @@ nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
   - Privacy Enhancement: Add random 0-5% variance (inclusive) to break timing correlations
   - Maximum: 0.1 gwei cap to prevent excessive fees (Optimism gas is much cheaper)
   - Relayers should use: `gas_price = min(base_fee * 1.1 * (1 + random_factor), 0.1 gwei)` where `random_factor` is uniformly distributed in [0.00, 0.05] inclusive
-  - **Exact implementation**: `random_factor = random(0, 6) / 100` where `random(0, 6)` generates integers 0 through 5 inclusive (0, 1, 2, 3, 4, 5)
+  - **Exact implementation**: `random_factor = random_integer(0, 5) / 100.0` where `random_integer(min, max)` returns an integer in the inclusive range [min, max], generating values 0, 1, 2, 3, 4, or 5
 
 ### 6.2 Infrastructure Requirements
 - **Relayer Servers**: 3+ instances (medium/large)

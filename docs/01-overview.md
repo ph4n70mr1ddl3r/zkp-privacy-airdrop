@@ -2,7 +2,7 @@
 
 **Version**: 1.1.0  
 **Last Updated**: 2026-02-07  
-**Based on**: [Unified Specification](./00-specification.md)
+**Based on**: [Unified Specification v1.5.0](./00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |

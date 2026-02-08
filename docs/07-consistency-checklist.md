@@ -8,7 +8,7 @@
 |---------|------|---------|--------|
 | 1.0.0 | 2026-02-07 | Initial version with comprehensive cross-references | Documentation Review |  
 
-This document serves as a verification guide to ensure all documentation and implementations remain consistent with the [Unified Specification](./00-specification.md), which is the single source of truth.
+This document serves as a verification guide to ensure all documentation and implementations remain consistent with the [Unified Specification v1.5.0](./00-specification.md), which is the single source of truth.
 
 ## Document Relationships
 
@@ -292,32 +292,46 @@ Check that all CLI commands match `docs/04-api-reference.md:885-1072`:
 
 ## 12. Common Inconsistency Points
 
-### 1. Gas Price Cap
+### 12.1 Gas Price Cap
 **Incorrect**: 50 gwei (Ethereum mainnet typical)
 **Correct**: 0.1 gwei (Optimism-specific)
 
-### 2. Chain ID
+### 12.2 Chain ID
 **Incorrect**: 1 (Ethereum mainnet)
 **Correct**: 10 (Optimism mainnet)
 
 ### 12.3 Field Element Format
 **Incorrect**: Always hex with `0x` prefix
-**Correct**: Decimal strings primary (canonical format), hex with `0x` prefix alternative (developer convenience)
+**Correct**: **Decimal strings primary (canonical format)**, hex with `0x` prefix alternative (developer convenience)
+**Verification**: Check 00-specification.md:271 states "Primary Format: Decimal strings (not hex) - **This is the canonical format**"
 
-### 12.4 Nullifier Calculation
+### 12.4 Gas Price Randomization Formula
+**Incorrect**: Inconsistent descriptions of random factor generation
+**Correct**: `random_factor = random_integer(0, 5) / 100.0` where `random_integer(min, max)` returns integer in inclusive range [min, max] (0, 1, 2, 3, 4, or 5)
+**Verification**: Check 00-specification.md:498-499 for exact implementation
+
+### 12.5 Nullifier Calculation
 **Incorrect**: `Poseidon(private_key)` without domain separator
 **Correct**: `Poseidon("zkp_airdrop_nullifier_v1" || private_key || zeros)` with domain separator and 41 bytes zeros
 **Note**: Input must be exactly 96 bytes: 23 bytes domain separator + 32 bytes private key + 41 bytes zeros
 
-### 12.5 Proof Array Sizes
+### 12.6 Proof Array Sizes
 **Incorrect**: 3-element arrays for Groth16 on BN128
 **Correct**: 2-element arrays for `a` and `c`, 2x2 for `b`
 
-### 12.6 Precomputed Proofs Storage
-**Incorrect**: 936 bytes per leaf (56.88 GiB total)
-**Correct**: 968 bytes per leaf (~58.9 GiB total)
-**Calculation**: 832 bytes (26 × 32-byte siblings) + 32 bytes (leaf hash) + 104 bytes (26 × 4-byte indices) = 968 bytes
-**Total**: 65,249,064 leaves × 968 bytes = ~58.9 GiB
+### 12.7 Precomputed Proofs Storage
+**Correct**: 868 bytes per leaf (~50.8 GiB total) 
+**Calculation**: 832 bytes (26 × 32-byte siblings) + 32 bytes (leaf hash) + 4 bytes (26 bits packed into 4 bytes for path indices) = 868 bytes total
+**Total**: 65,249,064 leaves × 868 bytes = ~50.8 GiB
+**Verification**: Check 00-specification.md:56 for exact storage calculation
+
+### 12.8 Terminology Consistency
+**Inconsistent**: Mixed use of "claimant", "user", "account holder"
+**Correct**: Standardize to:
+- **Claimant**: Person/organization claiming tokens (has private key)
+- **Recipient**: Address receiving tokens (may differ from claimant's original address)
+- **User**: General term when specificity not needed
+**Verification**: Check all documents use consistent terminology
 
 ## Update Procedure
 
@@ -366,10 +380,10 @@ grep -r "hex strings" docs/00-specification.md | grep "alternative"
 | `00-specification.md` | 1.5.0 | 2026-02-07 | - (source of truth) |
 | `01-overview.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
 | `02-technical-specification.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
-| `03-implementation-roadmap.md` | 1.0.0 | 2026-02-07 | `02-technical-specification.md` |
+| `03-implementation-roadmap.md` | 1.0.0 | 2026-02-07 | `02-technical-specification.md` v1.1.0 |
 | `04-api-reference.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
-| `05-security-privacy.md` | 1.0.0 | 2026-02-07 | `00-specification.md` + `02-technical-specification.md` |
-| `06-privacy-analysis.md` | 1.0.0 | 2026-02-07 | `05-security-privacy.md` |
+| `05-security-privacy.md` | 1.0.0 | 2026-02-07 | `00-specification.md` v1.5.0 + `02-technical-specification.md` v1.1.0 |
+| `06-privacy-analysis.md` | 1.0.0 | 2026-02-07 | `05-security-privacy.md` v1.0.0 |
 | `07-consistency-checklist.md` | 1.0.0 | 2026-02-07 | All documents |
 
 **Rule**: When `00-specification.md` version changes, update all dependent document versions and update this table.

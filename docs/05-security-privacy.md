@@ -2,7 +2,7 @@
 
 **Version**: 1.0.0  
 **Last Updated**: 2026-02-07  
-**Based on**: [Technical Specification](../docs/02-technical-specification.md) and [Unified Specification](../docs/00-specification.md)
+**Based on**: [Technical Specification v1.1.0](../docs/02-technical-specification.md) and [Unified Specification v1.5.0](../docs/00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |
@@ -283,7 +283,7 @@ fn get_randomized_gas_price() -> U256 {
     let base_fee = get_base_fee();
     let multiplier = Decimal::from_ratio(11, 10); // 1.1x base
     // random_factor ∈ [0.00, 0.05] inclusive (0-5% variance)
-    let random_value = rand::random::<u32>() % 6; // Generates 0, 1, 2, 3, 4, or 5
+    let random_value = rand::thread_rng().gen_range(0..=5); // Generates 0, 1, 2, 3, 4, or 5 inclusive
     let random_factor = Decimal::from_ratio(random_value, 100); // 0-5% inclusive
     let randomized_multiplier = multiplier * (Decimal::one() + random_factor);
     let gas_price = base_fee * randomized_multiplier;

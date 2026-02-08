@@ -2,7 +2,7 @@
 
 **Version**: 1.0.0  
 **Last Updated**: 2026-02-07  
-**Based on**: [Technical Specification](../docs/02-technical-specification.md)
+**Based on**: [Technical Specification v1.1.0](../docs/02-technical-specification.md)
 
 ## Phase 1: Foundation (Weeks 1-3)
 
@@ -82,7 +82,7 @@
 - [ ] Create tree generation audit trail for community verification
 
 **Deliverables**:
-- Generated Merkle tree (~2 GiB)
+- Generated Merkle tree (~1.2 GiB for address-only format, ~4 GiB for full tree)
 - Tree distribution system
 - Query API documentation
 

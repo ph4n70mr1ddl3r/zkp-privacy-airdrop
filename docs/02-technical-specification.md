@@ -2,7 +2,7 @@
 
 **Version**: 1.1.0  
 **Last Updated**: 2026-02-07  
-**Based on**: [Unified Specification](../docs/00-specification.md)
+**Based on**: [Unified Specification v1.5.0](../docs/00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |
@@ -218,7 +218,7 @@ See [Unified Specification](../docs/00-specification.md#13-storage-requirements)
 - **Number of Nodes**: 2^27 - 1 = 134,217,727 nodes
 - **Full Tree Storage**: 4.00 GiB (134,217,727 nodes × 32 bytes = 4,294,967,264 bytes)
 - **Proof Data per Claim**: 832 bytes (26 × 32 bytes for Merkle path siblings)
-- **Precomputed Proofs Storage**: ~58.9 GiB (65,249,064 leaves × 968 bytes per leaf including Merkle path siblings (832 bytes), leaf hash (32 bytes), and path indices (104 bytes))
+- **Precomputed Proofs Storage**: ~50.8 GiB (65,249,064 leaves × 868 bytes per leaf including Merkle path siblings (832 bytes), leaf hash (32 bytes), and path indices (4 bytes for 26 bits packed))
 - **Merkle Tree File Sizes**:
   - Binary format with addresses only: 1.216 GiB (16 byte header + 65,249,064 × 20 bytes = 1,304,981,280 bytes)
   - Binary format with hashes only: 1.945 GiB (16 byte header + 65,249,064 × 32 bytes = 2,087,970,064 bytes)

@@ -2,7 +2,7 @@
 
 **Version**: 1.1.0  
 **Last Updated**: 2026-02-07  
-**Based on**: [Unified Specification](../docs/00-specification.md)
+**Based on**: [Unified Specification v1.5.0](../docs/00-specification.md)
 
 ## Version History
 | Version | Date | Changes | Author |
@@ -75,12 +75,12 @@ Content-Type: application/json
 }
 ```
 
-**Note**: The `public_signals` array contains three elements in this order:
-1. `merkle_root` (field element in decimal string format - **primary**, hex with `0x` prefix is alternative)
-2. `recipient` (address converted to field element in decimal string format - **primary**, hex with `0x` prefix is alternative)  
-3. `nullifier` (field element in decimal string format - **primary**, hex with `0x` prefix is alternative)
+**Important**: The `public_signals` array contains three elements in this order:
+1. `merkle_root` (field element in **decimal string format** - **primary canonical format**, hex with `0x` prefix is alternative for developer convenience)
+2. `recipient` (address converted to field element in **decimal string format** - **primary canonical format**, hex with `0x` prefix is alternative for developer convenience)  
+3. `nullifier` (field element in **decimal string format** - **primary canonical format**, hex with `0x` prefix is alternative for developer convenience)
 
-The `nullifier` and `merkle_root` fields are also provided as hex strings for convenience, but the `public_signals` array uses decimal string format for field elements.
+The `nullifier` and `merkle_root` fields are also provided as hex strings for convenience, but the `public_signals` array uses **decimal string format** for field elements as the canonical format. All implementations must accept decimal strings as the primary format.
 
 **Response** (200 OK):
 ```json
