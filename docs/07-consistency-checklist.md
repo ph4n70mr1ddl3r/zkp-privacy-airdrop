@@ -6,6 +6,7 @@
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.0.2 | 2026-02-08 | Updated to reflect docs/00-specification.md v1.5.1 (gas price terminology fix, removed dead references) | Documentation Review |
 | 1.0.1 | 2026-02-08 | Fixed gas price randomization formula in automated verification script (random_integer(0, 5) not random(0, 6)) | Documentation Review |
 | 1.0.0 | 2026-02-07 | Initial version with comprehensive cross-references | Documentation Review |  
 
@@ -378,13 +379,13 @@ grep -r "hex strings" docs/00-specification.md | grep "alternative"
 
 | Document | Current Version | Last Updated | Based On |
 |----------|----------------|--------------|----------|
-| `00-specification.md` | 1.5.0 | 2026-02-07 | - (source of truth) |
+| `00-specification.md` | 1.5.1 | 2026-02-08 | - (source of truth) |
 | `01-overview.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
 | `02-technical-specification.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
 | `03-implementation-roadmap.md` | 1.0.0 | 2026-02-07 | `02-technical-specification.md` v1.1.0 |
 | `04-api-reference.md` | 1.1.0 | 2026-02-07 | `00-specification.md` v1.5.0 |
 | `05-security-privacy.md` | 1.0.0 | 2026-02-07 | `00-specification.md` v1.5.0 + `02-technical-specification.md` v1.1.0 |
 | `06-privacy-analysis.md` | 1.0.0 | 2026-02-07 | `05-security-privacy.md` v1.0.0 |
-| `07-consistency-checklist.md` | 1.0.1 | 2026-02-08 | All documents |
+| `07-consistency-checklist.md` | 1.0.2 | 2026-02-08 | All documents |
 
 **Rule**: When `00-specification.md` version changes, update all dependent document versions and update this table.

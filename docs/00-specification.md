@@ -1,11 +1,12 @@
 # ZKP Privacy Airdrop - Unified Specification
 
-## Version: 1.5.0
-## Date: 2026-02-07
+## Version: 1.5.1
+## Date: 2026-02-08
 
 ## Version History
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.5.1 | 2026-02-08 | Fixed gas price terminology (changed "premium" to "multiplier"), removed references to non-existent documentation-fixes-summary.md | Documentation Review |
 | 1.5.0 | 2026-02-07 | Fixed nullifier padding specification (41 bytes zeros), corrected precomputed proofs storage (968 bytes), standardized gas price randomization formula | Documentation Review |
 | 1.4.0 | 2026-02-06 | Added gas estimates, rate limiting details, and API specifications | Core Team |
 | 1.3.0 | 2026-02-05 | Enhanced security parameters and compliance sections | Core Team |
@@ -490,9 +491,9 @@ nullifier = poseidon_hash(padded_input)  # Result: 32-byte hash
 - **Mainnet**: Optimism (Layer 2 on Ethereum)
 - **Testnet**: Optimism Sepolia
 - **RPC Requirements**: Optimism RPC endpoint (public or private)
-- **Gas Price Strategy**: 
+- **Gas Price Strategy**:
   - Optimism gas is 10-100x cheaper than Ethereum L1
-  - Base: EIP-1559 with 10% premium for reliability
+  - Base: EIP-1559 with 10% multiplier for reliability
   - Privacy Enhancement: Add random 0-5% variance (inclusive) to break timing correlations
   - Maximum: 0.1 gwei cap to prevent excessive fees (Optimism gas is much cheaper)
   - Relayers should use: `gas_price = min(base_fee * 1.1 * (1 + random_factor), 0.1 gwei)` where `random_factor` is uniformly distributed in [0.00, 0.05] inclusive

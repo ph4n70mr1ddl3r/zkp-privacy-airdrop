@@ -16,7 +16,6 @@ This is a comprehensive documentation suite for the ZKP Privacy Airdrop project 
 6. **Security & Privacy**: [05-security-privacy.md](05-security-privacy.md)
 7. **Privacy Analysis**: [06-privacy-analysis.md](06-privacy-analysis.md)
 8. **Consistency Guide**: [07-consistency-checklist.md](07-consistency-checklist.md)
-9. **Recent Fixes**: [documentation-fixes-summary.md](documentation-fixes-summary.md)
 
 ## Project Structure
 
@@ -30,8 +29,7 @@ docs/
 ├── 04-api-reference.md                # API and CLI reference
 ├── 05-security-privacy.md             # Security considerations
 ├── 06-privacy-analysis.md             # Privacy limitations and analysis
-├── 07-consistency-checklist.md        # Documentation consistency guide
-└── documentation-fixes-summary.md     # Summary of documentation fixes
+└── 07-consistency-checklist.md        # Documentation consistency guide
 
 contracts/                             # Smart contracts
 ├── ZKPToken.sol
