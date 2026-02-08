@@ -10,6 +10,23 @@ interface IVerifier {
     ) external view returns (bool);
 }
 
+abstract contract ReentrancyGuard {
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    modifier nonReentrant() {
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
+    }
+}
+
 contract PrivacyAirdrop {
     bytes32 public immutable merkleRoot;
     mapping(bytes32 => bool) public nullifiers;
@@ -49,7 +66,7 @@ contract PrivacyAirdrop {
         Proof calldata proof,
         bytes32 nullifier,
         address recipient
-    ) external {
+    ) external nonReentrant {
         require(block.timestamp < claimDeadline, "Claim period ended");
         require(recipient != address(0), "Invalid recipient");
         require(!nullifiers[nullifier], "Already claimed");

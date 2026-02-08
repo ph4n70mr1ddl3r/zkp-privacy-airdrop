@@ -109,12 +109,12 @@ pub async fn submit_claim(
             })
         }
         Err(e) => {
-            error!("Failed to submit claim: {}", e);
+            error!("Failed to submit claim: {} - Error: {}", claim.nullifier, e);
             HttpResponse::InternalServerError().json(ErrorResponse {
                 success: false,
                 error: "Failed to submit claim. Please try again later.".to_string(),
                 code: Some("INTERNAL_ERROR".to_string()),
-                retry_after: None,
+                retry_after: Some(60),
             })
         }
     }

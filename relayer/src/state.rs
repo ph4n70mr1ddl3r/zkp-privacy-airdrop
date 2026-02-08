@@ -112,23 +112,19 @@ impl AppState {
 
         let count_key = format!("{}:{}", redis_key, window_start);
         let mut redis = self.redis.lock().await;
-        let count: Result<u64, _> = redis.get(&count_key).await;
 
-        if let Ok(c) = count {
-            if c >= limit {
-                return Err(format!("Rate limit exceeded: {}/min", limit));
-            }
+        let count: u64 = redis.incr(&count_key, 1).await.map_err(|e| e.to_string())?;
+
+        if count == 1 {
+            redis
+                .expire::<_, ()>(&count_key, 120)
+                .await
+                .map_err(|e| e.to_string())?;
         }
 
-        redis
-            .incr::<_, _, ()>(&count_key, 1)
-            .await
-            .map_err(|e| e.to_string())?;
-
-        redis
-            .expire::<_, ()>(&count_key, 120)
-            .await
-            .map_err(|e| e.to_string())?;
+        if count > limit {
+            return Err(format!("Rate limit exceeded: {}/min", limit));
+        }
 
         Ok(())
     }

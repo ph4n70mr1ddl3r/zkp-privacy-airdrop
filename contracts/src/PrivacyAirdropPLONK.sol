@@ -6,6 +6,23 @@ pragma solidity ^0.8.19;
  * @notice ZKP Privacy Airdrop contract using PLONK proofs
  * @dev Uses Perpetual Powers of Tau - no trusted setup ceremony required
  */
+abstract contract ReentrancyGuard {
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    modifier nonReentrant() {
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
+    }
+}
+
 contract PrivacyAirdropPLONK {
     bytes32 public immutable merkleRoot;
     mapping(bytes32 => bool) public nullifiers;
@@ -61,7 +78,7 @@ contract PrivacyAirdropPLONK {
         PLONKProof calldata proof,
         bytes32 nullifier,
         address recipient
-    ) external {
+    ) external nonReentrant {
         require(block.timestamp < claimDeadline, "Claim period ended");
         require(recipient != address(0), "Invalid recipient");
         require(!nullifiers[nullifier], "Already claimed");

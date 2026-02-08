@@ -7,6 +7,7 @@ mod redis;
 mod types_plonk;
 
 use actix_web::{App, HttpServer, middleware, web};
+use actix_web::http::header::HeaderName;
 use tracing::info;
 
 #[actix_web::main]
@@ -29,12 +30,13 @@ async fn main() -> anyhow::Result<()> {
     let bind_address = format!("{}:{}", config.host, config.port);
 
     let app_state = state::AppState::new(
-        config,
+        config.clone(),
         db_pool,
         redis_client,
     ).await?;
 
     info!("Listening on {}", bind_address);
+    info!("CORS allowed origins: {:?}", config.cors.allowed_origins);
 
     HttpServer::new(move || {
         App::new()
@@ -42,24 +44,30 @@ async fn main() -> anyhow::Result<()> {
             .wrap(middleware::Logger::default())
             .wrap(middleware::Compress::default())
             .wrap(middleware::NormalizePath::trim())
-            .wrap(
+            .wrap({
+                let allowed_origins = config.cors.allowed_origins.clone();
                 actix_cors::Cors::default()
-                    .allowed_origin_fn(|origin, _req_head| {
+                    .allowed_origin_fn(move |origin, _req_head| {
                         if let Ok(origin_str) = origin.to_str() {
-                            origin_str.starts_with("http://localhost")
-                                || origin_str.starts_with("https://")
+                            allowed_origins.iter().any(|allowed| {
+                                allowed == "*" || origin_str == *allowed || origin_str.starts_with(&format!("{}:", allowed))
+                            })
                         } else {
                             false
                         }
                     })
-                    .allowed_methods(vec!["GET", "POST", "OPTIONS"])
-                    .allowed_headers(vec![
-                        actix_web::http::header::AUTHORIZATION,
-                        actix_web::http::header::ACCEPT,
-                        actix_web::http::header::CONTENT_TYPE,
-                    ])
-                    .max_age(3600)
-            )
+                    .allowed_methods(
+                        config.cors.allowed_methods.iter().map(|s| s.as_str()).collect::<Vec<_>>()
+                    )
+                    .allowed_headers(
+                        config.cors.allowed_headers.iter().map(|h| {
+                            HeaderName::from_bytes(h.as_bytes()).unwrap()
+                        }).collect::<Vec<_>>()
+                    )
+                    .max_age(config.cors.max_age)
+                    .supports_credentials()
+                    .expose_any_header()
+            })
             .service(
                 web::scope("/api/v1")
                     .route("/health", web::get().to(handlers::health))

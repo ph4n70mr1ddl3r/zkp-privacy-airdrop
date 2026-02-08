@@ -58,12 +58,19 @@ pub async fn execute(
     let mut stream = response.bytes_stream();
     
     use futures_util::StreamExt;
-    while let Some(chunk_result) = stream.next().await {
-        let chunk = chunk_result.context("Download error")?;
-        file.write_all(&chunk)?;
-        downloaded += chunk.len() as u64;
-        pb.set_position(downloaded);
+    {
+        while let Some(chunk_result) = stream.next().await {
+            let chunk = chunk_result.context(format!(
+                "Download error: Failed to read chunk at position {}",
+                downloaded
+            ))?;
+            file.write_all(&chunk)?;
+            downloaded += chunk.len() as u64;
+            pb.set_position(downloaded);
+        }
     }
+    
+    drop(file);
     
     pb.finish_with_message("Download complete!");
     

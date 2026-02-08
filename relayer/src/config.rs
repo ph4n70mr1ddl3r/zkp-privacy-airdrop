@@ -12,6 +12,16 @@ pub struct Config {
     pub relayer: RelayerConfig,
     pub rate_limit: RateLimitConfig,
     pub merkle_tree: MerkleTreeConfig,
+    pub cors: CorsConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CorsConfig {
+    pub allowed_origins: Vec<String>,
+    pub allowed_methods: Vec<String>,
+    pub allowed_headers: Vec<String>,
+    pub max_age: usize,
+    pub allow_credentials: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,6 +174,31 @@ impl Config {
                 merkle_root: std::env::var("MERKLE_TREE_ROOT").unwrap_or_else(|_| {
                     "0x0000000000000000000000000000000000000000000000000000000000000000".to_string()
                 }),
+            },
+            cors: CorsConfig {
+                allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
+                    .unwrap_or_else(|_| "https://zkp-airdrop.io,https://localhost:3000".to_string())
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .collect(),
+                allowed_methods: std::env::var("CORS_ALLOWED_METHODS")
+                    .unwrap_or_else(|_| "GET,POST,OPTIONS".to_string())
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .collect(),
+                allowed_headers: std::env::var("CORS_ALLOWED_HEADERS")
+                    .unwrap_or_else(|_| "Authorization,Accept,Content-Type".to_string())
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .collect(),
+                max_age: std::env::var("CORS_MAX_AGE")
+                    .unwrap_or_else(|_| "3600".to_string())
+                    .parse()
+                    .unwrap_or(3600),
+                allow_credentials: std::env::var("CORS_ALLOW_CREDENTIALS")
+                    .unwrap_or_else(|_| "false".to_string())
+                    .parse()
+                    .unwrap_or(false),
             },
         })
     }

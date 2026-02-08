@@ -3,15 +3,16 @@
 import pytest
 import requests
 from web3 import Web3
+from typing import Dict, Any
 
 
 @pytest.fixture
-def relayer_url():
+def relayer_url() -> str:
     return "http://localhost:8080"
 
 
 @pytest.fixture
-def valid_plonk_proof():
+def valid_plonk_proof() -> Dict[str, Any]:
     """A valid PLONK proof structure (minimal for testing)"""
     return {
         "proof": {
@@ -26,7 +27,7 @@ def valid_plonk_proof():
 
 
 @pytest.fixture
-def invalid_plonk_proof_too_few_elements():
+def invalid_plonk_proof_too_few_elements() -> Dict[str, Any]:
     """PLONK proof with insufficient elements"""
     return {
         "proof": {
@@ -41,7 +42,7 @@ def invalid_plonk_proof_too_few_elements():
 
 
 @pytest.fixture
-def invalid_plonk_proof_empty_elements():
+def invalid_plonk_proof_empty_elements() -> Dict[str, Any]:
     """PLONK proof with empty elements"""
     return {
         "proof": {
@@ -55,7 +56,9 @@ def invalid_plonk_proof_empty_elements():
     }
 
 
-def test_plonk_proof_structure_validation(relayer_url, valid_plonk_proof):
+def test_plonk_proof_structure_validation(
+    relayer_url: str, valid_plonk_proof: Dict[str, Any]
+) -> None:
     """Test that PLONK proof structure is correctly validated"""
     response = requests.post(
         f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof
@@ -68,8 +71,8 @@ def test_plonk_proof_structure_validation(relayer_url, valid_plonk_proof):
 
 
 def test_plonk_proof_insufficient_elements(
-    relayer_url, invalid_plonk_proof_too_few_elements
-):
+    relayer_url: str, invalid_plonk_proof_too_few_elements: Dict[str, Any]
+) -> None:
     """Test that PLONK proof with insufficient elements is rejected"""
     response = requests.post(
         f"{relayer_url}/api/v1/submit-claim", json=invalid_plonk_proof_too_few_elements
@@ -83,7 +86,9 @@ def test_plonk_proof_insufficient_elements(
     assert "8 field elements" in data["error"]
 
 
-def test_plonk_proof_empty_elements(relayer_url, invalid_plonk_proof_empty_elements):
+def test_plonk_proof_empty_elements(
+    relayer_url: str, invalid_plonk_proof_empty_elements: Dict[str, Any]
+) -> None:
     """Test that PLONK proof with empty elements is rejected"""
     response = requests.post(
         f"{relayer_url}/api/v1/submit-claim", json=invalid_plonk_proof_empty_elements
@@ -96,7 +101,9 @@ def test_plonk_proof_empty_elements(relayer_url, invalid_plonk_proof_empty_eleme
     assert data["code"] == "PLONK_FORMAT_ERROR"
 
 
-def test_plonk_proof_type_detection(relayer_url, valid_plonk_proof):
+def test_plonk_proof_type_detection(
+    relayer_url: str, valid_plonk_proof: Dict[str, Any]
+) -> None:
     """Test that PLONK proof type is correctly detected and logged"""
     response = requests.post(
         f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof
@@ -106,18 +113,20 @@ def test_plonk_proof_type_detection(relayer_url, valid_plonk_proof):
     assert response.status_code in [200, 400, 500]
 
 
-def test_plonk_gas_estimate_logging(relayer_url, valid_plonk_proof):
+def test_plonk_gas_estimate_logging(
+    relayer_url: str, valid_plonk_proof: Dict[str, Any]
+) -> None:
     """Test that PLONK gas estimate is logged (~1.3M)"""
     response = requests.post(
         f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof
     )
 
-    # Verify the response
+    # Verify is response
     data = response.json()
     assert "error" in data or "tx_hash" in data
 
 
-def test_plonk_proof_size_bytes():
+def test_plonk_proof_size_bytes() -> None:
     """Test PLONK proof size estimation (~500 bytes)"""
     # PLONK proof with 8 field elements, each ~32 bytes
     # Plus JSON overhead
@@ -134,7 +143,7 @@ def test_plonk_proof_size_bytes():
     assert 400 < proof_size < 600
 
 
-def test_plonk_vs_groth16_proof_size_comparison():
+def test_plonk_vs_groth16_proof_size_comparison() -> None:
     """Compare PLONK (~500 bytes) vs Groth16 (~200 bytes) proof sizes"""
     import json
 
@@ -162,8 +171,8 @@ def test_plonk_vs_groth16_proof_size_comparison():
 
 
 def test_plonk_error_codes_distinct_from_groth16(
-    relayer_url, invalid_plonk_proof_too_few_elements
-):
+    relayer_url: str, invalid_plonk_proof_too_few_elements: Dict[str, Any]
+) -> None:
     """Test that PLONK uses distinct error codes from Groth16"""
     response = requests.post(
         f"{relayer_url}/api/v1/submit-claim", json=invalid_plonk_proof_too_few_elements
@@ -176,7 +185,9 @@ def test_plonk_error_codes_distinct_from_groth16(
     assert data["code"] != "INVALID_PROOF"
 
 
-def test_plonk_proof_with_invalid_nullifier(relayer_url, valid_plonk_proof):
+def test_plonk_proof_with_invalid_nullifier(
+    relayer_url: str, valid_plonk_proof: Dict[str, Any]
+) -> None:
     """Test PLONK proof with invalid nullifier format"""
     invalid_proof = valid_plonk_proof.copy()
     invalid_proof["nullifier"] = "invalid"
@@ -187,7 +198,9 @@ def test_plonk_proof_with_invalid_nullifier(relayer_url, valid_plonk_proof):
     assert response.status_code in [400, 500]
 
 
-def test_plonk_proof_with_invalid_recipient(relayer_url, valid_plonk_proof):
+def test_plonk_proof_with_invalid_recipient(
+    relayer_url: str, valid_plonk_proof: Dict[str, Any]
+) -> None:
     """Test PLONK proof with invalid recipient address"""
     invalid_proof = valid_plonk_proof.copy()
     invalid_proof["recipient"] = "not-an-address"
@@ -198,8 +211,8 @@ def test_plonk_proof_with_invalid_recipient(relayer_url, valid_plonk_proof):
     assert response.status_code in [400, 500]
 
 
-def test_plonk_backwards_compatibility_with_groth16(relayer_url):
-    """Test that the API accepts both PLONK and Groth16 proofs"""
+def test_plonk_backwards_compatibility_with_groth16(relayer_url: str) -> None:
+    """Test that API accepts both PLONK and Groth16 proofs"""
     # Groth16 proof (old format)
     groth16_proof = {
         "proof": {
@@ -214,7 +227,7 @@ def test_plonk_backwards_compatibility_with_groth16(relayer_url):
 
     response = requests.post(f"{relayer_url}/api/v1/submit-claim", json=groth16_proof)
 
-    # Should accept the request (even if it fails later)
+    # Should accept request (even if it fails later)
     assert response.status_code in [200, 400, 500]
 
     # Should not return PLONK_FORMAT_ERROR
@@ -223,7 +236,9 @@ def test_plonk_backwards_compatibility_with_groth16(relayer_url):
         assert data.get("code") != "PLONK_FORMAT_ERROR"
 
 
-def test_plonk_integration_with_existing_endpoints(relayer_url, valid_plonk_proof):
+def test_plonk_integration_with_existing_endpoints(
+    relayer_url: str, valid_plonk_proof: Dict[str, Any]
+) -> None:
     """Test that PLONK proofs work with existing API endpoints"""
     # Test health endpoint
     health_response = requests.get(f"{relayer_url}/api/v1/health")
@@ -244,7 +259,9 @@ def test_plonk_integration_with_existing_endpoints(relayer_url, valid_plonk_proo
     assert submit_response.status_code in [200, 400, 500]
 
 
-def test_plonk_error_message_clarity(relayer_url, invalid_plonk_proof_too_few_elements):
+def test_plonk_error_message_clarity(
+    relayer_url: str, invalid_plonk_proof_too_few_elements: Dict[str, Any]
+) -> None:
     """Test that PLONK error messages are clear and helpful"""
     response = requests.post(
         f"{relayer_url}/api/v1/submit-claim", json=invalid_plonk_proof_too_few_elements
@@ -255,7 +272,7 @@ def test_plonk_error_message_clarity(relayer_url, invalid_plonk_proof_too_few_el
     assert data["success"] is False
     assert "error" in data
     assert len(data["error"]) > 10  # Should have a descriptive message
-    assert "8" in data["error"]  # Should mention the required element count
+    assert "8" in data["error"]  # Should mention required element count
 
 
 if __name__ == "__main__":
