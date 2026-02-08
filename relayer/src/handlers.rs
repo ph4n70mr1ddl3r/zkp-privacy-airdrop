@@ -35,9 +35,9 @@ pub fn is_valid_nullifier(nullifier: &str) -> bool {
 
 pub async fn health(state: web::Data<AppState>) -> impl Responder {
     let services = Services {
-        database: "connected".to_string(),
-        redis: "connected".to_string(),
-        optimism_node: "connected".to_string(),
+        database: state.get_db_status().to_string(),
+        redis: state.get_redis_status().await.to_string(),
+        optimism_node: state.get_node_status().await.to_string(),
         relayer_wallet: RelayerWalletInfo {
             address: state.relayer_address(),
             balance: state.get_relayer_balance().await.to_string(),
@@ -45,12 +45,20 @@ pub async fn health(state: web::Data<AppState>) -> impl Responder {
         },
     };
 
-    HttpResponse::Ok().json(HealthResponse {
-        status: if state.is_healthy().await {
-            "healthy".to_string()
-        } else {
-            "unhealthy".to_string()
-        },
+    let status = if state.is_healthy().await {
+        "healthy".to_string()
+    } else {
+        "unhealthy".to_string()
+    };
+
+    let http_status = if status == "healthy" {
+        actix_web::http::StatusCode::OK
+    } else {
+        actix_web::http::StatusCode::SERVICE_UNAVAILABLE
+    };
+
+    HttpResponse::build(http_status).json(HealthResponse {
+        status,
         timestamp: chrono::Utc::now().to_rfc3339(),
         version: "1.0.0".to_string(),
         services,

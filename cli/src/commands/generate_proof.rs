@@ -58,8 +58,16 @@ pub async fn execute(
     pb.set_message("Generating zero-knowledge proof...");
     pb.set_position(90);
 
-    // TODO: Replace with actual proof generation using proving key
-    // This is a dummy proof for testing purposes only
+    // SECURITY WARNING: Placeholder proof generation for testing only!
+    // Real ZK proofs require:
+    // 1. Proper circuit compilation (circom/circom-2.0)
+    // 2. Trusted setup ceremony
+    // 3. Proving key generation
+    // 4. Witness computation using actual Merkle tree proof path
+    // 5. ZK proof generation (snarkjs plonk fullprove or groth16 prove)
+    //
+    // Use: `snarkjs groth16 fullprove input.json circuit.wasm proving_key.zkey proof.json public.json`
+    // or `snarkjs plonk fullprove input.json circuit.wasm proving_key.zkey proof.json public.json`
     let proof_data = ProofData {
         proof: crate::types::Proof {
             a: ["0".to_string(), "0".to_string()],
@@ -76,6 +84,9 @@ pub async fn execute(
             .to_string(),
         generated_at: chrono::Utc::now().to_rfc3339(),
     };
+
+    eprintln!("\n{}: This is a placeholder proof for testing purposes only!", "WARNING".yellow().bold());
+    eprintln!("Real ZK proofs require proper circuit compilation and trusted setup.");
 
     pb.finish_with_message("Proof generated!");
 

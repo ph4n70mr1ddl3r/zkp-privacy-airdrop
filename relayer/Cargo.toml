@@ -16,7 +16,7 @@ thiserror = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-actix-web = "0.7"
-redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "0.26", features = ["tokio-comp", "connection-manager"] }
 sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls", "chrono"] }
 chrono = { version = "0.4", features = ["serde"] }
 ethers = "2.0"

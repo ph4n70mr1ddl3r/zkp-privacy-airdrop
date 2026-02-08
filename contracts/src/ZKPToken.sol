@@ -10,8 +10,6 @@ contract ZKPToken is ERC20, Ownable {
     event TokensMinted(address indexed to, uint256 amount, uint256 totalSupply);
 
     constructor() ERC20("ZKP Token", "ZKP") {
-        _mint(msg.sender, MAX_SUPPLY);
-        emit TokensMinted(msg.sender, MAX_SUPPLY, MAX_SUPPLY);
     }
 
     function mint(address to, uint256 amount) external onlyOwner {

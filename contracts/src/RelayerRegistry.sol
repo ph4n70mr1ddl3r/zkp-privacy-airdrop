@@ -50,8 +50,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard {
     }
 
     function donate() external payable {
-        address recipient = authorizedRelayers[msg.sender] ? msg.sender : defaultRelayer;
-        relayerBalances[recipient] += msg.value;
+        relayerBalances[defaultRelayer] += msg.value;
         emit DonationReceived(msg.sender, msg.value);
     }
 

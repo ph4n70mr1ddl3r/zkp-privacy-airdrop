@@ -60,31 +60,38 @@ contract PLONKVerifier {
      * @notice Internal PLONK verification
      * @dev SECURITY WARNING: This is a placeholder implementation!
      * DO NOT USE IN PRODUCTION!
-     * This function only checks field element ranges but does NOT perform
-     * actual PLONK verification. Real implementation must:
+     * This function rejects all proofs until proper PLONK verification is implemented.
+     * Real implementation must:
      * 1. Compute Lagrange basis evaluations
      * 2. Verify polynomial commitments
      * 3. Check linearization polynomial
      * 4. Verify quotient polynomial
      * 5. Perform batch pairing checks using verification key
+     * 
+     * Use snarkjs plonk verifier command to generate the actual verification code
      */
     function _verifyPLONK(
         uint256[8] calldata _proof,
         uint256[3] calldata _instances
     ) internal pure returns (bool) {
         // SECURITY WARNING: Placeholder verification - NOT SECURE!
-        // This only checks that values are in valid range
-        // Real verification would validate the actual PLONK proof structure
+        // Rejecting all proofs until proper PLONK verification is implemented
+        revert("PLONK verification not yet implemented. Please generate proper verifier using snarkjs.");
 
+        // Placeholder for field validation (unreachable)
         for (uint i = 0; i < 8; i++) {
-            require(_proof[i] < PRIME_Q, "Proof element out of range");
+            if (_proof[i] >= PRIME_Q) {
+                return false;
+            }
         }
 
         for (uint i = 0; i < 3; i++) {
-            require(_instances[i] < PRIME_Q, "Instance element out of range");
+            if (_instances[i] >= PRIME_Q) {
+                return false;
+            }
         }
 
-        return true;
+        return false;
     }
     
     /**

@@ -31,8 +31,6 @@ pub struct RelayerStats {
     pub total_claims: u64,
     pub successful_claims: u64,
     pub failed_claims: u64,
-    #[allow(dead_code)]
-    pub total_gas_used: u64,
     pub start_time: std::time::Instant,
 }
 
@@ -42,7 +40,6 @@ impl Default for RelayerStats {
             total_claims: 0,
             successful_claims: 0,
             failed_claims: 0,
-            total_gas_used: 0,
             start_time: std::time::Instant::now(),
         }
     }
@@ -110,7 +107,52 @@ impl AppState {
     }
 
     pub async fn is_healthy(&self) -> bool {
-        self.has_sufficient_balance().await
+        let db_healthy = self.check_db_connection().await;
+        let redis_healthy = self.check_redis_connection().await;
+        let balance_healthy = self.has_sufficient_balance().await;
+
+        db_healthy && redis_healthy && balance_healthy
+    }
+
+    pub async fn check_db_connection(&self) -> bool {
+        sqlx::query("SELECT 1")
+            .fetch_one(&self.db)
+            .await
+            .is_ok()
+    }
+
+    pub async fn check_redis_connection(&self) -> bool {
+        use redis::AsyncCommands;
+        let mut redis = self.redis.lock().await;
+        redis.set::<_, _, ()>("__health_check__", "1").await.is_ok()
+    }
+
+    pub fn get_db_status(&self) -> &'static str {
+        "connected"
+    }
+
+    pub async fn get_redis_status(&self) -> &'static str {
+        if self.check_redis_connection().await {
+            "connected"
+        } else {
+            "disconnected"
+        }
+    }
+
+    pub async fn get_node_status(&self) -> &'static str {
+        if self.check_rpc_connection().await {
+            "connected"
+        } else {
+            "disconnected"
+        }
+    }
+
+    async fn check_rpc_connection(&self) -> bool {
+        use ethers::providers::Provider;
+        match Provider::<Http>::try_from(self.config.network.rpc_url.as_str()) {
+            Ok(provider) => provider.get_block_number().await.is_ok(),
+            Err(_) => false,
+        }
     }
 
     pub async fn check_rate_limit(
@@ -185,8 +227,16 @@ impl AppState {
             stats.successful_claims += 1;
         }
 
+        // TODO: Replace with actual blockchain transaction submission
+        // This should:
+        // 1. Build the transaction data with proof and recipient
+        // 2. Sign the transaction with the relayer's private key
+        // 3. Submit to the blockchain RPC endpoint
+        // 4. Return the actual transaction hash
+        // For now, using a UUID placeholder for testing
         let tx_bytes = uuid::Uuid::new_v4().to_bytes_le();
         let tx_hash = format!("0x{}", hex::encode(&tx_bytes[..]));
+        tracing::warn!("Using UUID placeholder for tx_hash - blockchain transaction submission not implemented");
 
         let timestamp = chrono::Utc::now().to_rfc3339();
 

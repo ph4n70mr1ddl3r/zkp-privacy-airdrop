@@ -141,7 +141,7 @@ impl Config {
                     .parse()
                     .unwrap_or(0.05),
                 max_gas_price: std::env::var("RELAYER_MAX_GAS_PRICE")
-                    .unwrap_or_else(|_| "10000000000".to_string()), // 10 gwei (updated from 0.1 gwei)
+                    .unwrap_or_else(|_| "100000000000".to_string()), // 100 gwei (updated from 10 gwei)
             },
             rate_limit: RateLimitConfig {
                 per_nullifier: std::env::var("RATE_LIMIT_PER_NULLIFIER")
