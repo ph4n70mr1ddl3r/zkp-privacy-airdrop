@@ -1,6 +1,5 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use tracing::{info, error, warn};
-use std::time::SystemTime;
 
 use crate::state::AppState;
 use crate::types_plonk::*;
@@ -21,7 +20,7 @@ pub async fn health(
 
     HttpResponse::Ok().json(HealthResponse {
         status: if state.is_healthy().await { "healthy".to_string() } else { "unhealthy".to_string() },
-        timestamp: format!("{:?}", SystemTime::now()),
+        timestamp: chrono::Utc::now().to_rfc3339(),
         version: "1.0.0".to_string(),
         services,
     })
@@ -103,7 +102,7 @@ pub async fn submit_claim(
                 success: true,
                 tx_hash: Some(tx_hash),
                 status: Some("pending".to_string()),
-                estimated_confirmation: Some(format!("{:?}", SystemTime::now())),
+                estimated_confirmation: Some(chrono::Utc::now().to_rfc3339()),
                 error: None,
                 code: None,
             })
@@ -147,7 +146,7 @@ pub async fn get_merkle_root(
     HttpResponse::Ok().json(MerkleRootResponse {
         merkle_root: state.config.merkle_tree.merkle_root.clone(),
         block_number: 0,
-        timestamp: format!("{:?}", SystemTime::now()),
+        timestamp: chrono::Utc::now().to_rfc3339(),
     })
 }
 
@@ -176,7 +175,7 @@ pub async fn get_contract_info(
                 }),
         },
         claim_amount: "1000000000000000000000".to_string(),
-        claim_deadline: format!("{:?}", SystemTime::now()),
+        claim_deadline: chrono::Utc::now().to_rfc3339(),
     })
 }
 

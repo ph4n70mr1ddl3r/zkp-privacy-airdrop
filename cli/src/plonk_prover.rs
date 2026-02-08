@@ -113,7 +113,10 @@ pub fn generate_plonk_proof(
     let public_inputs = PublicInputs {
         merkle_root: [merkle_root_field, F::zero(), F::zero()],
         recipient: [
-            F::from_str(&recipient_field).unwrap_or_else(|_| F::zero()),
+            F::from_str(&recipient_field).unwrap_or_else(|e| {
+                tracing::warn!("Failed to parse recipient field: {}", e);
+                F::zero()
+            }),
             F::zero(),
             F::zero(),
         ],
@@ -166,8 +169,9 @@ pub fn generate_plonk_proof(
 }
 
 /// Internal PLONK proof generation
-/// This is a placeholder - actual implementation would use the proving key
+/// CRITICAL: This is a placeholder - actual implementation would use the proving key
 /// TODO: Implement actual PLONK proof generation using proving key
+/// DO NOT USE IN PRODUCTION without implementing actual proof generation!
 fn generate_plonk_proof_internal(
     _private_inputs: &PrivateInputs,
     _public_inputs: &PublicInputs,

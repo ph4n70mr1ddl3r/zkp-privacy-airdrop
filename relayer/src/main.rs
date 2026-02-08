@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
                     .allowed_origin_fn(move |origin, _req_head| {
                         if let Ok(origin_str) = origin.to_str() {
                             allowed_origins.iter().any(|allowed| {
-                                allowed == "*" || origin_str == *allowed || origin_str.starts_with(&format!("{}:", allowed))
+                                allowed == "*" || origin_str == *allowed
                             })
                         } else {
                             false
@@ -61,7 +61,10 @@ async fn main() -> anyhow::Result<()> {
                     )
                     .allowed_headers(
                         config.cors.allowed_headers.iter().map(|h| {
-                            HeaderName::from_bytes(h.as_bytes()).unwrap()
+                            HeaderName::from_bytes(h.as_bytes()).unwrap_or_else(|_| {
+                                eprintln!("Invalid header name: {}", h);
+                                HeaderName::from_static("content-type")
+                            })
                         }).collect::<Vec<_>>()
                     )
                     .max_age(config.cors.max_age)

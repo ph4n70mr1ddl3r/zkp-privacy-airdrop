@@ -73,15 +73,21 @@ impl AppState {
     }
 
     pub async fn get_relayer_balance(&self) -> u64 {
-        // In production, query actual balance from RPC
-        1000000000000000000 // 1 ETH
+        // TODO: Implement actual balance query from RPC
+        // This should query the actual balance of the relayer wallet from the blockchain
+        // Example implementation:
+        // use ethers::providers::{Provider, Http};
+        // let provider = Provider::<Http>::try_from(&self.config.network.rpc_url)?;
+        // let balance = provider.get_balance(self.relayer_address(), None).await?;
+        // Ok(balance.as_u64())
+        1000000000000000000 // 1 ETH - hardcoded for now
     }
 
     pub async fn has_sufficient_balance(&self) -> bool {
         let balance = self.get_relayer_balance().await;
         let min_critical: u64 = self.config.relayer.min_balance_critical
             .parse()
-            .unwrap_or(500000000000000000);
+            .unwrap_or(500000000000000000u64);
         balance > min_critical
     }
 
@@ -175,7 +181,7 @@ impl AppState {
             claimed: true,
             tx_hash: Some(format!("0x{}", hex::encode(rand::random::<[u8; 32]>()))),
             recipient,
-            timestamp: Some(format!("{:?}", std::time::SystemTime::now())),
+            timestamp: Some(chrono::Utc::now().to_rfc3339()),
             block_number: Some(rand::random()),
         })
     }

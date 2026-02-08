@@ -100,10 +100,10 @@ contract PrivacyAirdropPLONK {
         nullifiers[nullifier] = true;
 
         // Transfer tokens
-        (bool success, ) = address(token).call(
+        (bool success, bytes memory data) = address(token).call(
             abi.encodeWithSelector(IERC20.transfer.selector, recipient, claimAmount)
         );
-        require(success, "Token transfer failed");
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "Token transfer failed");
 
         emit Claimed(nullifier, recipient, block.timestamp);
     }
