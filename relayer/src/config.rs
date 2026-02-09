@@ -254,6 +254,8 @@ impl Config {
                     }
 
                     let mut normalized_key = key.trim().to_lowercase();
+                    key.zeroize();
+
                     let insecure_keys = [
                         "0x0000000000000000000000000000000000000000000000000000000000000000",
                         "0000000000000000000000000000000000000000000000000000000000000000",
@@ -263,7 +265,6 @@ impl Config {
                         "0x0000000000000000000000000000000000000000000000000000000000000000001",
                     ];
                     if insecure_keys.contains(&normalized_key.as_str()) {
-                        key.zeroize();
                         normalized_key.zeroize();
                         return Err(anyhow::anyhow!(
                             "CRITICAL ERROR: Insecure default private key detected! \
@@ -272,11 +273,13 @@ impl Config {
                         ));
                     }
 
-                    let decoded = hex::decode(normalized_key.trim_start_matches("0x"))
-                        .map_err(|_| anyhow::anyhow!("Invalid hex private key"))?;
+                    let decoded =
+                        hex::decode(normalized_key.trim_start_matches("0x")).map_err(|e| {
+                            normalized_key.zeroize();
+                            anyhow::anyhow!("Invalid hex private key: {}", e)
+                        })?;
 
                     if decoded.len() != 32 {
-                        key.zeroize();
                         normalized_key.zeroize();
                         return Err(anyhow::anyhow!(
                             "Private key must be 32 bytes, got {}",
@@ -284,9 +287,7 @@ impl Config {
                         ));
                     }
 
-                    let result = normalized_key;
-                    key.zeroize();
-                    result
+                    normalized_key
                 },
                 min_balance_warning: std::env::var("RELAYER_MIN_BALANCE_WARNING")
                     .unwrap_or_else(|_| "1000000000000000000".to_string()), // 1 ETH

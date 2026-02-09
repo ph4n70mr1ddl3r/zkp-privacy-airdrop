@@ -10,48 +10,22 @@ pub struct Groth16Proof {
     pub c: [String; 2],
 }
 
-/// PLONK proof format (new format for universal trusted setup)
+/// Plonk proof format (new format for universal trusted setup)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlonkProof {
-    pub A: [String; 2],
-    pub B: [[String; 2]; 2],
-    pub C: [String; 2],
-    pub Z: [String; 3], // Lagrange basis coefficients
-    pub T1: [String; 2],
-    pub T2: [String; 2],
-    pub T3: [String; 2],
-    pub WXi: Vec<[String; 2]>, // W^i(xi) evaluations
+    pub proof: Vec<String>, // Flat array of field elements
 }
 
 impl PlonkProof {
-    /// Convert PLONK proof to flat array for API transmission
+    /// Convert Plonk proof to flat array for API transmission
     pub fn to_flat_array(&self) -> Vec<String> {
-        let mut proof_vec = Vec::with_capacity(23);
-        proof_vec.extend_from_slice(&self.A);
-        proof_vec.extend(self.B.iter().flatten());
-        proof_vec.extend_from_slice(&self.C);
-        proof_vec.extend_from_slice(&self.Z);
-        proof_vec.extend_from_slice(&self.T1);
-        proof_vec.extend_from_slice(&self.T2);
-        proof_vec.extend_from_slice(&self.T3);
-        proof_vec.extend(self.WXi.iter().flatten());
-        proof_vec
+        self.proof.clone()
     }
 
-    /// Create a minimal PLONK proof for testing
+    /// Create a minimal Plonk proof for testing
     pub fn minimal() -> Self {
         Self {
-            A: ["0".to_string(), "0".to_string()],
-            B: [
-                ["0".to_string(), "0".to_string()],
-                ["0".to_string(), "0".to_string()],
-            ],
-            C: ["0".to_string(), "0".to_string()],
-            Z: ["0".to_string(), "0".to_string(), "0".to_string()],
-            T1: ["0".to_string(), "0".to_string()],
-            T2: ["0".to_string(), "0".to_string()],
-            T3: ["0".to_string(), "0".to_string()],
-            WXi: vec![["0".to_string(), "0".to_string()]; 3],
+            proof: vec!["0".to_string(); 8],
         }
     }
 }
@@ -87,7 +61,7 @@ impl Proof {
     pub fn estimated_size_bytes(&self) -> usize {
         match self {
             Proof::Groth16(_) => 200, // ~200 bytes for Groth16
-            Proof::Plonk(_) => 500,   // ~500 bytes for Plonk
+            Proof::Plonk(p) => p.proof.iter().map(|s| s.len()).sum::<usize>() + 100, // ~500 bytes for Plonk
         }
     }
 }

@@ -214,7 +214,7 @@ pub async fn submit_claim(
             "INVALID_PROOF"
         };
         let error_message = if claim.proof.type_name() == "Plonk" {
-            "PLONK proof format is invalid. Expected 8 field elements.".to_string()
+            "Plonk proof format is invalid. Expected at least 8 field elements.".to_string()
         } else {
             format!(
                 "The provided {} proof is invalid. Please regenerate proof with correct inputs.",
@@ -231,9 +231,9 @@ pub async fn submit_claim(
 
     info!("Validated {} proof successfully", claim.proof.type_name());
 
-    // PLONK-specific warning
+    // Plonk-specific warning
     if claim.proof.type_name() == "Plonk" {
-        info!("PLONK proof detected - verification gas estimate: ~1.3M");
+        info!("Plonk proof detected - verification gas estimate: ~1.3M");
     }
 
     // Check relayer balance
@@ -371,80 +371,17 @@ pub async fn get_contract_info(state: web::Data<AppState>) -> impl Responder {
     })
 }
 
-pub async fn donate(claim: web::Json<DonateRequest>, state: web::Data<AppState>) -> impl Responder {
-    if !is_valid_address(&claim.donor) {
-        warn!("Invalid donor address: {}", claim.donor);
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            success: false,
-            error: "Invalid Ethereum address format.".to_string(),
-            code: Some("INVALID_ADDRESS".to_string()),
-            retry_after: None,
-        });
-    }
-
-    if let Err(e) = claim.amount.parse::<u128>() {
-        warn!(
-            "Invalid donation amount format from {}: {}",
-            claim.donor, e
-        );
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            success: false,
-            error: format!(
-                "Invalid donation amount '{}': {}. Amount must be a positive integer.",
-                claim.amount, e
-            ),
-            code: Some("INVALID_AMOUNT".to_string()),
-            retry_after: None,
-        });
-    }
-
-    let amount: u128 = claim.amount.parse().unwrap();
-    if amount == 0 {
-        warn!("Invalid donation amount from {}: amount must be greater than 0", claim.donor);
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            success: false,
-            error: "Donation amount must be greater than 0".to_string(),
-            code: Some("INVALID_AMOUNT".to_string()),
-            retry_after: None,
-        });
-    }
-
+pub async fn donate(claim: web::Json<DonateRequest>, _state: web::Data<AppState>) -> impl Responder {
     info!(
-        "Received donation from {} amount: {}",
+        "Donation request from {} amount: {}",
         claim.donor, claim.amount
     );
 
-    if let Err(e) = state
-        .check_rate_limit(&claim.donor, RateLimitType::Donate)
-        .await
-    {
-        warn!("Rate limit exceeded for donation: {}", e);
-        return HttpResponse::TooManyRequests().json(ErrorResponse {
-            success: false,
-            error: "Rate limit exceeded. Try again later.".to_string(),
-            code: Some("RATE_LIMITED".to_string()),
-            retry_after: Some(60),
-        });
-    }
-
-    let donation_address = match state.relayer_address() {
-        Ok(addr) => addr,
-        Err(e) => {
-            error!("Failed to get relayer address: {}", e);
-            return HttpResponse::InternalServerError().json(ErrorResponse {
-                success: false,
-                error: "Internal error occurred".to_string(),
-                code: Some("INTERNAL_ERROR".to_string()),
-                retry_after: Some(60),
-            });
-        }
-    };
-
-    HttpResponse::Ok().json(DonateResponse {
-        donation_address,
-        amount_received: claim.amount.clone(),
-        tx_hash: None,
-        thank_you: "Thank you for supporting privacy!".to_string(),
+    HttpResponse::BadRequest().json(ErrorResponse {
+        success: false,
+        error: "Direct donations via API are not supported. Please send ETH/OPT directly to the relayer wallet address displayed on the health check endpoint.".to_string(),
+        code: Some("DONATIONS_NOT_SUPPORTED".to_string()),
+        retry_after: None,
     })
 }
 

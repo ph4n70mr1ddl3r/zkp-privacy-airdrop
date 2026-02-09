@@ -141,7 +141,7 @@ pub async fn execute(
                     println!("{} Please regenerate the proof.", "Info:".blue());
                     if proof_type == "Plonk" {
                         println!(
-                            "{} PLONK proofs must use 8-field element structure.",
+                            "{} Plonk proofs must use flat array structure with at least 8 field elements.",
                             "Note:".yellow()
                         );
                     }
@@ -157,9 +157,9 @@ pub async fn execute(
                     );
                 }
                 "PLONK_FORMAT_ERROR" => {
-                    println!("{} PLONK proof format is invalid.", "Error:".red());
+                    println!("{} Plonk proof format is invalid.", "Error:".red());
                     println!(
-                        "{} Expected 8 field elements: A, B, C, Z, T1, T2, T3, WXi",
+                        "{} Expected at least 8 field elements in flat array format.",
                         "Info:".blue()
                     );
                 }
@@ -179,7 +179,7 @@ pub async fn execute(
 
     if proof_type == "Plonk" {
         println!(
-            "{} Note: PLONK verification uses ~1.3M gas (higher than Groth16)",
+            "{} Note: Plonk verification uses ~1.3M gas (higher than Groth16)",
             "Info:".blue()
         );
     }
@@ -238,40 +238,10 @@ async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
 fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {
     match &proof_data.proof {
         Proof::Plonk(plonk_proof) => {
-            if plonk_proof.A.len() != 2 {
+            if plonk_proof.proof.len() < 8 {
                 return Err(anyhow::anyhow!(
-                    "Invalid PLONK proof: A field must have 2 elements, found {}",
-                    plonk_proof.A.len()
-                ));
-            }
-            if plonk_proof.B.len() != 2
-                || plonk_proof.B[0].len() != 2
-                || plonk_proof.B[1].len() != 2
-            {
-                return Err(anyhow::anyhow!(
-                    "Invalid PLONK proof: B field must be 2x2 array"
-                ));
-            }
-            if plonk_proof.C.len() != 2 {
-                return Err(anyhow::anyhow!(
-                    "Invalid PLONK proof: C field must have 2 elements, found {}",
-                    plonk_proof.C.len()
-                ));
-            }
-            if plonk_proof.Z.len() != 3 {
-                return Err(anyhow::anyhow!(
-                    "Invalid PLONK proof: Z field must have 3 elements, found {}",
-                    plonk_proof.Z.len()
-                ));
-            }
-            if plonk_proof.T1.len() != 2 || plonk_proof.T2.len() != 2 || plonk_proof.T3.len() != 2 {
-                return Err(anyhow::anyhow!(
-                    "Invalid PLONK proof: T1, T2, T3 fields must each have 2 elements"
-                ));
-            }
-            if plonk_proof.WXi.is_empty() {
-                return Err(anyhow::anyhow!(
-                    "Invalid PLONK proof: WXi field cannot be empty"
+                    "Invalid Plonk proof: must have at least 8 elements, found {}",
+                    plonk_proof.proof.len()
                 ));
             }
         }

@@ -179,14 +179,6 @@ pub struct DonateRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DonateResponse {
-    pub donation_address: String,
-    pub amount_received: String,
-    pub tx_hash: Option<String>,
-    pub thank_you: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResponseTime {
     pub p50: u64,
     pub p95: u64,
@@ -243,5 +235,4 @@ pub enum RateLimitType {
     SubmitClaim,
     GetMerklePath,
     CheckStatus,
-    Donate,
 }

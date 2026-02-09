@@ -2,17 +2,13 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use rayon::prelude::*;
 
-#[allow(dead_code)]
-pub const TREE_HEIGHT: u8 = 26;
 pub const MAX_LEAVES: usize = 1 << 26; // 2^26 = 67,108,864
 
-#[allow(dead_code)]
 const FIELD_PRIME: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
-#[allow(dead_code)]
 fn field_prime() -> BigUint {
-    BigUint::from_str_radix(FIELD_PRIME, 10).unwrap()
+    BigUint::from_str_radix(FIELD_PRIME, 10).expect("Invalid field prime constant")
 }
 
 #[derive(Debug, Clone)]
@@ -145,11 +141,6 @@ impl MerkleTree {
         }
 
         current == self.root
-    }
-
-    #[allow(dead_code)]
-    pub fn get_leaf_index(&self, leaf_hash: &[u8; 32]) -> Option<usize> {
-        self.leaves.iter().position(|l| l == leaf_hash)
     }
 }
 

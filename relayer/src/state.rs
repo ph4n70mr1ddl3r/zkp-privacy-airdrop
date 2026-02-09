@@ -192,7 +192,7 @@ impl AppState {
     ) -> Result<(), String> {
         let limit = match limit_type {
             RateLimitType::SubmitClaim => self.config.rate_limit.claims_per_minute,
-            RateLimitType::GetMerklePath | RateLimitType::CheckStatus | RateLimitType::Donate => {
+            RateLimitType::GetMerklePath | RateLimitType::CheckStatus => {
                 self.config.rate_limit.requests_per_minute
             }
         };

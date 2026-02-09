@@ -33,9 +33,9 @@ pub struct PrivateInputs {
     pub merkle_path_indices: F,
 }
 
-/// PLONK proof structure
+/// Plonk proof structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PLONKProof {
+pub struct PlonkProof {
     /// A[2] elements
     pub a: [F; 2],
     /// B[2][2] elements
@@ -44,10 +44,10 @@ pub struct PLONKProof {
     pub c: [F; 2],
 }
 
-/// PLONK proof data ready for API submission
+/// Plonk proof data ready for API submission
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PLONKProofData {
-    pub proof: PLONKProof,
+pub struct PlonkProofData {
+    pub proof: PlonkProof,
     pub public_inputs: PublicInputs,
     pub nullifier: H256,
     pub recipient: Address,
@@ -55,8 +55,8 @@ pub struct PLONKProofData {
     pub generated_at: String,
 }
 
-impl PLONKProof {
-    /// Create a minimal PLONK proof for testing
+impl PlonkProof {
+    /// Create a minimal Plonk proof for testing
     pub fn minimal() -> Self {
         Self {
             a: [F::zero(), F::zero()],
@@ -75,12 +75,12 @@ impl PLONKProof {
     }
 }
 
-/// Generate a PLONK proof for the Merkle membership circuit
+/// Generate a Plonk proof for the Merkle membership circuit
 pub fn generate_plonk_proof(
     private_key: &[u8; 32],
     recipient: Address,
     merkle_tree: &MerkleTree,
-) -> Result<PLONKProofData> {
+) -> Result<PlonkProofData> {
     let start = Instant::now();
 
     // Step 1: Derive address from private key
@@ -143,7 +143,7 @@ pub fn generate_plonk_proof(
         merkle_path_indices: indices_field,
     };
 
-    // Step 7: Generate PLONK proof
+    // Step 7: Generate Plonk proof
     // Note: This is a simplified version
     // In production, this would use the actual proving key
     let proof = generate_plonk_proof_internal(&private_inputs, &public_inputs)?;
@@ -153,9 +153,9 @@ pub fn generate_plonk_proof(
     key_copy.zeroize();
 
     let elapsed = start.elapsed();
-    tracing::info!("PLONK proof generated in {:?}", elapsed);
+    tracing::info!("Plonk proof generated in {:?}", elapsed);
 
-    Ok(PLONKProofData {
+    Ok(PlonkProofData {
         proof,
         public_inputs,
         nullifier,
@@ -168,8 +168,8 @@ pub fn generate_plonk_proof(
 fn generate_plonk_proof_internal(
     _private_inputs: &PrivateInputs,
     _public_inputs: &PublicInputs,
-) -> Result<PLONKProof> {
-    Ok(PLONKProof::minimal())
+) -> Result<PlonkProof> {
+    Ok(PlonkProof::minimal())
 }
 
 #[cfg(test)]
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn test_plonk_proof_structure() {
-        let proof = PLONKProof::minimal();
+        let proof = PlonkProof::minimal();
 
         assert_eq!(proof.a.len(), 2);
         assert_eq!(proof.b.len(), 2);
