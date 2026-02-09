@@ -29,14 +29,18 @@ impl Default for Config {
             merkle_tree_source: std::env::var("ZKP_MERKLE_TREE_SOURCE").ok(),
             rpc_url: std::env::var("ZKP_RPC_URL").ok(),
             chain_id: std::env::var("ZKP_CHAIN_ID")
-                .unwrap_or_else(|_| match network.as_str() {
-                    "optimism-sepolia" => "11155420",
-                    _ => "10",
-                })
-                .parse()
-                .unwrap_or_else(|_| match network.as_str() {
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or_else(|| match network.as_str() {
                     "optimism-sepolia" => 11155420,
-                    _ => 10,
+                    "optimism" | "mainnet" => 10,
+                    _ => {
+                        tracing::warn!(
+                            "Unknown network {}, defaulting to optimism chain_id 10",
+                            network
+                        );
+                        10
+                    }
                 }),
         }
     }

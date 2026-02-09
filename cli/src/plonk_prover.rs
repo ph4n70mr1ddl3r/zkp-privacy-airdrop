@@ -169,7 +169,12 @@ fn generate_plonk_proof_internal(
     _private_inputs: &PrivateInputs,
     _public_inputs: &PublicInputs,
 ) -> Result<PlonkProof> {
-    Ok(PlonkProof::minimal())
+    anyhow::bail!(
+        "PLONK proof generation not yet implemented. \
+         This requires: 1) Generating proving key from circuit, \
+         2) Implementing actual PLONK proving algorithm. \
+         Currently only placeholder/zero proofs are generated."
+    )
 }
 
 #[cfg(test)]

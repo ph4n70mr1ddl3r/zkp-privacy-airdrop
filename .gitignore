@@ -16,6 +16,28 @@ Cargo.lock
 typechain
 typechain-types
 
+# Powers of Tau ceremony files (can be regenerated)
+*.ptau
+pot*.ptau
+
+# Circuit build outputs (intermediate files)
+circuits/*.r1cs
+circuits/*.sym
+circuits/*.wasm
+circuits/*.zkey
+circuits/plonk*.zkey
+circuits/*_plonk.zkey
+circuits/*_vk.json
+circuits/*_vk_plonk.json
+circuits/verification_key.json
+
+# Generated verifier contracts in circuits dir (production copy kept in contracts/src)
+circuits/PLONKVerifier.sol
+circuits/*_Verifier.sol
+circuits/.powersoftau/
+circuits/.plonk_setup/
+circuits/*_js/
+
 # Environment files
 .env
 *.env

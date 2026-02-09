@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -93,7 +93,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @param recipient Address to receive tokens
      * @param amount Amount of tokens to transfer
      */
-    function _transferTokens(address recipient, uint256 amount) internal nonReentrant {
+    function _transferTokens(address recipient, uint256 amount) internal {
         token.safeTransfer(recipient, amount);
         emit TokensTransferred(recipient, amount, block.timestamp);
     }

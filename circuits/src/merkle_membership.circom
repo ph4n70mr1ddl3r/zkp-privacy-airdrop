@@ -15,13 +15,11 @@ template MerklePathVerifier(n) {
     component mux[n];
     component poseidon[n];
 
-    // Create all components first
     for (var i = 0; i < n; i++) {
         poseidon[i] = Poseidon(3);
         mux[i] = Mux1();
     }
 
-    // Then assign signals
     poseidon[0].inputs[0] <== leaf;
     poseidon[0].inputs[1] <== paths_siblings[0];
     poseidon[0].inputs[2] <== 0;
@@ -49,28 +47,25 @@ template MerkleMembership() {
     signal input private_key;
     signal input merkle_root;
     signal input recipient;
-    signal input nullifier;
-
     signal input merkle_path[26];
     signal input merkle_path_indices;
 
-    signal leaf;
-    signal computed_nullifier;
-    signal computed_address_field;
+    signal output merkle_root_out;
+    signal output recipient_out;
+    signal output nullifier;
 
-    // Hash recipient address (converted to field element) with Poseidon to create leaf
+    signal leaf;
+
     component poseidon_leaf = Poseidon(3);
     poseidon_leaf.inputs[0] <== recipient;
     poseidon_leaf.inputs[1] <== 0;
     poseidon_leaf.inputs[2] <== 0;
     leaf <== poseidon_leaf.out;
 
-    // Verify Merkle proof
     component merkle_verifier = MerklePathVerifier(26);
     merkle_verifier.leaf <== leaf;
     merkle_verifier.root <== merkle_root;
 
-    // Extract bits from path indices - convert indices to bits then extract bit i
     component num2bits = Num2Bits(26);
     num2bits.in <== merkle_path_indices;
 
@@ -79,11 +74,14 @@ template MerkleMembership() {
         merkle_verifier.paths_enabled[i] <== num2bits.out[i];
     }
 
-    // Computed nullifier from private key (off-chain: Poseidon(private_key, salt, 0))
-    computed_nullifier <== private_key;
-    computed_nullifier === nullifier;
-}
+    component poseidon_nullifier = Poseidon(3);
+    poseidon_nullifier.inputs[0] <== private_key;
+    poseidon_nullifier.inputs[1] <== 0;
+    poseidon_nullifier.inputs[2] <== 0;
+    nullifier <== poseidon_nullifier.out;
 
-// NOTE: NULLIFIER_SALT is defined externally in the proving system
+    merkle_root_out <== merkle_root;
+    recipient_out <== recipient;
+}
 
 component main = MerkleMembership();

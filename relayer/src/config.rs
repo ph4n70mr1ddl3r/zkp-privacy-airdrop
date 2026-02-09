@@ -80,6 +80,7 @@ pub struct ContractsConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayerConfig {
     #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
     pub private_key: String,
     pub min_balance_warning: String,
     pub min_balance_critical: String,
@@ -343,12 +344,11 @@ impl Config {
                         .parse()
                         .unwrap_or(1.1);
                     const MAX_GAS_MULTIPLIER: f64 = 2.0;
-                    if multiplier <= 0.0 {
-                        return Err(anyhow::anyhow!("RELAYER_GAS_MULTIPLIER must be positive"));
-                    }
-                    if multiplier > MAX_GAS_MULTIPLIER {
+                    const MIN_GAS_MULTIPLIER: f64 = 0.1;
+                    if !(MIN_GAS_MULTIPLIER..=MAX_GAS_MULTIPLIER).contains(&multiplier) {
                         return Err(anyhow::anyhow!(
-                            "RELAYER_GAS_MULTIPLIER must be <= {}, got {}",
+                            "RELAYER_GAS_MULTIPLIER must be between {} and {}, got {}",
+                            MIN_GAS_MULTIPLIER,
                             MAX_GAS_MULTIPLIER,
                             multiplier
                         ));

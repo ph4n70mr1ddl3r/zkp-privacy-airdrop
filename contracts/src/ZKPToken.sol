@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -15,7 +15,7 @@ contract ZKPToken is ERC20, Ownable {
     event MintingPaused(address indexed account);
     event MintingUnpaused(address indexed account);
 
-    constructor() ERC20("ZKP Token", "ZKP") {
+    constructor() ERC20("ZKP Token", "ZKP") Ownable(msg.sender) {
         deployTimestamp = block.timestamp;
     }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 interface IRelayerRegistry {
@@ -71,6 +71,8 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     }
 
     receive() external payable {
-        donate();
+        require(msg.value > 0, "Donation must be greater than 0");
+        relayerBalances[defaultRelayer] += msg.value;
+        emit DonationReceived(msg.sender, msg.value);
     }
 }

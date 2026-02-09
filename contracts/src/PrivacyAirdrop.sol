@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import "./BasePrivacyAirdrop.sol";
 
@@ -95,18 +95,4 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
     function estimateClaimGas() external pure returns (uint256) {
         return 700_000;
     }
-}
-
-/**
- * @title IERC20
- * @notice Interface for ERC20 token transfers
- */
-interface IERC20 {
-    /**
-     * @notice Transfer tokens from contract to recipient
-     * @param to Recipient address
-     * @param amount Number of tokens to transfer
-     * @return True if transfer successful
-     */
-    function transfer(address to, uint256 amount) external returns (bool);
 }

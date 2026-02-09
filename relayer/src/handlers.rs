@@ -2,6 +2,7 @@ use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use ethers::types::Address;
 use num_bigint::BigUint;
 use num_traits::Num;
+use regex::Regex;
 use std::str::FromStr;
 use std::sync::OnceLock;
 use tracing::{error, info, warn};
@@ -21,17 +22,67 @@ fn get_field_modulus() -> &'static BigUint {
 use crate::state::AppState;
 use crate::types_plonk::*;
 
+/// Validates claim input parameters and returns an error response if invalid
+fn validate_claim_input(
+    claim: &SubmitClaimRequest,
+    expected_merkle_root: &str,
+) -> Result<(), HttpResponse> {
+    if !is_valid_nullifier(&claim.nullifier) {
+        warn!("Invalid nullifier format: {}", claim.nullifier);
+        return Err(HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Invalid nullifier format. Expected 66-character hex string starting with 0x."
+                .to_string(),
+            code: Some("INVALID_NULLIFIER".to_string()),
+            retry_after: None,
+        }));
+    }
+
+    if !is_valid_address(&claim.recipient) {
+        warn!("Invalid recipient address: {}", claim.recipient);
+        return Err(HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Invalid Ethereum address format for recipient.".to_string(),
+            code: Some("INVALID_ADDRESS".to_string()),
+            retry_after: None,
+        }));
+    }
+
+    if !is_valid_merkle_root(&claim.merkle_root) {
+        warn!("Invalid merkle_root format: {}", claim.merkle_root);
+        return Err(HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Invalid merkle_root format. Expected 66-character hex string starting with 0x."
+                .to_string(),
+            code: Some("INVALID_MERKLE_ROOT".to_string()),
+            retry_after: None,
+        }));
+    }
+
+    if claim.merkle_root != expected_merkle_root {
+        warn!(
+            "Merkle root mismatch: provided={}, expected={}",
+            claim.merkle_root, expected_merkle_root
+        );
+        return Err(HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Merkle root does not match the current airdrop root. Please ensure you are using the latest merkle tree.".to_string(),
+            code: Some("MERKLE_ROOT_MISMATCH".to_string()),
+            retry_after: None,
+        }));
+    }
+
+    Ok(())
+}
+
 fn sanitize_error_message(error: &str) -> String {
     let sensitive_patterns = [
-        ("private key", "private key"),
+        ("private_key", "private key"),
         ("private-key", "private key"),
         ("privatekey", "private key"),
         ("priv_key", "private key"),
         ("privkey", "private key"),
-        ("secret", "secret"),
-        ("password", "password"),
-        ("passwd", "password"),
-        ("0x", "hex"),
+        ("0x[0-9a-f]{32,}", "hex credential"),
         ("seed", "seed"),
         ("mnemonic", "mnemonic"),
         ("credentials", "credentials"),
@@ -40,22 +91,27 @@ fn sanitize_error_message(error: &str) -> String {
         ("access_token", "access token"),
         ("refresh_token", "refresh token"),
         ("access_key", "access key"),
+        ("secret", "secret value"),
         ("secret_key", "secret key"),
-        ("session", "session"),
+        ("session", "session token"),
         ("signature", "signature"),
         ("auth_token", "auth token"),
+        ("password", "password"),
+        ("passwd", "password"),
     ];
 
     let lower = error.to_lowercase();
 
     for (pattern, description) in &sensitive_patterns {
-        if lower.contains(pattern) {
-            tracing::warn!(
-                "Filtered sensitive error message containing {}: {}",
-                description,
-                pattern
-            );
-            return "Internal error occurred".to_string();
+        if let Ok(re) = regex::Regex::new(pattern) {
+            if re.is_match(&lower) {
+                tracing::warn!(
+                    "Filtered sensitive error message containing {}: {}",
+                    description,
+                    pattern
+                );
+                return "Internal error occurred. Check logs for details.".to_string();
+            }
         }
     }
 
@@ -190,49 +246,8 @@ pub async fn submit_claim(
     state: web::Data<AppState>,
     claim: web::Json<SubmitClaimRequest>,
 ) -> impl Responder {
-    if !is_valid_nullifier(&claim.nullifier) {
-        warn!("Invalid nullifier format: {}", claim.nullifier);
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            success: false,
-            error: "Invalid nullifier format. Expected 66-character hex string starting with 0x."
-                .to_string(),
-            code: Some("INVALID_NULLIFIER".to_string()),
-            retry_after: None,
-        });
-    }
-
-    if !is_valid_address(&claim.recipient) {
-        warn!("Invalid recipient address: {}", claim.recipient);
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            success: false,
-            error: "Invalid Ethereum address format for recipient.".to_string(),
-            code: Some("INVALID_ADDRESS".to_string()),
-            retry_after: None,
-        });
-    }
-
-    if !is_valid_merkle_root(&claim.merkle_root) {
-        warn!("Invalid merkle_root format: {}", claim.merkle_root);
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            success: false,
-            error: "Invalid merkle_root format. Expected 66-character hex string starting with 0x."
-                .to_string(),
-            code: Some("INVALID_MERKLE_ROOT".to_string()),
-            retry_after: None,
-        });
-    }
-
-    if claim.merkle_root != state.config.merkle_tree.merkle_root {
-        warn!(
-            "Merkle root mismatch: provided={}, expected={}",
-            claim.merkle_root, state.config.merkle_tree.merkle_root
-        );
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            success: false,
-            error: "Merkle root does not match the current airdrop root. Please ensure you are using the latest merkle tree.".to_string(),
-            code: Some("MERKLE_ROOT_MISMATCH".to_string()),
-            retry_after: None,
-        });
+    if let Err(response) = validate_claim_input(&claim, &state.config.merkle_tree.merkle_root) {
+        return response;
     }
 
     info!(
