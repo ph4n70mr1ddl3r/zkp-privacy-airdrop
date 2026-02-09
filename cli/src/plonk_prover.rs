@@ -130,10 +130,8 @@ pub fn generate_plonk_proof(
 
     // Pack indices (26 bits into 1 field element)
     let mut indices_bytes = [0u8; 32];
-    for (i, &bit) in indices.iter().enumerate() {
-        if i < 4 {
-            indices_bytes[i] = *bit;
-        }
+    for (i, &bit) in indices.iter().enumerate().take(4) {
+        indices_bytes[i] = bit;
     }
     let indices_field = F::from_be_bytes_mod_order(&indices_bytes, true);
 

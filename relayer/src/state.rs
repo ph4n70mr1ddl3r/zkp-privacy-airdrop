@@ -367,7 +367,6 @@ impl AppState {
 
         if result != 1 {
             self.increment_failed_claims();
-            drop(redis);
             return Err(
                 "This nullifier has already been used. Each qualified account can only claim once."
                     .to_string(),
@@ -421,7 +420,13 @@ impl AppState {
                         e
                     })?
                     .try_into()
-                    .unwrap();
+                    .map_err(|e| {
+                        self.increment_failed_claims();
+                        format!(
+                            "Failed to convert proof to array: expected 8 elements, got {}",
+                            e
+                        )
+                    })?;
 
                 let mut retry_count = 0;
 

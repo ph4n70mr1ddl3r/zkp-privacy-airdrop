@@ -1,17 +1,8 @@
 # Clippy configuration for ZKP Airdrop project
 # See: https://doc.rust-lang.org/clippy/lints.html
 
-# Maximum length of a function/method body
-function-body-width = 200
-
-# Maximum length of a struct/enum definition
-struct-variant-size = 200
-
 # Maximum length of an array
 array-size-threshold = 512000
-
-# Allow certain pedantic lints to be denied
-pedantic = "warn"
 
 # Deny complex cognitive complexity
 cognitive-complexity-threshold = 30
@@ -22,30 +13,13 @@ too-many-arguments-threshold = 7
 # Maximum number of lines a type definition can have
 type-complexity-threshold = 250
 
-# Documentation quality
-missing-docs-in-private-items = "warn"
-
-# Security-related lints
-allow-expect-in-tests = true
-unwrap-used = "deny"
-expect-used = "deny"
-indexing-slicing = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-
 # Performance lints
 vec-box-size-threshold = 4096
-string-slice = "warn"
-mem-replace-with-default = "warn"
-inline-fn = "warn"
-
-# Style lints
-single-char-lifetime-names = "warn"
-upper-case-acronyms-aggressive = "warn"
-similar-names = "warn"
 
 # Complexity lints
-too-many-lines = "warn"
+too-many-lines-threshold = 300
 cyclomatic-complexity-threshold = 30
-nursery = "warn"
+
+# Allow certain lints
+allow-print-in-tests = true
+allow-dbg-in-tests = true

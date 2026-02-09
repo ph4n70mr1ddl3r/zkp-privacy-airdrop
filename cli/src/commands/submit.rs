@@ -267,11 +267,17 @@ async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
     use ethers::providers::{Http, Provider};
 
     if let Ok(provider) = Provider::<Http>::try_from(rpc_url) {
-        if let Ok(Some(_receipt)) = provider.get_transaction_receipt(tx_hash).await {
-            return true;
+        match provider.get_transaction_receipt(tx_hash).await {
+            Ok(Some(_receipt)) => true,
+            Ok(None) => false,
+            Err(e) => {
+                tracing::warn!("Failed to check transaction status for {}: {}", tx_hash, e);
+                false
+            }
         }
+    } else {
+        false
     }
-    false
 }
 
 fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {
