@@ -24,3 +24,4 @@ rayon = "1.8"
 tempfile = "3.8"
 byteorder = "1.5"
 chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"

@@ -2,6 +2,7 @@ use anyhow::Result;
 use ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use tracing::warn;
 use zeroize::Zeroize;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -359,8 +360,25 @@ impl Config {
                     .unwrap_or_else(|_| "0.05".to_string())
                     .parse()
                     .unwrap_or(0.05),
-                max_gas_price: std::env::var("RELAYER_MAX_GAS_PRICE")
-                    .unwrap_or_else(|_| "100000000000".to_string()), // 100 gwei
+                max_gas_price: {
+                    let max_gas_price_str = std::env::var("RELAYER_MAX_GAS_PRICE")
+                        .unwrap_or_else(|_| "100000000000".to_string()); // 100 gwei
+                    let max_gas_price: u128 = max_gas_price_str.parse().unwrap_or_else(|_| {
+                        warn!(
+                            "Invalid RELAYER_MAX_GAS_PRICE '{}', using default 100 gwei",
+                            max_gas_price_str
+                        );
+                        100_000_000_000u128
+                    });
+                    if max_gas_price > 1_000_000_000_000u128 {
+                        warn!(
+                            "RELAYER_MAX_GAS_PRICE '{}' is dangerously high (>1000 gwei). \
+                             Consider lowering to prevent extremely high gas costs.",
+                            max_gas_price
+                        );
+                    }
+                    max_gas_price
+                },
             },
             rate_limit: RateLimitConfig {
                 per_nullifier: std::env::var("RATE_LIMIT_PER_NULLIFIER")

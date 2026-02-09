@@ -56,6 +56,12 @@ template MerkleMembership() {
 
     signal leaf;
 
+    // Nullifier salt constant - must match CLI and relayer implementations
+    // 87953108768114088221452414019732140257409482096940319490691914651639977587459
+    signal nullifier_salt;
+
+    nullifier_salt <== 87953108768114088221452414019732140257409482096940319490691914651639977587459;
+
     component poseidon_leaf = Poseidon(3);
     poseidon_leaf.inputs[0] <== recipient;
     poseidon_leaf.inputs[1] <== 0;
@@ -74,9 +80,10 @@ template MerkleMembership() {
         merkle_verifier.paths_enabled[i] <== num2bits.out[i];
     }
 
+    // Nullifier = Poseidon(private_key, nullifier_salt, 0)
     component poseidon_nullifier = Poseidon(3);
     poseidon_nullifier.inputs[0] <== private_key;
-    poseidon_nullifier.inputs[1] <== 0;
+    poseidon_nullifier.inputs[1] <== nullifier_salt;
     poseidon_nullifier.inputs[2] <== 0;
     nullifier <== poseidon_nullifier.out;
 

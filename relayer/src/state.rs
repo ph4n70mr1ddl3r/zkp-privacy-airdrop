@@ -380,8 +380,7 @@ impl AppState {
             )
         })?;
 
-        let hashed_nullifier = format!("{:x}", Keccak256::digest(nullifier_array));
-        let key = format!("nullifier:{}", hashed_nullifier);
+        let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
         // Use Redis Lua script for atomic check-and-set to prevent race conditions
@@ -522,9 +521,28 @@ impl AppState {
                     let gas_randomization_factor = self.config.relayer.gas_price_randomization;
                     let random_factor =
                         rand::thread_rng().gen_range(0.0..=gas_randomization_factor);
-                    let gas_price = ethers::types::U256::from(
+                    let mut gas_price = ethers::types::U256::from(
                         (base_gas_price.as_u128() as f64 * (1.0 + random_factor)) as u128,
                     );
+
+                    let max_gas_price: ethers::types::U256 = self
+                        .config
+                        .relayer
+                        .max_gas_price
+                        .parse()
+                        .unwrap_or_else(|_| {
+                            tracing::warn!("Failed to parse max_gas_price, using default 100 gwei");
+                            ethers::types::U256::from(100_000_000_000u128)
+                        });
+
+                    if gas_price > max_gas_price {
+                        tracing::warn!(
+                            "Computed gas price {} gwei exceeds max {} gwei, using max",
+                            gas_price.as_u128() / 1_000_000_000,
+                            max_gas_price.as_u128() / 1_000_000_000
+                        );
+                        gas_price = max_gas_price;
+                    }
 
                     let builder = call
                         .from(wallet_with_chain.address())

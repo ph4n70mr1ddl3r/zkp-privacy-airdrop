@@ -57,6 +57,11 @@ pub struct PlonkProofData {
 
 impl PlonkProof {
     /// Create a minimal Plonk proof for testing
+    ///
+    /// # Warning
+    /// This is a stub for testing only. Do not use in production as it creates
+    /// an invalid proof that will fail verification.
+    #[deprecated(note = "Only for testing purposes")]
     pub fn minimal() -> Self {
         Self {
             a: [F::zero(), F::zero()],
@@ -169,12 +174,18 @@ fn generate_plonk_proof_internal(
     _private_inputs: &PrivateInputs,
     _public_inputs: &PublicInputs,
 ) -> Result<PlonkProof> {
-    anyhow::bail!(
+    Err(anyhow::anyhow!(
         "PLONK proof generation not yet implemented. \
-         This requires: 1) Generating proving key from circuit, \
-         2) Implementing actual PLONK proving algorithm. \
-         Currently only placeholder/zero proofs are generated."
-    )
+         This requires integration with a PLONK proving library (e.g., snarkjs, arkworks-plonk). \
+         Steps needed:\n\
+         1) Generate proving key from circuit (.ptau file)\n\
+         2) Compute witness from private inputs\n\
+         3) Generate PLONK proof using proving key and witness\n\
+         4) Verify proof structure matches expected format (8 field elements)\n\
+         \n\
+         For testing purposes, see the `minimal()` method (deprecated).\n\
+         For production, integrate with snarkjs CLI or arkworks PLONK implementation."
+    ))
 }
 
 #[cfg(test)]

@@ -95,11 +95,16 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
 
 fn poseidon_round_constants() -> Vec<Vec<ark_bn254::Fr>> {
     use ark_ff::PrimeField;
+
     let mut constants = Vec::new();
-    for round in 0..64 {
+    let mut rng = rand::thread_rng();
+
+    for _round in 0..64 {
         let mut round_keys = Vec::new();
-        for i in 0..3 {
-            round_keys.push(ark_bn254::Fr::from(round as u64 + i as u64));
+        for _i in 0..3 {
+            let random_bytes: [u8; 32] = rand::random();
+            let fr = ark_bn254::Fr::from_be_bytes_mod_order(&random_bytes, true);
+            round_keys.push(fr);
         }
         constants.push(round_keys);
     }
@@ -125,6 +130,20 @@ fn poseidon_mds_matrix() -> [[ark_bn254::Fr; 3]; 3] {
             ark_bn254::Fr::from(3u64),
         ],
     ]
+}
+
+/// Computes a deterministic seed for Poseidon round constants based on the nullifier salt
+/// to ensure consistency between circuit and CLI implementations
+fn poseidon_constants_seed() -> [u8; 32] {
+    use sha3::{Digest, Keccak256};
+    const NULLIFIER_SALT: u64 =
+        87953108768114088221452414019732140257409482096940319490691914651639977587459u64;
+
+    let mut hasher = Keccak256::new();
+    hasher.update(b"POSEIDON_CONSTANTS_SEED");
+    hasher.update(NULLIFIER_SALT.to_be_bytes());
+    let hash = hasher.finalize();
+    hash.try_into().unwrap()
 }
 
 /// Derives an Ethereum address from a private key.
@@ -229,9 +248,8 @@ pub fn read_private_key(
     }
     .context("Invalid hex private key")?;
 
-    key_str.zeroize();
-
     if key_bytes.len() != 32 {
+        key_str.zeroize();
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
 

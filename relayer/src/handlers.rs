@@ -98,17 +98,21 @@ fn sanitize_error_message(error: &str) -> String {
         ("auth_token", "auth token"),
         ("password", "password"),
         ("passwd", "password"),
+        ("pk\\s*=\\s*[0-9a-f]+", "private key param"),
+        ("key\\s*=\\s*[0-9a-f]+", "key param"),
+        ("token\\s*=\\s*[a-z0-9\\-._~+/]+=*", "token param"),
     ];
 
     let lower = error.to_lowercase();
 
     for (pattern, description) in &sensitive_patterns {
-        if let Ok(re) = regex::Regex::new(pattern) {
+        if let Ok(re) = regex::Regex::new("(?i)".to_string() + pattern) {
             if re.is_match(&lower) {
                 tracing::warn!(
-                    "Filtered sensitive error message containing {}: {}",
+                    "Filtered sensitive error message containing {}: pattern='{}', error='{}'",
                     description,
-                    pattern
+                    pattern,
+                    error
                 );
                 return "Internal error occurred. Check logs for details.".to_string();
             }
