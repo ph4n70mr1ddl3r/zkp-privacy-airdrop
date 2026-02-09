@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use reqwest::Client;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 use tracing::info;
@@ -16,8 +17,8 @@ const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
 const SUBMIT_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
 const MAX_SUBMITS_PER_WINDOW: u32 = 10;
 
-static LAST_SUBMIT_TIME: std::sync::Mutex<(Instant, u32)> =
-    std::sync::Mutex::new((Instant::now(), 0));
+static LAST_SUBMIT_TIME: AtomicU64 = AtomicU64::new(0);
+static SUBMIT_COUNT: AtomicU32 = AtomicU32::new(0);
 
 pub async fn execute(
     proof_path: PathBuf,
@@ -94,28 +95,32 @@ pub async fn execute(
         }
     );
 
-    let mut rate_limit_guard = LAST_SUBMIT_TIME
-        .lock()
-        .map_err(|e| anyhow::anyhow!("Failed to acquire rate limit lock: {}", e))?;
-    let (last_time, count) = *rate_limit_guard;
     let now = Instant::now();
+    let last_time_ms = LAST_SUBMIT_TIME.load(Ordering::Relaxed);
 
-    if now.duration_since(last_time) < SUBMIT_RATE_LIMIT_WINDOW {
-        if count >= MAX_SUBMITS_PER_WINDOW {
-            drop(rate_limit_guard);
-            let wait_time = SUBMIT_RATE_LIMIT_WINDOW - now.duration_since(last_time);
-            println!(
-                "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
-                "Warning:".yellow(),
-                wait_time.as_secs()
-            );
-            return Err(anyhow::anyhow!("Rate limit exceeded"));
+    if last_time_ms > 0 {
+        let elapsed_ms = now.elapsed().as_millis() as u64 - last_time_ms;
+
+        if elapsed_ms < SUBMIT_RATE_LIMIT_WINDOW.as_millis() as u64 {
+            let count = SUBMIT_COUNT.fetch_add(1, Ordering::Relaxed);
+            if count >= MAX_SUBMITS_PER_WINDOW {
+                SUBMIT_COUNT.fetch_sub(1, Ordering::Relaxed);
+                let wait_time = SUBMIT_RATE_LIMIT_WINDOW - Duration::from_millis(elapsed_ms);
+                println!(
+                    "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
+                    "Warning:".yellow(),
+                    wait_time.as_secs()
+                );
+                return Err(anyhow::anyhow!("Rate limit exceeded"));
+            }
+        } else {
+            LAST_SUBMIT_TIME.store(now.elapsed().as_millis() as u64, Ordering::Relaxed);
+            SUBMIT_COUNT.store(1, Ordering::Relaxed);
         }
-        *rate_limit_guard = (last_time, count + 1);
     } else {
-        *rate_limit_guard = (now, 1);
+        LAST_SUBMIT_TIME.store(now.elapsed().as_millis() as u64, Ordering::Relaxed);
+        SUBMIT_COUNT.store(1, Ordering::Relaxed);
     }
-    drop(rate_limit_guard);
 
     let client = Client::builder()
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))

@@ -44,6 +44,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     }
 
     function donate() external payable {
+        require(msg.value > 0, "Donation must be greater than 0");
         relayerBalances[defaultRelayer] += msg.value;
         emit DonationReceived(msg.sender, msg.value);
     }

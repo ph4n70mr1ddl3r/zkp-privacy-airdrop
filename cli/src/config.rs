@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use toml;
 use zeroize::Zeroize;
 
+const SUPPORTED_NETWORKS: &[&str] = &["optimism", "optimism-sepolia", "mainnet", "sepolia"];
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub network: String,
@@ -17,17 +19,25 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
+        let network = std::env::var("ZKP_NETWORK").unwrap_or_else(|_| "optimism".to_string());
+
         Self {
-            network: std::env::var("ZKP_NETWORK").unwrap_or_else(|_| "optimism".to_string()),
+            network: network.clone(),
             relayer_url: std::env::var("ZKP_RELAYER_URL")
                 .ok()
                 .or_else(|| Some("https://relayer.zkp-airdrop.io".to_string())),
             merkle_tree_source: std::env::var("ZKP_MERKLE_TREE_SOURCE").ok(),
             rpc_url: std::env::var("ZKP_RPC_URL").ok(),
             chain_id: std::env::var("ZKP_CHAIN_ID")
-                .unwrap_or_else(|_| "10".to_string())
+                .unwrap_or_else(|_| match network.as_str() {
+                    "optimism-sepolia" => "11155420",
+                    _ => "10",
+                })
                 .parse()
-                .unwrap_or(10),
+                .unwrap_or_else(|_| match network.as_str() {
+                    "optimism-sepolia" => 11155420,
+                    _ => 10,
+                }),
         }
     }
 }
@@ -39,10 +49,40 @@ impl Config {
         if path.exists() {
             let content = fs::read_to_string(path).context("Failed to read config file")?;
             let config: Config = toml::from_str(&content).context("Failed to parse config file")?;
+            config.validate()?;
             Ok(config)
         } else {
-            Ok(Config::default())
+            let config = Config::default();
+            config.validate()?;
+            Ok(config)
         }
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if !SUPPORTED_NETWORKS.contains(&self.network.as_str()) {
+            return Err(anyhow::anyhow!(
+                "Unsupported network: {}. Supported networks: {}",
+                self.network,
+                SUPPORTED_NETWORKS.join(", ")
+            ));
+        }
+
+        let expected_chain_id = match self.network.as_str() {
+            "optimism" | "mainnet" => 10,
+            "optimism-sepolia" | "sepolia" => 11155420,
+            _ => return Err(anyhow::anyhow!("Unknown network: {}", self.network)),
+        };
+
+        if self.chain_id != expected_chain_id {
+            return Err(anyhow::anyhow!(
+                "Invalid chain ID for network {}. Expected {}, got {}",
+                self.network,
+                expected_chain_id,
+                self.chain_id
+            ));
+        }
+
+        Ok(())
     }
 
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<()> {

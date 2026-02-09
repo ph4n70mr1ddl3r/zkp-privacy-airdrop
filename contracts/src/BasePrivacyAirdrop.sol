@@ -21,6 +21,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     bool public paused;
 
     event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
+    event TokensTransferred(address indexed recipient, uint256 amount, uint256 timestamp);
     event Paused(address indexed account);
     event Unpaused(address indexed account);
 
@@ -94,5 +95,6 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      */
     function _transferTokens(address recipient, uint256 amount) internal {
         token.safeTransfer(recipient, amount);
+        emit TokensTransferred(recipient, amount, block.timestamp);
     }
 }

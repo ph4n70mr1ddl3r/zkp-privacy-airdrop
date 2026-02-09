@@ -88,44 +88,26 @@ contract PLONKVerifier {
     
     /**
      * @notice Internal PLONK verification
-     * @dev SECURITY WARNING: This is a placeholder implementation!
-     * DO NOT USE IN PRODUCTION!
-     * This function rejects all proofs until proper PLONK verification is implemented.
-     * Real implementation must:
-     * 1. Compute Lagrange basis evaluations
-     * 2. Verify polynomial commitments
-     * 3. Check linearization polynomial
-     * 4. Verify quotient polynomial
-     * 5. Perform batch pairing checks using verification key
+     * @dev CRITICAL SECURITY WARNING: This function MUST be replaced before production deployment!
+     * @dev Currently returns false for ALL proofs as a safety measure.
+     * @dev Do NOT use this contract in production without implementing proper verification.
      *
-     * Use snarkjs plonk verifier command to generate actual verification code
-     * Implementation steps:
-     * - Run: snarkjs zkey contribute <verification_key> <contribution>
-     * - Generate verifier: snarkjs zkey export solidityverifier <zkey> verifier.sol
-     * - Replace this function with the generated verifier
+     * REQUIRED PRODUCTION IMPLEMENTATION:
+     * 1. Generate verification key using snarkjs
+     * 2. Export verifier: snarkjs zkey export solidityverifier <zkey> verifier.sol
+     * 3. Replace this entire contract with the generated verifier
+     *
+     * The generated verifier will include:
+     * - Verification key constants
+     * - Polynomial commitment verification
+     * - Batch pairing checks
+     * - Complete PLONK proof validation
      */
     function _verifyPLONK(
         uint256[8] calldata _proof,
         uint256[3] calldata _instances
     ) internal pure returns (bool) {
-        // SECURITY WARNING: Placeholder verification - NOT SECURE!
-        // This function currently returns false for all proofs.
-        // Proper PLONK verification must be implemented before production use.
-        //
-        // Real implementation must:
-        // 1. Compute Lagrange basis evaluations
-        // 2. Verify polynomial commitments
-        // 3. Check linearization polynomial
-        // 4. Verify quotient polynomial
-        // 5. Perform batch pairing checks using verification key
-        //
-        // Use snarkjs plonk verifier command to generate actual verification code
-        // Implementation steps:
-        // - Run: snarkjs zkey contribute <verification_key> <contribution>
-        // - Generate verifier: snarkjs zkey export solidityverifier <zkey> verifier.sol
-        // - Replace this function with the generated verifier
-
-        return false;
+        revert("PLONK_VERIFIER_NOT_IMPLEMENTED: Replace with generated verifier before production use");
     }
     
     /**

@@ -38,19 +38,30 @@ const NULLIFIER_INPUT_LEN: usize = 96;
 /// The nullifier is derived using Keccak256 with domain separation to prevent
 /// hash collision attacks. Each unique private key produces a unique nullifier.
 pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
+    let domain_len = NULLIFIER_DOMAIN_SEPARATOR.len();
+    let salt_len = NULLIFIER_SALT.len();
+    let personalization_len = NULLIFIER_PERSONALIZATION.len();
+    let key_len = 32;
+
+    let total_input_len = domain_len + salt_len + personalization_len + key_len;
+
+    if total_input_len > NULLIFIER_INPUT_LEN {
+        return Err(anyhow::anyhow!(
+            "Nullifier input exceeds maximum length: {} > {}",
+            total_input_len,
+            NULLIFIER_INPUT_LEN
+        ));
+    }
+
     let mut nullifier_input = Vec::with_capacity(NULLIFIER_INPUT_LEN);
     nullifier_input.extend_from_slice(NULLIFIER_DOMAIN_SEPARATOR);
     nullifier_input.extend_from_slice(NULLIFIER_SALT);
     nullifier_input.extend_from_slice(NULLIFIER_PERSONALIZATION);
     nullifier_input.extend_from_slice(private_key);
 
-    if nullifier_input.len() > NULLIFIER_INPUT_LEN {
-        return Err(anyhow::anyhow!("Nullifier input exceeds maximum length"));
-    }
-
     let remaining = NULLIFIER_INPUT_LEN - nullifier_input.len();
     if remaining > 0 {
-        nullifier_input.extend_from_slice(&[0u8; remaining]);
+        nullifier_input.extend_from_slice(&vec![0u8; remaining]);
     }
 
     Ok(keccak_hash(&nullifier_input))
