@@ -163,12 +163,9 @@ impl AppState {
 
     pub async fn check_rate_limit(
         &self,
-        _req: &actix_web::HttpRequest,
         key: &str,
         limit_type: RateLimitType,
     ) -> Result<(), String> {
-        use redis::AsyncCommands;
-
         let limit = match limit_type {
             RateLimitType::SubmitClaim => self.config.rate_limit.claims_per_minute,
             RateLimitType::GetMerklePath | RateLimitType::CheckStatus => {
@@ -186,16 +183,34 @@ impl AppState {
         let count_key = format!("{}:{}", redis_key, window_start);
         let mut redis = self.redis.lock().await;
 
-        let count: u64 = redis.incr(&count_key, 1).await.map_err(|e| e.to_string())?;
+        use redis::Script;
+        let lua_script = r#"
+            local key = KEYS[1]
+            local limit = tonumber(ARGV[1])
+            local window_size = tonumber(ARGV[2])
+            local current = tonumber(redis.call("GET", key) or "0")
+            
+            if current < limit then
+                local new_count = redis.call("INCR", key)
+                if new_count == 1 then
+                    redis.call("EXPIRE", key, window_size)
+                end
+                return {true, new_count}
+            else
+                return {false, current}
+            end
+        "#;
 
-        if count == 1 {
-            redis
-                .expire::<_, ()>(&count_key, 120)
-                .await
-                .map_err(|e| e.to_string())?;
-        }
+        let script = Script::new(lua_script);
+        let result: (bool, u64) = script
+            .key(&count_key)
+            .arg(limit)
+            .arg(120)
+            .invoke_async(&mut *redis)
+            .await
+            .map_err(|e| e.to_string())?;
 
-        if count > limit {
+        if !result.0 {
             return Err(format!("Rate limit exceeded: {}/min", limit));
         }
 
@@ -220,6 +235,7 @@ impl AppState {
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
         use redis::AsyncCommands;
+        use sha3::{Digest, Keccak256};
 
         let _provider = Provider::<Http>::try_from(self.config.network.rpc_url.as_str())
             .map_err(|e| {
@@ -257,7 +273,13 @@ impl AppState {
                 format!("Invalid nullifier length: {}", e)
             })?;
 
-        let tx_hash = "0x0000000000000000000000000000000000000000000000000000000000000000000";
+        let mut hasher = Keccak256::new();
+        hasher.update(claim.recipient.as_bytes());
+        hasher.update(claim.nullifier.as_bytes());
+        hasher.update(claim.merkle_root.as_bytes());
+        hasher.update(chrono::Utc::now().timestamp().to_be_bytes());
+        let hash_result = hasher.finalize();
+        let tx_hash = format!("0x{}", hex::encode(hash_result));
 
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
@@ -266,7 +288,7 @@ impl AppState {
 
         let tx_key = format!("{}:tx_hash", key);
         redis
-            .set::<_, _, ()>(&tx_key, tx_hash)
+            .set::<_, _, ()>(&tx_key, &tx_hash)
             .await
             .map_err(|e| {
                 self.increment_failed_claims();

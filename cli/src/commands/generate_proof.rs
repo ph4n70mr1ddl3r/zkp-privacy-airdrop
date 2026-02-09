@@ -29,13 +29,13 @@ pub async fn execute(
         derive_address(&private_key).context("Failed to derive address from private key")?;
 
     let address_str = format!("{:?}", address);
-    println!("{} {}", "Address:".green(), address_str);
+    tracing::debug!("Address: {}", address_str);
 
     let nullifier = generate_nullifier(&private_key).context("Failed to generate nullifier")?;
     let nullifier_hex = format!("0x{}", hex::encode(&nullifier.as_bytes()));
 
     private_key.zeroize();
-    println!("{} {}", "Recipient:".green(), recipient);
+    tracing::debug!("Recipient: {}", recipient);
 
     let pb = ProgressBar::new(100);
     pb.set_style(

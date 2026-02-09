@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title IVerifier
@@ -35,6 +36,8 @@ interface IVerifier {
  * (Groth16 vs PLONK).
  */
 contract PrivacyAirdrop is ReentrancyGuard {
+    using SafeERC20 for IERC20;
+    
     bytes32 public immutable merkleRoot;
     mapping(bytes32 => bool) public nullifiers;
     address public immutable token;
@@ -101,12 +104,9 @@ contract PrivacyAirdrop is ReentrancyGuard {
 
         require(verifier.verifyProof(proof.a, proof.b, proof.c, publicSignals), "Invalid proof");
 
-        (bool success, bytes memory data) = address(token).call(
-            abi.encodeWithSelector(IERC20.transfer.selector, recipient, claimAmount)
-        );
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "Token transfer failed");
-
         nullifiers[nullifier] = true;
+
+        IERC20(token).safeTransfer(recipient, claimAmount);
 
         emit Claimed(nullifier, recipient, block.timestamp);
     }
@@ -122,7 +122,10 @@ contract PrivacyAirdrop is ReentrancyGuard {
 
     /**
      * @notice Estimate gas required for a claim transaction
-     * @return Estimated gas in wei (conservative 700K with buffer)
+     * @dev This returns a conservative estimate. In production, consider using gasleft()
+     *      to measure actual gas consumption or estimate dynamically based on current gas prices.
+     *      The actual gas cost depends on gas price and network congestion.
+     * @return Estimated gas in wei (conservative 700K with buffer for Groth16 verification)
      */
     function estimateClaimGas() external pure returns (uint256) {
         return 700_000;

@@ -9,20 +9,31 @@ use crate::types_plonk::*;
 fn sanitize_error_message(error: &str) -> String {
     let sensitive_patterns = [
         "private key",
+        "privatekey",
+        "priv_key",
         "secret",
         "password",
+        "passwd",
         "0x",
         "seed",
         "mnemonic",
         "wallet",
         "credentials",
         "auth",
+        "token",
+        "api_key",
+        "apikey",
+        "access_key",
+        "secret_key",
+        "session",
+        "signature",
     ];
 
     let lower = error.to_lowercase();
 
     for pattern in &sensitive_patterns {
         if lower.contains(pattern) {
+            tracing::warn!("Filtered sensitive error message containing pattern: {}", pattern);
             return "Internal error occurred".to_string();
         }
     }
@@ -84,7 +95,7 @@ pub async fn health(state: web::Data<AppState>) -> impl Responder {
 }
 
 pub async fn submit_claim(
-    req: HttpRequest,
+    _req: HttpRequest,
     state: web::Data<AppState>,
     claim: web::Json<SubmitClaimRequest>,
 ) -> impl Responder {
@@ -128,7 +139,7 @@ pub async fn submit_claim(
 
     // Rate limiting check
     if let Err(e) = state
-        .check_rate_limit(&req, &claim.nullifier, RateLimitType::SubmitClaim)
+        .check_rate_limit(&claim.nullifier, RateLimitType::SubmitClaim)
         .await
     {
         warn!("Rate limit exceeded: {}", e);
@@ -228,7 +239,7 @@ pub async fn submit_claim(
 }
 
 pub async fn check_status(
-    req: HttpRequest,
+    _req: HttpRequest,
     state: web::Data<AppState>,
     path: web::Path<String>,
 ) -> impl Responder {
@@ -248,7 +259,7 @@ pub async fn check_status(
     info!("Checking status for nullifier: {}", nullifier);
 
     if let Err(e) = state
-        .check_rate_limit(&req, &nullifier, RateLimitType::CheckStatus)
+        .check_rate_limit(&nullifier, RateLimitType::CheckStatus)
         .await
     {
         warn!("Rate limit exceeded for check_status: {}", e);
@@ -355,9 +366,9 @@ pub async fn get_stats(state: web::Data<AppState>) -> impl Responder {
 }
 
 pub async fn get_merkle_path(
+    _req: HttpRequest,
     state: web::Data<AppState>,
     path: web::Path<String>,
-    req: HttpRequest,
 ) -> impl Responder {
     let address = path.into_inner();
 
@@ -375,7 +386,7 @@ pub async fn get_merkle_path(
 
     // Rate limiting
     if state
-        .check_rate_limit(&req, &address, RateLimitType::GetMerklePath)
+        .check_rate_limit(&address, RateLimitType::GetMerklePath)
         .await
         .is_err()
     {

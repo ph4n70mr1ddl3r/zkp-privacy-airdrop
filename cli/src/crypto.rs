@@ -8,8 +8,9 @@ use std::path::PathBuf;
 
 use crate::types::ProofData;
 
-const NULLIFIER_DOMAIN_SEPARATOR: &[u8] = b"zkp_airdrop_nullifier_v1";
-const DOMAIN_SEPARATOR_LEN: usize = NULLIFIER_DOMAIN_SEPARATOR.len();
+const NULLIFIER_DOMAIN_SEPARATOR: &[u8] = b"ZKP_AIRDROP_NULLIFIER_V1";
+const NULLIFIER_SALT: &[u8] = b"SALT_2024_SECURE";
+const NULLIFIER_PERSONALIZATION: &[u8] = b"ZKP_NULLIFIER_PERSONALIZATION";
 const PRIVATE_KEY_LEN: usize = 32;
 const NULLIFIER_PADDING_LEN: usize = 41;
 const NULLIFIER_INPUT_LEN: usize = 96;
@@ -17,8 +18,16 @@ const NULLIFIER_INPUT_LEN: usize = 96;
 pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
     let mut nullifier_input = Vec::with_capacity(NULLIFIER_INPUT_LEN);
     nullifier_input.extend_from_slice(NULLIFIER_DOMAIN_SEPARATOR);
+    nullifier_input.extend_from_slice(NULLIFIER_SALT);
+    nullifier_input.extend_from_slice(NULLIFIER_PERSONALIZATION);
     nullifier_input.extend_from_slice(private_key);
-    nullifier_input.extend_from_slice(&[0u8; NULLIFIER_PADDING_LEN]);
+
+    let remaining = NULLIFIER_INPUT_LEN - nullifier_input.len();
+    if remaining > 0 {
+        nullifier_input.extend_from_slice(&[0u8; remaining]);
+    } else if remaining < 0 {
+        return Err(anyhow::anyhow!("Nullifier input exceeds maximum length"));
+    }
 
     if nullifier_input.len() != NULLIFIER_INPUT_LEN {
         return Err(anyhow::anyhow!(
@@ -162,7 +171,7 @@ fn keccak_hash(input: &[u8]) -> String {
     hex::encode(result)
 }
 
-pub fn poseidon_hash_field(input: &[u8; 32]) -> Result<String> {
+pub fn keccak_hash_field(input: &[u8; 32]) -> Result<String> {
     let hash = keccak_hash(input);
     let hash_bytes =
         hex::decode(&hash).map_err(|e| anyhow::anyhow!("Failed to decode hash: {}", e))?;

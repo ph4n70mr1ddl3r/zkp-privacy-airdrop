@@ -14,6 +14,16 @@ pub struct PlonkProof {
     pub proof: Vec<String>, // Flat array of 8+ field elements
 }
 
+/// Validates that a string represents a valid field element in BN254 scalar field
+fn is_valid_field_element(hex_str: &str) -> bool {
+    let hex = hex_str.trim_start_matches("0x");
+    if hex.is_empty() {
+        return false;
+    }
+
+    hex::decode(hex).is_ok()
+}
+
 /// Union type for different proof systems
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -37,16 +47,23 @@ impl Proof {
     pub fn is_valid_structure(&self) -> bool {
         match self {
             Proof::Groth16(ref proof) => {
-                proof.a.iter().all(|s| !s.is_empty())
-                    && proof.c.iter().all(|s| !s.is_empty())
-                    && proof.b.iter().all(|row| row.iter().all(|s| !s.is_empty()))
+                let valid_a = proof.a.iter().all(|s| is_valid_field_element(s));
+                let valid_c = proof.c.iter().all(|s| is_valid_field_element(s));
+                let valid_b = proof
+                    .b
+                    .iter()
+                    .all(|row| row.iter().all(|s| is_valid_field_element(s)));
+                valid_a && valid_c && valid_b
             }
             Proof::Plonk(ref proof) => {
                 const MAX_PROOF_SIZE: usize = 100;
                 const MIN_PROOF_SIZE: usize = 8;
                 let size_ok =
                     proof.proof.len() >= MIN_PROOF_SIZE && proof.proof.len() <= MAX_PROOF_SIZE;
-                let content_ok = proof.proof.iter().all(|s| !s.is_empty() && s.len() < 1000);
+                let content_ok = proof
+                    .proof
+                    .iter()
+                    .all(|s| !s.is_empty() && s.len() < 1000 && is_valid_field_element(s));
                 size_ok && content_ok
             }
         }

@@ -243,7 +243,9 @@ impl Config {
             },
             relayer: RelayerConfig {
                 private_key: {
-                    let key = std::env::var("RELAYER_PRIVATE_KEY")
+                    use zeroize::Zeroize;
+
+                    let mut key = std::env::var("RELAYER_PRIVATE_KEY")
                         .map_err(|_| anyhow::anyhow!("RELAYER_PRIVATE_KEY not set"))?;
 
                     if key.trim().is_empty() {
@@ -277,16 +279,32 @@ impl Config {
                         ));
                     }
 
-                    key
+                    let result = normalized_key;
+                    key.zeroize();
+                    result
                 },
                 min_balance_warning: std::env::var("RELAYER_MIN_BALANCE_WARNING")
                     .unwrap_or_else(|_| "1000000000000000000".to_string()), // 1 ETH
                 min_balance_critical: std::env::var("RELAYER_MIN_BALANCE_CRITICAL")
                     .unwrap_or_else(|_| "500000000000000000".to_string()), // 0.5 ETH
-                gas_multiplier: std::env::var("RELAYER_GAS_MULTIPLIER")
-                    .unwrap_or_else(|_| "1.1".to_string())
-                    .parse()
-                    .unwrap_or(1.1),
+                gas_multiplier: {
+                    let multiplier: f64 = std::env::var("RELAYER_GAS_MULTIPLIER")
+                        .unwrap_or_else(|_| "1.1".to_string())
+                        .parse()
+                        .unwrap_or(1.1);
+                    const MAX_GAS_MULTIPLIER: f64 = 2.0;
+                    if multiplier <= 0.0 {
+                        return Err(anyhow::anyhow!("RELAYER_GAS_MULTIPLIER must be positive"));
+                    }
+                    if multiplier > MAX_GAS_MULTIPLIER {
+                        return Err(anyhow::anyhow!(
+                            "RELAYER_GAS_MULTIPLIER must be <= {}, got {}",
+                            MAX_GAS_MULTIPLIER,
+                            multiplier
+                        ));
+                    }
+                    multiplier
+                },
                 gas_price_randomization: std::env::var("RELAYER_GAS_RANDOMIZATION")
                     .unwrap_or_else(|_| "0.05".to_string())
                     .parse()

@@ -8,15 +8,16 @@ pub struct MerkleTree {
 }
 
 impl MerkleTree {
+    #[allow(dead_code)]
     pub fn from_file(_path: &std::path::Path) -> Result<Option<Self>> {
-        Ok(None)
+        Err(anyhow::anyhow!("MerkleTree::from_file not implemented. Please use tree-builder CLI to generate and serialize the tree."))
     }
 
     pub fn get_leaf_hash(&self, address: &Address) -> Result<[u8; 32]> {
-        Ok([0u8; 32])
+        Err(anyhow::anyhow!("MerkleTree::get_leaf_hash not implemented. Please use tree-builder CLI for tree operations."))
     }
 
     pub fn get_path(&self, address: &[u8; 32]) -> Result<(Vec<[u8; 32]>, Vec<u8>)> {
-        Ok((vec![], vec![]))
+        Err(anyhow::anyhow!("MerkleTree::get_path not implemented. Please use tree-builder CLI for tree operations."))
     }
 }

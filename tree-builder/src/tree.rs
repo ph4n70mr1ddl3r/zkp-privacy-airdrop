@@ -88,7 +88,11 @@ impl MerkleTree {
 
     pub fn get_path(&self, index: usize) -> Result<MerklePath, String> {
         if index >= self.leaves.len() {
-            return Err("Index out of bounds".to_string());
+            return Err(format!(
+                "Index {} out of bounds, total leaves: {}",
+                index,
+                self.leaves.len()
+            ));
         }
 
         let mut siblings = Vec::new();
@@ -100,11 +104,19 @@ impl MerkleTree {
                 break;
             }
 
+            if idx >= level.len() {
+                return Err(format!(
+                    "Invalid tree state: index {} >= level length {}",
+                    idx,
+                    level.len()
+                ));
+            }
+
             let is_right = idx % 2 == 1;
             indices.push(is_right);
 
             if is_right {
-                if idx > 0 {
+                if idx > 0 && idx - 1 < level.len() {
                     siblings.push(level[idx - 1]);
                 } else {
                     siblings.push([0u8; 32]);
