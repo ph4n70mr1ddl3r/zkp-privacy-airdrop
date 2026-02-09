@@ -9,14 +9,11 @@ use std::sync::OnceLock;
 use tracing::{error, info, warn};
 
 /// BN254 scalar field modulus
-#[allow(dead_code)]
 const BN254_FIELD_MODULUS: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
-#[allow(dead_code)]
 static FIELD_MODULUS: OnceLock<BigUint> = OnceLock::new();
 
-#[allow(dead_code)]
 fn get_field_modulus() -> &'static BigUint {
     FIELD_MODULUS.get_or_init(|| {
         BigUint::from_str_radix(BN254_FIELD_MODULUS, 10).expect("Invalid field modulus constant")

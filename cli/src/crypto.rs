@@ -95,15 +95,24 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
 
 fn poseidon_round_constants() -> Vec<Vec<ark_bn254::Fr>> {
     use ark_ff::PrimeField;
+    use sha3::{Digest, Keccak256};
+
+    const NULLIFIER_SALT: u64 =
+        87953108768114088221452414019732140257409482096940319490691914651639977587459u64;
 
     let mut constants = Vec::new();
-    let mut rng = rand::thread_rng();
+    let seed = poseidon_constants_seed();
 
-    for _round in 0..64 {
+    for round in 0..64 {
         let mut round_keys = Vec::new();
-        for _i in 0..3 {
-            let random_bytes: [u8; 32] = rand::random();
-            let fr = ark_bn254::Fr::from_be_bytes_mod_order(&random_bytes, true);
+        for i in 0..3 {
+            let mut hasher = Keccak256::new();
+            hasher.update(&seed);
+            hasher.update(&round.to_le_bytes());
+            hasher.update(&i.to_le_bytes());
+            let hash = hasher.finalize();
+
+            let fr = ark_bn254::Fr::from_be_bytes_mod_order(&hash, true);
             round_keys.push(fr);
         }
         constants.push(round_keys);
@@ -143,7 +152,8 @@ fn poseidon_constants_seed() -> [u8; 32] {
     hasher.update(b"POSEIDON_CONSTANTS_SEED");
     hasher.update(NULLIFIER_SALT.to_be_bytes());
     let hash = hasher.finalize();
-    hash.try_into().unwrap()
+    hash.try_into()
+        .map_err(|_| anyhow::anyhow!("Invalid hash length: expected 32 bytes"))
 }
 
 /// Derives an Ethereum address from a private key.
@@ -253,6 +263,7 @@ pub fn read_private_key(
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
 
+    let key_bytes: Vec<u8> = key_bytes;
     Ok(key_bytes)
 }
 

@@ -1,8 +1,10 @@
 use crate::config::Config;
 use crate::types_plonk::*;
+use ethers::abi::Abi;
+use ethers::contract::Contract;
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
-use ethers::types::Address;
+use ethers::types::{Address, H256, U256};
 use parking_lot::RwLock;
 use rand::Rng;
 use redis::aio::ConnectionManager;
@@ -12,6 +14,17 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
+
+mod plonk_verifier {
+    use ethers::contract::*;
+    use ethers::core::types::*;
+    abigen!(
+        IPLONKVerifier,
+        "./contracts/src/PrivacyAirdropPLONK.sol:IPLONKVerifier"
+    );
+}
+
+use plonk_verifier::IPLONKVerifier;
 
 const RPC_TIMEOUT_SECONDS: u64 = 10;
 
@@ -458,7 +471,10 @@ impl AppState {
                 })?;
 
                 let wallet_with_chain = wallet.with_chain_id(chain_id.as_u32());
-                let plonk_verifier = IPLONKVerifier::new(airdrop_address, provider.clone());
+                let plonk_verifier = privacy_airdrop_plonk::PrivacyAirdropPLONK::new(
+                    airdrop_address,
+                    provider.clone(),
+                );
 
                 if proof.proof.len() != 8 {
                     self.increment_failed_claims();
@@ -717,11 +733,11 @@ impl AppState {
         const CLAIM_AMOUNT: u64 = 1_000_000_000_000_000_000;
         const AVG_GAS: u64 = 700_000;
 
-        let total_tokens_distributed = successful_claims
-            .saturating_mul(CLAIM_AMOUNT)
-            .saturating_mul(1000);
+        let total_tokens_distributed = successful_claims.saturating_mul(CLAIM_AMOUNT);
 
         let total_gas_used = successful_claims.saturating_mul(AVG_GAS);
+
+        let avg_gas_price = self.get_average_gas_price().await;
 
         StatsResponse {
             total_claims,
@@ -729,7 +745,7 @@ impl AppState {
             failed_claims,
             total_tokens_distributed: total_tokens_distributed.to_string(),
             unique_recipients: successful_claims,
-            average_gas_price: "25000000000".to_string(),
+            average_gas_price: avg_gas_price.to_string(),
             total_gas_used: total_gas_used.to_string(),
             relayer_balance: self.get_relayer_balance().await.to_string(),
             uptime_percentage: if uptime > 0.0 { 100.0 } else { 0.0 },
@@ -738,6 +754,21 @@ impl AppState {
                 p95: 500,
                 p99: 1200,
             },
+        }
+    }
+
+    async fn get_average_gas_price(&self) -> u128 {
+        match Provider::<Http>::try_from(self.config.network.rpc_url.as_str()) {
+            Ok(provider) => tokio::time::timeout(
+                std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
+                provider.get_gas_price(),
+            )
+            .await
+            .ok()
+            .and_then(|r| r.ok())
+            .map(|p| p.as_u128())
+            .unwrap_or(25_000_000_000),
+            Err(_) => 25_000_000_000,
         }
     }
 
