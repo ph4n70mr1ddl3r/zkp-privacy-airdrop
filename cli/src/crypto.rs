@@ -236,7 +236,14 @@ pub fn validate_nullifier(nullifier: &str) -> Result<()> {
         ));
     }
 
-    hex::decode(&nullifier[2..]).context("Invalid nullifier: invalid hex encoding")?;
+    let decoded =
+        hex::decode(&nullifier[2..]).context("Invalid nullifier: invalid hex encoding")?;
+    if decoded.len() != 32 {
+        return Err(anyhow::anyhow!(
+            "Invalid nullifier: expected 32 bytes, got {}",
+            decoded.len()
+        ));
+    }
 
     Ok(())
 }

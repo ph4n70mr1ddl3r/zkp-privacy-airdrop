@@ -420,11 +420,11 @@ impl AppState {
                         e
                     })?
                     .try_into()
-                    .map_err(|e| {
+                    .map_err(|_e| {
                         self.increment_failed_claims();
                         format!(
                             "Failed to convert proof to array: expected 8 elements, got {}",
-                            e
+                            proof.proof.len()
                         )
                     })?;
 

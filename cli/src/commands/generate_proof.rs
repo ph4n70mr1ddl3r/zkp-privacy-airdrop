@@ -69,8 +69,6 @@ pub async fn execute(
     let merkle_root = tree.root.clone();
     let merkle_root_hex = format!("0x{}", hex::encode(&merkle_root));
 
-    pb.finish_with_message("Proof generated!");
-
     let proof_data = ProofData {
         proof: crate::types::Proof {
             a: ["0".to_string(), "0".to_string()],

@@ -52,10 +52,13 @@ fn is_valid_hex_string(input: &str, expected_len: usize) -> bool {
 }
 
 pub fn is_valid_address(address: &str) -> bool {
-    is_valid_hex_string(address, 42)
-        && hex::decode(&address[2..])
-            .map(|bytes| bytes.len() == 20 && Address::from_str(address).is_ok())
-            .unwrap_or(false)
+    if !is_valid_hex_string(address, 42) {
+        return false;
+    }
+    if hex::decode(&address[2..]).is_err() {
+        return false;
+    }
+    Address::from_str(address).is_ok()
 }
 
 pub fn is_valid_nullifier(nullifier: &str) -> bool {

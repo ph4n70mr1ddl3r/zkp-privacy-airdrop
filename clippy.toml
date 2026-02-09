@@ -18,7 +18,6 @@ vec-box-size-threshold = 4096
 
 # Complexity lints
 too-many-lines-threshold = 300
-cyclomatic-complexity-threshold = 30
 
 # Allow certain lints
 allow-print-in-tests = true
