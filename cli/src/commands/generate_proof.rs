@@ -31,7 +31,7 @@ pub async fn execute(
     let address_str = format!("{:?}", address);
     println!("{} {}", "Address:".green(), address_str);
 
-    let nullifier = generate_nullifier(&private_key);
+    let nullifier = generate_nullifier(&private_key).context("Failed to generate nullifier")?;
     let nullifier_hex = format!("0x{}", hex::encode(&nullifier.as_bytes()));
 
     private_key.zeroize();

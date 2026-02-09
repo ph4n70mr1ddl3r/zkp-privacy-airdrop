@@ -3,6 +3,7 @@ use crate::types_plonk::*;
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::types::Address;
 use parking_lot::RwLock;
+use rand::RngCore;
 use redis::aio::ConnectionManager;
 use sqlx::PgPool;
 use std::str::FromStr;
@@ -128,8 +129,12 @@ impl AppState {
         redis.set::<_, _, ()>("__health_check__", "1").await.is_ok()
     }
 
-    pub fn get_db_status(&self) -> &'static str {
-        "connected"
+    pub async fn get_db_status(&self) -> &'static str {
+        if self.check_db_connection().await {
+            "connected"
+        } else {
+            "disconnected"
+        }
     }
 
     pub async fn get_redis_status(&self) -> &'static str {
@@ -219,8 +224,9 @@ impl AppState {
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
-        let tx_bytes = uuid::Uuid::new_v4().to_bytes_le();
-        let tx_hash = format!("0x{}", hex::encode(&tx_bytes[..]));
+        let mut tx_bytes = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut tx_bytes);
+        let tx_hash = format!("0x{}", hex::encode(&tx_bytes));
 
         let timestamp = chrono::Utc::now().to_rfc3339();
 

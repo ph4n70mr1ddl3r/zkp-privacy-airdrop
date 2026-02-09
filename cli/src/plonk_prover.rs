@@ -97,8 +97,9 @@ pub fn generate_plonk_proof(
         .context("Failed to get Merkle path")?;
 
     // Step 4: Compute nullifier
-    let nullifier_bytes = generate_nullifier(private_key);
-    let nullifier = H256::from_slice(&nullifier_bytes);
+    let nullifier_bytes =
+        generate_nullifier(private_key).context("Failed to generate nullifier")?;
+    let nullifier = H256::from_slice(nullifier_bytes.as_bytes());
 
     // Step 5: Prepare public inputs
     // Note: PLONK requires 3 field elements for each public input

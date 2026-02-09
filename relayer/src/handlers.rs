@@ -53,7 +53,7 @@ pub fn is_valid_merkle_root(merkle_root: &str) -> bool {
 
 pub async fn health(state: web::Data<AppState>) -> impl Responder {
     let services = Services {
-        database: state.get_db_status().to_string(),
+        database: state.get_db_status().await.to_string(),
         redis: state.get_redis_status().await.to_string(),
         optimism_node: state.get_node_status().await.to_string(),
         relayer_wallet: RelayerWalletInfo {

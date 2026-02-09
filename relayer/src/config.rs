@@ -117,11 +117,13 @@ impl Config {
             },
             relayer: RelayerConfig {
                 private_key: {
-                    let key = std::env::var("RELAYER_PRIVATE_KEY").map_err(|_| {
-                        anyhow::anyhow!(
-                            "CRITICAL ERROR: RELAYER_PRIVATE_KEY environment variable not set!"
-                        )
-                    })?;
+                    let key = std::env::var("RELAYER_PRIVATE_KEY")
+                        .map_err(|_| anyhow::anyhow!("RELAYER_PRIVATE_KEY not set"))?;
+
+                    if key.trim().is_empty() {
+                        return Err(anyhow::anyhow!("RELAYER_PRIVATE_KEY cannot be empty"));
+                    }
+
                     let normalized_key = key.trim().to_lowercase();
                     let insecure_keys = [
                         "0x0000000000000000000000000000000000000000000000000000000000000",
@@ -138,6 +140,17 @@ impl Config {
                              Never use example or all-zero private keys in production!"
                         ));
                     }
+
+                    let decoded = hex::decode(normalized_key.trim_start_matches("0x"))
+                        .map_err(|_| anyhow::anyhow!("Invalid hex private key"))?;
+
+                    if decoded.len() != 32 {
+                        return Err(anyhow::anyhow!(
+                            "Private key must be 32 bytes, got {}",
+                            decoded.len()
+                        ));
+                    }
+
                     key
                 },
                 min_balance_warning: std::env::var("RELAYER_MIN_BALANCE_WARNING")

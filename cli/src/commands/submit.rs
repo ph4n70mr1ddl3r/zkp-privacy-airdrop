@@ -2,7 +2,8 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use reqwest::Client;
 use std::path::PathBuf;
-use tokio::time::{sleep, Duration};
+use std::time::Duration;
+use tokio::time::sleep;
 use tracing::info;
 
 use crate::config::Config;
@@ -80,7 +81,12 @@ pub async fn execute(
         }
     );
 
-    let client = Client::new();
+    const HTTP_TIMEOUT_SECONDS: u64 = 30;
+
+    let client = Client::builder()
+        .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))
+        .build()
+        .context("Failed to create HTTP client")?;
     let url = format!("{}/api/v1/submit-claim", relayer_url);
 
     println!("\n{}", "Submitting claim...".yellow());

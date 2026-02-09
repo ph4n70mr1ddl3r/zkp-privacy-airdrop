@@ -2,8 +2,6 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Address;
-use k256::ecdsa::SigningKey;
-use k256::elliptic_curve::sec1::ToEncodedPoint;
 use secp256k1::{PublicKey, SecretKey};
 use sha3::{Digest, Keccak256};
 use std::path::PathBuf;
@@ -16,21 +14,21 @@ const PRIVATE_KEY_LEN: usize = 32;
 const NULLIFIER_PADDING_LEN: usize = 41;
 const NULLIFIER_INPUT_LEN: usize = 96;
 
-pub fn generate_nullifier(private_key: &[u8; 32]) -> String {
+pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
     let mut nullifier_input = Vec::with_capacity(NULLIFIER_INPUT_LEN);
     nullifier_input.extend_from_slice(NULLIFIER_DOMAIN_SEPARATOR);
     nullifier_input.extend_from_slice(private_key);
     nullifier_input.extend_from_slice(&[0u8; NULLIFIER_PADDING_LEN]);
 
-    assert_eq!(
-        nullifier_input.len(),
-        NULLIFIER_INPUT_LEN,
-        "Nullifier input length mismatch: expected {}, got {}",
-        NULLIFIER_INPUT_LEN,
-        nullifier_input.len()
-    );
+    if nullifier_input.len() != NULLIFIER_INPUT_LEN {
+        return Err(anyhow::anyhow!(
+            "Nullifier input length mismatch: expected {}, got {}",
+            NULLIFIER_INPUT_LEN,
+            nullifier_input.len()
+        ));
+    }
 
-    keccak_hash(&nullifier_input)
+    Ok(keccak_hash(&nullifier_input))
 }
 
 pub fn derive_address(private_key: &[u8; 32]) -> Result<Address> {
@@ -100,17 +98,12 @@ pub fn validate_address(address: &str) -> Result<Address> {
         .parse::<Address>()
         .context("Invalid Ethereum address format")?;
 
-    let addr_checksummed = format!("{:#x}", addr);
-    let addr_upper = format!("{:#X}", addr);
-
-    if address != addr_checksummed
-        && address != addr_upper
-        && !address.eq_ignore_ascii_case(&addr_checksummed)
-    {
+    let expected = format!("{:#x}", addr);
+    if !address.eq_ignore_ascii_case(&expected) {
         tracing::warn!(
             "Address checksum mismatch: provided={}, expected={}",
             address,
-            addr_checksummed
+            expected
         );
     }
 
