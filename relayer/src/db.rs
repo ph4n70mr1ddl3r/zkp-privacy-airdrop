@@ -2,7 +2,7 @@ use anyhow::Result;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::time::Duration;
-use tracing::{info, warn};
+use tracing::info;
 
 pub async fn create_pool(database_url: &str) -> Result<PgPool> {
     info!("Connecting to PostgreSQL database...");
@@ -27,14 +27,10 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool> {
     info!("Database connection pool created successfully");
 
     info!("Running database migrations...");
-    match sqlx::migrate!("./migrations").run(&pool).await {
-        Ok(_) => {
-            info!("Database migrations completed successfully");
-        }
-        Err(e) => {
-            warn!("Database migrations completed with warnings: {}", e);
-        }
-    }
+    sqlx::migrate!("./migrations").run(&pool).await
+        .map_err(|e| anyhow::anyhow!("Failed to run database migrations: {}", e))?;
+
+    info!("Database migrations completed successfully");
 
     Ok(pool)
 }

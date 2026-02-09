@@ -68,19 +68,20 @@ impl AppState {
         })
     }
 
-    pub fn relayer_address(&self) -> String {
-        use ethers::signers::{LocalWallet, Signer};
-        use std::str::FromStr;
-
-        if let Ok(wallet) = LocalWallet::from_str(&self.config.relayer.private_key) {
-            format!("{:#x}", wallet.address())
-        } else {
-            "0x0000000000000000000000000000000000000000".to_string()
-        }
+    pub fn relayer_address(&self) -> Result<String, String> {
+        LocalWallet::from_str(&self.config.relayer.private_key)
+            .map(|wallet| format!("{:#x}", wallet.address()))
+            .map_err(|e| format!("Failed to parse private key: {}", e))
     }
 
     pub async fn get_relayer_balance(&self) -> u128 {
-        let address_str = self.relayer_address();
+        let address_str = match self.relayer_address() {
+            Ok(addr) => addr,
+            Err(e) => {
+                tracing::warn!("Failed to get relayer address: {}, using fallback", e);
+                return 0;
+            }
+        };
         let address = match Address::from_str(&address_str) {
             Ok(addr) => addr,
             Err(e) => {
@@ -191,7 +192,7 @@ impl AppState {
     ) -> Result<(), String> {
         let limit = match limit_type {
             RateLimitType::SubmitClaim => self.config.rate_limit.claims_per_minute,
-            RateLimitType::GetMerklePath | RateLimitType::CheckStatus => {
+            RateLimitType::GetMerklePath | RateLimitType::CheckStatus | RateLimitType::Donate => {
                 self.config.rate_limit.requests_per_minute
             }
         };
@@ -463,8 +464,7 @@ impl AppState {
             .to_string();
 
         let total_gas_used = successful_claims
-            .checked_mul(AVG_GAS)
-            .unwrap_or(u64::MAX)
+            .saturating_mul(AVG_GAS)
             .to_string();
 
         StatsResponse {

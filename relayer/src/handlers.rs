@@ -8,33 +8,34 @@ use crate::types_plonk::*;
 
 fn sanitize_error_message(error: &str) -> String {
     let sensitive_patterns = [
-        "private key",
-        "privatekey",
-        "priv_key",
-        "secret",
-        "password",
-        "passwd",
-        "0x",
-        "seed",
-        "mnemonic",
-        "wallet",
-        "credentials",
-        "auth",
-        "token",
-        "api_key",
-        "apikey",
-        "access_key",
-        "secret_key",
-        "session",
-        "signature",
+        ("private key", "private key"),
+        ("privatekey", "private key"),
+        ("priv_key", "private key"),
+        ("secret", "secret"),
+        ("password", "password"),
+        ("passwd", "password"),
+        ("0x", "hex"),
+        ("seed", "seed"),
+        ("mnemonic", "mnemonic"),
+        ("wallet", "wallet"),
+        ("credentials", "credentials"),
+        ("auth", "auth"),
+        ("token", "token"),
+        ("api_key", "API key"),
+        ("apikey", "API key"),
+        ("access_key", "access key"),
+        ("secret_key", "secret key"),
+        ("session", "session"),
+        ("signature", "signature"),
     ];
 
     let lower = error.to_lowercase();
 
-    for pattern in &sensitive_patterns {
+    for (pattern, description) in &sensitive_patterns {
         if lower.contains(pattern) {
             tracing::warn!(
-                "Filtered sensitive error message containing pattern: {}",
+                "Filtered sensitive error message containing {}: {}",
+                description,
                 pattern
             );
             return "Internal error occurred".to_string();
@@ -66,12 +67,34 @@ pub fn is_valid_merkle_root(merkle_root: &str) -> bool {
 }
 
 pub async fn health(state: web::Data<AppState>) -> impl Responder {
+    let relayer_address = match state.relayer_address() {
+        Ok(addr) => addr,
+        Err(e) => {
+            error!("Failed to get relayer address: {}", e);
+            return HttpResponse::InternalServerError().json(HealthResponse {
+                status: "unhealthy".to_string(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                services: Services {
+                    database: "unknown".to_string(),
+                    redis: "unknown".to_string(),
+                    optimism_node: "unknown".to_string(),
+                    relayer_wallet: RelayerWalletInfo {
+                        address: "0x0000000000000000000000000000000000000000".to_string(),
+                        balance: "0".to_string(),
+                        sufficient: false,
+                    },
+                },
+            });
+        }
+    };
+
     let services = Services {
         database: state.get_db_status().await.to_string(),
         redis: state.get_redis_status().await.to_string(),
         optimism_node: state.get_node_status().await.to_string(),
         relayer_wallet: RelayerWalletInfo {
-            address: state.relayer_address(),
+            address: relayer_address,
             balance: state.get_relayer_balance().await.to_string(),
             sufficient: state.has_sufficient_balance().await,
         },
@@ -375,13 +398,24 @@ pub async fn donate(claim: web::Json<DonateRequest>, state: web::Data<AppState>)
         });
     }
 
+    let amount: u128 = claim.amount.parse().unwrap();
+    if amount == 0 {
+        warn!("Invalid donation amount from {}: amount must be greater than 0", claim.donor);
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Donation amount must be greater than 0".to_string(),
+            code: Some("INVALID_AMOUNT".to_string()),
+            retry_after: None,
+        });
+    }
+
     info!(
         "Received donation from {} amount: {}",
         claim.donor, claim.amount
     );
 
     if let Err(e) = state
-        .check_rate_limit(&claim.donor, RateLimitType::GetMerklePath)
+        .check_rate_limit(&claim.donor, RateLimitType::Donate)
         .await
     {
         warn!("Rate limit exceeded for donation: {}", e);
@@ -393,7 +427,18 @@ pub async fn donate(claim: web::Json<DonateRequest>, state: web::Data<AppState>)
         });
     }
 
-    let donation_address = state.relayer_address();
+    let donation_address = match state.relayer_address() {
+        Ok(addr) => addr,
+        Err(e) => {
+            error!("Failed to get relayer address: {}", e);
+            return HttpResponse::InternalServerError().json(ErrorResponse {
+                success: false,
+                error: "Internal error occurred".to_string(),
+                code: Some("INTERNAL_ERROR".to_string()),
+                retry_after: Some(60),
+            });
+        }
+    };
 
     HttpResponse::Ok().json(DonateResponse {
         donation_address,

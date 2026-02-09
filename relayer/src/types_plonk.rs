@@ -243,4 +243,5 @@ pub enum RateLimitType {
     SubmitClaim,
     GetMerklePath,
     CheckStatus,
+    Donate,
 }

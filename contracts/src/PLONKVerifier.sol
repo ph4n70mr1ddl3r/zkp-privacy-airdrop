@@ -81,21 +81,6 @@ contract PLONKVerifier {
         // SECURITY WARNING: Placeholder verification - NOT SECURE!
         // Rejecting all proofs until proper PLONK verification is implemented
         revert("PLONK verification not yet implemented. Please generate proper verifier using snarkjs.");
-
-        // Placeholder for field validation (unreachable)
-        for (uint i = 0; i < 8; i++) {
-            if (_proof[i] >= PRIME_Q) {
-                return false;
-            }
-        }
-
-        for (uint i = 0; i < 3; i++) {
-            if (_instances[i] >= PRIME_Q) {
-                return false;
-            }
-        }
-
-        return false;
     }
     
     /**
