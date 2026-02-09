@@ -1,4 +1,15 @@
+use ethers::contract::abigen;
 use serde::{Deserialize, Serialize};
+
+abigen!(
+    IPLONKVerifier,
+    r#"[
+        function claim(uint256[8] calldata proof, bytes32 nullifier, address recipient) external returns (uint256)
+        function isClaimed(bytes32 nullifier) external view returns (bool)
+        function getInstanceCount() external view returns (uint256)
+        function getProofElementCount() external view returns (uint256)
+    ]"#,
+);
 
 /// Groth16 proof format (deprecated, kept for backward compatibility)
 #[derive(Debug, Clone, Serialize, Deserialize)]

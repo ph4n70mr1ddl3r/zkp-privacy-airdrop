@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        component: [contracts, cli, relayer, tree-builder]
+        component: [contracts, cli, relayer, tree-builder, circuits]
     
     steps:
     - uses: actions/checkout@v3

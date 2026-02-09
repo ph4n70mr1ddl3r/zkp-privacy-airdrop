@@ -47,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
             .app_data(
                 web::JsonConfig::default()
                     .limit(1024 * 1024)
-                    .error_handler(|err, _| {
+                    .error_handler(|err, _req| {
                         actix_web::error::InternalError::from_response(
                             err,
                             HttpResponse::PayloadTooLarge().json(serde_json::json!({

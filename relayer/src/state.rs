@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::types_plonk::*;
 use ethers::providers::{Http, Middleware, Provider};
-use ethers::signers::LocalWallet;
+use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Address;
 use parking_lot::RwLock;
 use redis::aio::ConnectionManager;
@@ -256,27 +256,26 @@ impl AppState {
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
         use redis::AsyncCommands;
-        use sha3::{Digest, Keccak256};
 
-        let _provider = Provider::<Http>::try_from(self.config.network.rpc_url.as_str())
+        let provider = Provider::<Http>::try_from(self.config.network.rpc_url.as_str())
             .map_err(|e| {
                 self.increment_failed_claims();
                 format!("Failed to create RPC provider: {}", e)
             })?;
 
-        let _wallet = LocalWallet::from_str(&self.config.relayer.private_key)
+        let wallet = LocalWallet::from_str(&self.config.relayer.private_key)
             .map_err(|e| {
                 self.increment_failed_claims();
                 format!("Failed to create wallet from private key: {}", e)
             })?;
 
-        let _airdrop_address = Address::from_str(&self.config.network.contracts.airdrop_address)
+        let airdrop_address = Address::from_str(&self.config.network.contracts.airdrop_address)
             .map_err(|e| {
                 self.increment_failed_claims();
                 format!("Invalid airdrop address: {}", e)
             })?;
 
-        let _recipient = Address::from_str(&claim.recipient)
+        let recipient = Address::from_str(&claim.recipient)
             .map_err(|e| {
                 self.increment_failed_claims();
                 format!("Invalid recipient address: {}", e)
@@ -288,42 +287,14 @@ impl AppState {
                 format!("Invalid nullifier hex: {}", e)
             })?;
 
-        let _nullifier_array: [u8; 32] = nullifier_bytes[..].try_into()
+        let nullifier_array: [u8; 32] = nullifier_bytes[..].try_into()
             .map_err(|e| {
                 self.increment_failed_claims();
                 format!("Invalid nullifier length: {}", e)
             })?;
 
-        let mut hasher = Keccak256::new();
-        hasher.update(claim.recipient.as_bytes());
-        hasher.update(claim.nullifier.as_bytes());
-        hasher.update(claim.merkle_root.as_bytes());
-        hasher.update(chrono::Utc::now().timestamp().to_be_bytes());
-        let hash_result = hasher.finalize();
-        let tx_hash = format!("0x{}", hex::encode(hash_result));
-
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
-
-        let timestamp = chrono::Utc::now().to_rfc3339();
-
-        let tx_key = format!("{}:tx_hash", key);
-        redis
-            .set::<_, _, ()>(&tx_key, &tx_hash)
-            .await
-            .map_err(|e| {
-                self.increment_failed_claims();
-                e.to_string()
-            })?;
-
-        let timestamp_key = format!("{}:timestamp", key);
-        redis
-            .set::<_, _, ()>(&timestamp_key, &timestamp)
-            .await
-            .map_err(|e| {
-                self.increment_failed_claims();
-                e.to_string()
-            })?;
 
         let set_result: bool = redis
             .set_nx::<_, _, bool>(&key, &claim.recipient)
@@ -339,13 +310,56 @@ impl AppState {
             return Err("This nullifier has already been used. Each qualified account can only claim once.".to_string());
         }
 
+        drop(redis);
+
+        let tx_hash = match &claim.proof {
+            crate::types_plonk::Proof::Plonk(proof) => {
+                let client = Arc::new(provider.clone());
+                let chain_id = client.get_chainid().await
+                    .map_err(|e| {
+                        self.increment_failed_claims();
+                        format!("Failed to get chain ID: {}", e)
+                    })?;
+                let wallet_with_chain = wallet.with_chain_id(chain_id.as_u32());
+                let plonk_verifier = IPLONKVerifier::new(airdrop_address, client);
+                let proof_array: [ethers::types::U256; 8] = proof.proof.iter()
+                    .take(8)
+                    .map(|s| ethers::types::U256::from_dec_str(s).unwrap_or_default())
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap_or_default();
+
+                let call = plonk_verifier.claim(proof_array, nullifier_array, recipient);
+                let builder = call.from(wallet_with_chain.address());
+                let x = builder.send()
+                    .await
+                    .map_err(|e| {
+                        self.increment_failed_claims();
+                        format!("Failed to submit PLONK claim: {}", e)
+                    })?
+                    .tx_hash();
+                x
+            }
+            crate::types_plonk::Proof::Groth16(_) => {
+                self.increment_failed_claims();
+                return Err("Groth16 proofs are no longer supported. Please use PLONK proofs.".to_string());
+            }
+        };
+
         {
+            let mut redis = self.redis.lock().await;
+            let timestamp = chrono::Utc::now().to_rfc3339();
+
+            let tx_key = format!("{}:tx_hash", key);
+            let _ = redis.set::<_, _, ()>(&tx_key, &tx_hash.to_string()).await;
+
+            let timestamp_key = format!("{}:timestamp", key);
+            let _ = redis.set::<_, _, ()>(&timestamp_key, &timestamp).await;
+
             let mut stats = self.stats.write();
             stats.total_claims += 1;
             stats.successful_claims += 1;
         }
-
-        drop(redis);
 
         Ok(tx_hash.to_string())
     }

@@ -44,19 +44,13 @@ pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
     nullifier_input.extend_from_slice(NULLIFIER_PERSONALIZATION);
     nullifier_input.extend_from_slice(private_key);
 
-    let remaining = NULLIFIER_INPUT_LEN - nullifier_input.len();
-    if remaining > 0 {
-        nullifier_input.extend_from_slice(&[0u8; remaining]);
-    } else if remaining < 0 {
+    if nullifier_input.len() > NULLIFIER_INPUT_LEN {
         return Err(anyhow::anyhow!("Nullifier input exceeds maximum length"));
     }
 
-    if nullifier_input.len() != NULLIFIER_INPUT_LEN {
-        return Err(anyhow::anyhow!(
-            "Nullifier input length mismatch: expected {}, got {}",
-            NULLIFIER_INPUT_LEN,
-            nullifier_input.len()
-        ));
+    let remaining = NULLIFIER_INPUT_LEN - nullifier_input.len();
+    if remaining > 0 {
+        nullifier_input.extend_from_slice(&[0u8; remaining]);
     }
 
     Ok(keccak_hash(&nullifier_input))
