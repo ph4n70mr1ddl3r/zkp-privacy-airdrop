@@ -16,7 +16,8 @@ const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
 const SUBMIT_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
 const MAX_SUBMITS_PER_WINDOW: u32 = 10;
 
-static LAST_SUBMIT_TIME: std::sync::Mutex<(Instant, u32)> = std::sync::Mutex::new((Instant::now(), 0));
+static LAST_SUBMIT_TIME: std::sync::Mutex<(Instant, u32)> =
+    std::sync::Mutex::new((Instant::now(), 0));
 
 pub async fn execute(
     proof_path: PathBuf,
@@ -93,9 +94,9 @@ pub async fn execute(
         }
     );
 
-    let mut rate_limit_guard = LAST_SUBMIT_TIME.lock().map_err(|e| {
-        anyhow::anyhow!("Failed to acquire rate limit lock: {}", e)
-    })?;
+    let mut rate_limit_guard = LAST_SUBMIT_TIME
+        .lock()
+        .map_err(|e| anyhow::anyhow!("Failed to acquire rate limit lock: {}", e))?;
     let (last_time, count) = *rate_limit_guard;
     let now = Instant::now();
 
@@ -155,11 +156,7 @@ pub async fn execute(
                                 if secs > MAX_RETRY_AFTER_SECONDS {
                                     tracing::warn!("Suspicious Retry-After value: {}", secs);
                                 } else {
-                                    println!(
-                                        "{} Try again in {} seconds.",
-                                        "Note:".yellow(),
-                                        secs
-                                    );
+                                    println!("{} Try again in {} seconds.", "Note:".yellow(), secs);
                                 }
                             }
                         }
@@ -199,7 +196,11 @@ pub async fn execute(
                 }
             }
         }
-        return Err(anyhow::anyhow!("Relayer returned error: {} (code: {:?})", error_msg, submit_response.code));
+        return Err(anyhow::anyhow!(
+            "Relayer returned error: {} (code: {:?})",
+            error_msg,
+            submit_response.code
+        ));
     }
 
     println!(
@@ -249,10 +250,7 @@ pub async fn execute(
                     "optimism-sepolia" => "https://sepolia-optimism.etherscan.io",
                     _ => "https://optimism.etherscan.io",
                 };
-                println!(
-                    "  {}",
-                    format!("{}/tx/{}", explorer_url, tx_hash).cyan()
-                );
+                println!("  {}", format!("{}/tx/{}", explorer_url, tx_hash).cyan());
             }
         }
     }

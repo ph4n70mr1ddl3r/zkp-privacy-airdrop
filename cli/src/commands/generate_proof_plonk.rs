@@ -25,8 +25,12 @@ pub async fn execute(
 
     let private_key_bytes =
         crate::crypto::read_private_key(private_key_opt, private_key_file, private_key_stdin)?;
-    let private_key: [u8; 32] = private_key_bytes.try_into()
-        .map_err(|e| anyhow::anyhow!("Invalid private key length: expected 32 bytes, got {} bytes", e.len()))?;
+    let private_key: [u8; 32] = private_key_bytes.try_into().map_err(|e| {
+        anyhow::anyhow!(
+            "Invalid private key length: expected 32 bytes, got {} bytes",
+            e.len()
+        )
+    })?;
     private_key_bytes.zeroize();
 
     let address = crate::crypto::derive_address(&private_key)

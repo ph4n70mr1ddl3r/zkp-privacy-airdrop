@@ -21,8 +21,12 @@ pub async fn execute(
     info!("Generating proof...");
 
     let private_key_bytes = read_private_key(private_key_opt, private_key_file, private_key_stdin)?;
-    let private_key: [u8; 32] = private_key_bytes.try_into()
-        .map_err(|e| anyhow::anyhow!("Invalid private key length: expected 32 bytes, got {} bytes", e.len()))?;
+    let private_key: [u8; 32] = private_key_bytes.try_into().map_err(|e| {
+        anyhow::anyhow!(
+            "Invalid private key length: expected 32 bytes, got {} bytes",
+            e.len()
+        )
+    })?;
     private_key_bytes.zeroize();
 
     let address =
@@ -58,6 +62,15 @@ pub async fn execute(
     pb.set_message("Generating zero-knowledge proof...");
     pb.set_position(90);
 
+    let tree = crate::tree::MerkleTree::load_from_csv(&merkle_tree)
+        .await
+        .context("Failed to load Merkle tree")?;
+
+    let merkle_root = tree.root.clone();
+    let merkle_root_hex = format!("0x{}", hex::encode(&merkle_root));
+
+    pb.finish_with_message("Proof generated!");
+
     let proof_data = ProofData {
         proof: crate::types::Proof {
             a: ["0".to_string(), "0".to_string()],
@@ -70,8 +83,7 @@ pub async fn execute(
         public_signals: ["0".to_string(), "0".to_string(), nullifier_hex.clone()],
         nullifier: nullifier_hex,
         recipient: recipient.clone(),
-        merkle_root: "0x0000000000000000000000000000000000000000000000000000000000000000"
-            .to_string(),
+        merkle_root: merkle_root_hex,
         generated_at: chrono::Utc::now().to_rfc3339(),
     };
 

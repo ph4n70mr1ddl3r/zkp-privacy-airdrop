@@ -3,6 +3,7 @@ use colored::Colorize;
 use reqwest::Client;
 
 use crate::config::Config;
+use crate::crypto::validate_nullifier;
 use crate::types::CheckStatusResponse;
 
 pub async fn execute(
@@ -11,6 +12,8 @@ pub async fn execute(
     rpc_url_opt: Option<String>,
     config: &Config,
 ) -> Result<()> {
+    validate_nullifier(&nullifier).context("Invalid nullifier format")?;
+
     if let Some(rpc_url) = rpc_url_opt {
         check_status_on_chain(&nullifier, &rpc_url).await
     } else {

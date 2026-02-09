@@ -263,7 +263,10 @@ impl AppState {
         let provider =
             Provider::<Http>::try_from(self.config.network.rpc_url.as_str()).map_err(|e| {
                 self.increment_failed_claims();
-                format!("Failed to create RPC provider from {}: {}", self.config.network.rpc_url, e)
+                format!(
+                    "Failed to create RPC provider from {}: {}",
+                    self.config.network.rpc_url, e
+                )
             })?;
 
         let provider = Arc::new(provider);
@@ -276,7 +279,10 @@ impl AppState {
         let airdrop_address = Address::from_str(&self.config.network.contracts.airdrop_address)
             .map_err(|e| {
                 self.increment_failed_claims();
-                format!("Invalid airdrop address '{}': {}", self.config.network.contracts.airdrop_address, e)
+                format!(
+                    "Invalid airdrop address '{}': {}",
+                    self.config.network.contracts.airdrop_address, e
+                )
             })?;
 
         let recipient = Address::from_str(&claim.recipient).map_err(|e| {
@@ -291,7 +297,10 @@ impl AppState {
 
         let nullifier_array: [u8; 32] = nullifier_bytes[..].try_into().map_err(|e| {
             self.increment_failed_claims();
-            format!("Invalid nullifier length for '{}': expected 32 bytes, got {}", claim.nullifier, e)
+            format!(
+                "Invalid nullifier length for '{}': expected 32 bytes, got {}",
+                claim.nullifier, e
+            )
         })?;
 
         let key = format!("nullifier:{}", claim.nullifier);
@@ -328,7 +337,10 @@ impl AppState {
                 .await
                 .map_err(|_| {
                     self.increment_failed_claims();
-                    "Failed to get chain ID: timeout after {} seconds".to_string()
+                    format!(
+                        "Failed to get chain ID: timeout after {} seconds",
+                        RPC_TIMEOUT_SECONDS
+                    )
                 })?
                 .map_err(|e| {
                     self.increment_failed_claims();
@@ -346,15 +358,14 @@ impl AppState {
                     .try_into()
                     .unwrap_or_default();
 
-                let call = plonk_verifier.claim(proof_array, nullifier_array, recipient);
-                let builder = call.from(wallet_with_chain.address());
-
                 let mut retry_count = 0;
 
                 loop {
+                    let call = plonk_verifier.claim(proof_array, nullifier_array, recipient);
+                    let builder = call.from(wallet_with_chain.address());
                     let send_result = tokio::time::timeout(
                         std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
-                        builder.clone().send(),
+                        builder.send(),
                     )
                     .await;
 
@@ -366,7 +377,10 @@ impl AppState {
                             retry_count += 1;
                             if retry_count >= MAX_TRANSACTION_RETRIES {
                                 self.increment_failed_claims();
-                                return Err(format!("Failed to submit PLONK claim after {} retries: {}", MAX_TRANSACTION_RETRIES, e));
+                                return Err(format!(
+                                    "Failed to submit PLONK claim after {} retries: {}",
+                                    MAX_TRANSACTION_RETRIES, e
+                                ));
                             }
                             tracing::warn!(
                                 "Transaction failed (attempt {}/{}), retrying in {}ms: {}",
@@ -494,11 +508,15 @@ impl AppState {
         let total_tokens_distributed = successful_claims
             .checked_mul(CLAIM_AMOUNT)
             .and_then(|v| v.checked_mul(1000))
-            .unwrap_or(u64::MAX);
+            .unwrap_or_else(|| {
+                tracing::warn!("Token distribution calculation overflow, using max value");
+                u64::MAX
+            });
 
-        let total_gas_used = successful_claims
-            .checked_mul(AVG_GAS)
-            .unwrap_or(u64::MAX);
+        let total_gas_used = successful_claims.checked_mul(AVG_GAS).unwrap_or_else(|| {
+            tracing::warn!("Gas usage calculation overflow, using max value");
+            u64::MAX
+        });
 
         StatsResponse {
             total_claims,

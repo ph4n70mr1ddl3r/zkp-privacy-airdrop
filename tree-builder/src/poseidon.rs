@@ -45,7 +45,9 @@ fn mod_field(bytes: &[u8; 32]) -> [u8; 32] {
     let bytes = reduced.to_bytes_be();
     let offset = 32 - bytes.len();
     result[offset..].copy_from_slice(&bytes);
-    result.try_into().expect("Failed to convert result to [u8; 32]")
+    result
+        .try_into()
+        .expect("Failed to convert result to [u8; 32]")
 }
 
 #[cfg(test)]

@@ -48,9 +48,8 @@ impl NetworkConfig {
             ));
         }
 
-        let parsed = url::Url::parse(url).map_err(|e| {
-            anyhow::anyhow!("Invalid RPC URL format '{}': {}", url, e)
-        })?;
+        let parsed = url::Url::parse(url)
+            .map_err(|e| anyhow::anyhow!("Invalid RPC URL format '{}': {}", url, e))?;
 
         if parsed.scheme() != "https" && parsed.scheme() != "http" {
             return Err(anyhow::anyhow!(

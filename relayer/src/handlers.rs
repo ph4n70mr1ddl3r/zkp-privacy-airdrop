@@ -180,6 +180,19 @@ pub async fn submit_claim(
         });
     }
 
+    if claim.merkle_root != state.config.merkle_tree.merkle_root {
+        warn!(
+            "Merkle root mismatch: provided={}, expected={}",
+            claim.merkle_root, state.config.merkle_tree.merkle_root
+        );
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Merkle root does not match the current airdrop root. Please ensure you are using the latest merkle tree.".to_string(),
+            code: Some("MERKLE_ROOT_MISMATCH".to_string()),
+            retry_after: None,
+        });
+    }
+
     info!(
         "Received {} claim submission from nullifier: {}",
         claim.proof.type_name(),
@@ -394,7 +407,10 @@ pub async fn get_contract_info(state: web::Data<AppState>) -> impl Responder {
     })
 }
 
-pub async fn donate(claim: web::Json<DonateRequest>, _state: web::Data<AppState>) -> impl Responder {
+pub async fn donate(
+    claim: web::Json<DonateRequest>,
+    _state: web::Data<AppState>,
+) -> impl Responder {
     info!(
         "Donation request from {} amount: {}",
         claim.donor, claim.amount

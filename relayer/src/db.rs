@@ -27,7 +27,9 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool> {
     info!("Database connection pool created successfully");
 
     info!("Running database migrations...");
-    sqlx::migrate!("./migrations").run(&pool).await
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to run database migrations: {}", e))?;
 
     info!("Database migrations completed successfully");
