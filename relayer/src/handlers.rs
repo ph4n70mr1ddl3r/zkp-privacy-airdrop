@@ -1,7 +1,13 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use ethers::types::Address;
+use num_bigint::BigUint;
+use num_traits::Num;
 use std::str::FromStr;
 use tracing::{error, info, warn};
+
+/// BN254 scalar field modulus
+const BN254_FIELD_MODULUS: &str =
+    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
 use crate::state::AppState;
 use crate::types_plonk::*;
@@ -54,9 +60,6 @@ fn is_valid_hex_string(input: &str, expected_len: usize) -> bool {
 }
 
 fn is_valid_field_element(hex_str: &str) -> bool {
-    use num_bigint::BigUint;
-    use num_traits::Num;
-
     if !hex_str.starts_with("0x") && !hex_str.starts_with("0X") {
         return false;
     }
@@ -71,10 +74,7 @@ fn is_valid_field_element(hex_str: &str) -> bool {
     }
 
     let value = BigUint::from_bytes_be(&hex_value);
-    let field_modulus = match BigUint::from_str_radix(
-        "21888242871839275222246405745257275088548364400416034343698204186575808495617",
-        10,
-    ) {
+    let field_modulus = match BigUint::from_str_radix(BN254_FIELD_MODULUS, 10) {
         Ok(modulus) => modulus,
         Err(_) => return false,
     };

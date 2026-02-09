@@ -58,9 +58,13 @@ pub async fn execute(
     pb.set_position(10);
 
     let proof_data = if use_plonk {
-        generate_plonk_proof(&private_key, &recipient, &merkle_tree)?
+        generate_plonk_proof(&private_key, &recipient, &merkle_tree)
+            .context("Failed to generate PLONK proof")?
     } else {
-        anyhow::bail!("PLONK proof generation not fully implemented yet. Please use --proof-system groth16 for now, or complete Week 2 CLI integration tasks.")
+        anyhow::bail!(
+            "Unsupported proof system: {}. Only PLONK is supported.",
+            proof_system
+        )
     };
 
     private_key.zeroize();

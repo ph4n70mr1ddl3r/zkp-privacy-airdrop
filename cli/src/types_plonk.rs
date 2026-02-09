@@ -30,13 +30,20 @@ impl PlonkProof {
     }
 }
 
+/// Data structure for a proof with all necessary fields for claiming
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofData {
+    /// The proof (either Groth16 or PLONK)
     pub proof: Proof,
+    /// Public signals: [merkle_root, recipient, nullifier]
     pub public_signals: [String; 3],
+    /// Unique identifier derived from private key
     pub nullifier: String,
+    /// Address to receive tokens
     pub recipient: String,
+    /// Merkle root of the tree
     pub merkle_root: String,
+    /// Timestamp when proof was generated
     pub generated_at: String,
 }
 

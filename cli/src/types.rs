@@ -2,6 +2,7 @@ use ethers::types::{Address, H256};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+/// Groth16 proof structure (deprecated, kept for compatibility)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Proof {
     pub a: [String; 2],

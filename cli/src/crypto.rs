@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use colored::Colorize;
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Address;
 use secp256k1::{PublicKey, SecretKey};
@@ -126,60 +125,6 @@ fn poseidon_mds_matrix() -> [[ark_bn254::Fr; 3]; 3] {
             ark_bn254::Fr::from(3u64),
         ],
     ]
-}
-
-fn poseidon_hash_bn254(inputs: &[BigUint]) -> Result<BigUint> {
-    use ark_bn254::{Bn254, Fr};
-    use ark_ff::PrimeField;
-    use ark_poly_commit::poly::kzg::KZG10;
-    use std::convert::TryInto;
-
-    if inputs.len() != 3 {
-        return Err(anyhow::anyhow!(
-            "Poseidon hash requires exactly 3 inputs, got {}",
-            inputs.len()
-        ));
-    }
-
-    let field_inputs: Result<Vec<Fr>> = inputs
-        .iter()
-        .map(|input| {
-            let bytes = input.to_bytes_be();
-            let mut padded = [0u8; 32];
-            let offset = 32_usize.saturating_sub(bytes.len());
-            padded[offset..].copy_from_slice(&bytes);
-            Fr::from_be_bytes(padded)
-                .map_err(|e| anyhow::anyhow!("Failed to convert to field element: {}", e))
-        })
-        .collect();
-
-    let field_inputs = field_inputs?;
-
-    let hash = poseidon_hash_internal(&field_inputs)?;
-    Ok(BigUint::from_bytes_le(&hash.into_bigint().to_bytes_le()))
-}
-
-fn poseidon_hash_internal(inputs: &[Fr]) -> Result<Fr> {
-    use ark_crypto_primitives::sponge::poseidon::PoseidonSponge;
-    use ark_ff::PrimeField;
-    use ark_std::UniformRand;
-
-    let mut rng = ark_std::test_rng();
-    let poseidon_params = poseidon_parameters();
-
-    let mut sponge = PoseidonSponge::<Fr>::new(&poseidon_params);
-    sponge.absorb(&inputs);
-
-    let mut output = Fr::zero();
-    sponge.squeeze_bytes(&mut output.into_bigint().to_bytes_le());
-    Ok(output)
-}
-
-fn poseidon_parameters() -> Vec<Fr> {
-    use ark_bn254::Fr;
-    use ark_ff::PrimeField;
-
-    vec![Fr::from(1), Fr::from(2), Fr::from(3)]
 }
 
 /// Derives an Ethereum address from a private key.
