@@ -21,12 +21,4 @@ describe("PLONKVerifier", function () {
     const result = await verifier.verifyProof(invalidProof, invalidPubSignals);
     expect(result).to.equal(false);
   });
-
-  it("Should verify proof", async function () {
-    const invalidProof = Array(24).fill(0);
-    const invalidPubSignals = Array(3).fill(0);
-
-    const result = await verifier.verifyProof(invalidProof, invalidPubSignals);
-    expect(result).to.equal(false);
-  });
 });

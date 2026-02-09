@@ -4,51 +4,133 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+/**
+ * @title IRelayerRegistry
+ * @notice Interface for relayer registry contract
+ */
 interface IRelayerRegistry {
+    /**
+     * @notice Authorize a relayer to use funds
+     * @param relayer Address of the relayer to authorize
+     */
     function authorizeRelayer(address relayer) external;
+
+    /**
+     * @notice Deauthorize a relayer
+     * @param relayer Address of the relayer to deauthorize
+     */
+    function deauthorizeRelayer(address relayer) external;
+
+    /**
+     * @notice Donate ETH to the relayer registry
+     */
     function donate() external payable;
+
+    /**
+     * @notice Withdraw funds from relayer balance
+     * @param amount Amount to withdraw
+     */
     function withdraw(uint256 amount) external;
+
+    /**
+     * @notice Check if a relayer is authorized
+     * @param relayer Address to check
+     * @return True if authorized
+     */
     function isAuthorized(address relayer) external view returns (bool);
+
+    /**
+     * @notice Get relayer balance
+     * @param relayer Address of the relayer
+     * @return Balance in wei
+     */
     function balanceOf(address relayer) external view returns (uint256);
+
+    /**
+     * @notice Get default relayer address
+     * @return Address of the default relayer
+     */
     function getDefaultRelayer() external view returns (address);
 }
 
+/**
+ * @title RelayerRegistry
+ * @notice Manages authorized relayers and their fund balances
+ * @dev Allows relayers to withdraw donated funds and manages authorization
+ */
 contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     address public defaultRelayer;
     mapping(address => bool) public authorizedRelayers;
     mapping(address => uint256) public relayerBalances;
 
     event RelayerAuthorized(address indexed relayer);
+    event RelayerDeauthorized(address indexed relayer);
     event DonationReceived(address indexed donor, uint256 amount);
     event FundsWithdrawn(address indexed relayer, uint256 amount);
+    event FundsWithdrawnTransfer(address indexed relayer, uint256 amount);
 
+    /**
+     * @notice Modifier to restrict access to authorized relayers
+     */
     modifier onlyAuthorized() {
         require(authorizedRelayers[msg.sender], "Not authorized");
         _;
     }
 
+    /**
+     * @notice Modifier to ensure address is not zero
+     * @param addr Address to validate
+     */
     modifier validAddress(address addr) {
         require(addr != address(0), "Invalid address");
         _;
     }
 
+    /**
+     * @notice Initialize the relayer registry
+     * @param _defaultRelayer Address of the default relayer (auto-authorized)
+     */
     constructor(address _defaultRelayer) Ownable(msg.sender) {
         defaultRelayer = _defaultRelayer;
         authorizedRelayers[_defaultRelayer] = true;
         emit RelayerAuthorized(_defaultRelayer);
     }
 
+    /**
+     * @notice Authorize a relayer to use funds
+     * @param relayer Address of the relayer to authorize
+     * @dev Only callable by owner
+     */
     function authorizeRelayer(address relayer) external onlyOwner validAddress(relayer) {
         authorizedRelayers[relayer] = true;
         emit RelayerAuthorized(relayer);
     }
 
+    /**
+     * @notice Deauthorize a relayer
+     * @param relayer Address of the relayer to deauthorize
+     * @dev Only callable by owner, relayer cannot withdraw remaining funds
+     */
+    function deauthorizeRelayer(address relayer) external onlyOwner validAddress(relayer) {
+        authorizedRelayers[relayer] = false;
+        emit RelayerDeauthorized(relayer);
+    }
+
+    /**
+     * @notice Donate ETH to the default relayer
+     * @dev ETH is added to default relayer's balance
+     */
     function donate() external payable {
         require(msg.value > 0, "Donation must be greater than 0");
         relayerBalances[defaultRelayer] += msg.value;
         emit DonationReceived(msg.sender, msg.value);
     }
 
+    /**
+     * @notice Withdraw funds from caller's balance
+     * @param amount Amount of ETH to withdraw in wei
+     * @dev Only callable by authorized relayers
+     */
     function withdraw(uint256 amount) external onlyAuthorized nonReentrant {
         require(relayerBalances[msg.sender] >= amount, "Insufficient balance");
         require(amount > 0, "Amount must be greater than zero");
@@ -56,20 +138,39 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
         (bool success, ) = payable(msg.sender).call{value: amount}("");
         require(success, "Transfer failed");
         emit FundsWithdrawn(msg.sender, amount);
+        emit FundsWithdrawnTransfer(msg.sender, amount);
     }
 
+    /**
+     * @notice Check if a relayer is authorized
+     * @param relayer Address to check
+     * @return True if authorized
+     */
     function isAuthorized(address relayer) external view returns (bool) {
         return authorizedRelayers[relayer];
     }
 
+    /**
+     * @notice Get relayer balance
+     * @param relayer Address of the relayer
+     * @return Balance in wei
+     */
     function balanceOf(address relayer) external view returns (uint256) {
         return relayerBalances[relayer];
     }
 
+    /**
+     * @notice Get default relayer address
+     * @return Address of the default relayer
+     */
     function getDefaultRelayer() external view returns (address) {
         return defaultRelayer;
     }
 
+    /**
+     * @notice Receive ETH as a donation
+     * @dev ETH is added to default relayer's balance
+     */
     receive() external payable {
         require(msg.value > 0, "Donation must be greater than 0");
         relayerBalances[defaultRelayer] += msg.value;

@@ -24,6 +24,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     event TokensTransferred(address indexed recipient, uint256 amount, uint256 timestamp);
     event Paused(address indexed account);
     event Unpaused(address indexed account);
+    event EmergencyWithdraw(address indexed recipient, uint256 amount, uint256 timestamp);
 
     /**
      * @notice Initialize the base airdrop contract
@@ -96,5 +97,19 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     function _transferTokens(address recipient, uint256 amount) internal {
         token.safeTransfer(recipient, amount);
         emit TokensTransferred(recipient, amount, block.timestamp);
+    }
+
+    /**
+     * @notice Emergency withdraw tokens after claim deadline
+     * @param recipient Address to receive the withdrawn tokens
+     * @param amount Amount of tokens to withdraw
+     * @dev Only callable by owner and only after claim deadline has passed
+     */
+    function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
+        require(block.timestamp > claimDeadline, "Claim period not ended");
+        require(recipient != address(0), "Invalid recipient");
+        require(amount > 0, "Amount must be greater than zero");
+        _transferTokens(recipient, amount);
+        emit EmergencyWithdraw(recipient, amount, block.timestamp);
     }
 }
