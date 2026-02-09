@@ -1,34 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./BasePrivacyAirdrop.sol";
 
 /**
  * @title PrivacyAirdropPLONK
  * @notice Privacy-preserving ERC20 token airdrop using PLONK ZK proofs
  * @dev Allows users to claim tokens without revealing their address from Merkle tree
  * Uses universal trusted setup (Perpetual Powers of Tau) instead of per-circuit trusted setup
+ * Inherits from BasePrivacyAirdrop to share common functionality with PrivacyAirdrop
  *
  * SECURITY NOTICE: The PLONK verifier contract currently contains placeholder verification
  * logic that will reject all proofs. Before deploying to production:
  * 1. Generate proper verification key using snarkjs
  * 2. Deploy the generated verifier contract
  * 3. Update the verifier address in this contract's constructor
- *
- * TODO: Consider refactoring to use a base contract pattern with PrivacyAirdrop.sol
- * to reduce code duplication. Both contracts share similar logic for constructor validation,
- * claim checks, and token transfer. The main difference is the proof verification step
- * (PLONK vs Groth16).
  */
-contract PrivacyAirdropPLONK is ReentrancyGuard {
-    bytes32 public immutable merkleRoot;
-    mapping(bytes32 => bool) public nullifiers;
-    address public immutable token;
-    uint256 public immutable claimAmount;
-    uint256 public immutable claimDeadline;
+contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     IPLONKVerifier public immutable verifier;
-
-    event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
 
     /**
      * @notice PLONK proof structure
@@ -36,6 +25,25 @@ contract PrivacyAirdropPLONK is ReentrancyGuard {
      */
     struct PLONKProof {
         uint256[8] proof;
+    }
+
+    /**
+     * @notice Initialize the PLONK airdrop contract
+     * @param _token Address of the ERC20 token to distribute
+     * @param _merkleRoot Root of the Merkle tree containing eligible addresses
+     * @param _claimAmount Number of tokens each eligible address can claim
+     * @param _claimDeadline Unix timestamp after which claims are no longer accepted
+     * @param _verifier Address of the PLONK verifier contract
+     */
+    constructor(
+        address _token,
+        bytes32 _merkleRoot,
+        uint256 _claimAmount,
+        uint256 _claimDeadline,
+        address _verifier
+    ) BasePrivacyAirdrop(_token, _merkleRoot, _claimAmount, _claimDeadline) {
+        require(_verifier != address(0), "Invalid verifier address");
+        verifier = IPLONKVerifier(_verifier);
     }
 
     /**
@@ -75,11 +83,7 @@ contract PrivacyAirdropPLONK is ReentrancyGuard {
         PLONKProof calldata proof,
         bytes32 nullifier,
         address recipient
-    ) external nonReentrant {
-        require(block.timestamp <= claimDeadline, "Claim period ended");
-        require(recipient != address(0), "Invalid recipient");
-        require(!nullifiers[nullifier], "Already claimed");
-
+    ) external nonReentrant validClaim(recipient, nullifier) {
         uint256[3] memory instances = [
             uint256(merkleRoot),
             uint256(uint160(recipient)),
@@ -91,23 +95,11 @@ contract PrivacyAirdropPLONK is ReentrancyGuard {
             "Invalid proof"
         );
 
-        (bool success, bytes memory data) = address(token).call(
-            abi.encodeWithSelector(IERC20.transfer.selector, recipient, claimAmount)
-        );
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "Token transfer failed");
-
         nullifiers[nullifier] = true;
 
-        emit Claimed(nullifier, recipient, block.timestamp);
-    }
+        _transferTokens(recipient, claimAmount);
 
-    /**
-     * @notice Check if a nullifier has already been claimed
-     * @param nullifier The nullifier to check
-     * @return True if the nullifier has already been used
-     */
-    function isClaimed(bytes32 nullifier) external view returns (bool) {
-        return nullifiers[nullifier];
+        emit Claimed(nullifier, recipient, block.timestamp);
     }
 
     /**

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./BasePrivacyAirdrop.sol";
 
 /**
  * @title IVerifier
@@ -29,23 +28,10 @@ interface IVerifier {
  * @title PrivacyAirdrop
  * @notice Privacy-preserving ERC20 token airdrop using Groth16 ZK proofs
  * @dev Allows users to claim tokens without revealing their address from the Merkle tree
- *
- * TODO: Consider refactoring to use a base contract pattern with PrivacyAirdropPLONK.sol
- * to reduce code duplication. Both contracts share similar logic for constructor validation,
- * claim checks, and token transfer. The main difference is the proof verification step
- * (Groth16 vs PLONK).
+ * Inherits from BasePrivacyAirdrop to share common functionality with PrivacyAirdropPLONK
  */
-contract PrivacyAirdrop is ReentrancyGuard {
-    using SafeERC20 for IERC20;
-    
-    bytes32 public immutable merkleRoot;
-    mapping(bytes32 => bool) public nullifiers;
-    address public immutable token;
-    uint256 public immutable claimAmount;
-    uint256 public immutable claimDeadline;
+contract PrivacyAirdrop is BasePrivacyAirdrop {
     IVerifier public immutable verifier;
-
-    event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
 
     struct Proof {
         uint[2] a;
@@ -67,16 +53,8 @@ contract PrivacyAirdrop is ReentrancyGuard {
         uint256 _claimAmount,
         uint256 _claimDeadline,
         address _verifier
-    ) {
-        require(_token != address(0), "Invalid token address");
-        require(_merkleRoot != bytes32(0), "Invalid merkle root");
-        require(_claimAmount > 0, "Invalid claim amount");
-        require(_claimDeadline > block.timestamp, "Invalid deadline");
+    ) BasePrivacyAirdrop(_token, _merkleRoot, _claimAmount, _claimDeadline) {
         require(_verifier != address(0), "Invalid verifier address");
-        token = _token;
-        merkleRoot = _merkleRoot;
-        claimAmount = _claimAmount;
-        claimDeadline = _claimDeadline;
         verifier = IVerifier(_verifier);
     }
 
@@ -91,11 +69,7 @@ contract PrivacyAirdrop is ReentrancyGuard {
         Proof calldata proof,
         bytes32 nullifier,
         address recipient
-    ) external nonReentrant {
-        require(block.timestamp <= claimDeadline, "Claim period ended");
-        require(recipient != address(0), "Invalid recipient");
-        require(!nullifiers[nullifier], "Already claimed");
-
+    ) external nonReentrant validClaim(recipient, nullifier) {
         uint[3] memory publicSignals = [
             uint256(merkleRoot),
             uint256(uint160(recipient)),
@@ -106,18 +80,9 @@ contract PrivacyAirdrop is ReentrancyGuard {
 
         nullifiers[nullifier] = true;
 
-        IERC20(token).safeTransfer(recipient, claimAmount);
+        _transferTokens(recipient, claimAmount);
 
         emit Claimed(nullifier, recipient, block.timestamp);
-    }
-
-    /**
-     * @notice Check if a nullifier has already been claimed
-     * @param nullifier The nullifier to check
-     * @return True if the nullifier has already been used
-     */
-    function isClaimed(bytes32 nullifier) external view returns (bool) {
-        return nullifiers[nullifier];
     }
 
     /**
