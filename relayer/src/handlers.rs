@@ -2,21 +2,72 @@ use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use ethers::types::Address;
 use num_bigint::BigUint;
 use num_traits::Num;
+use once_cell::sync::Lazy;
+use regex::Regex;
 use std::str::FromStr;
 use std::sync::OnceLock;
 use tracing::{error, info, warn};
 
 /// BN254 scalar field modulus
+#[allow(dead_code)]
 const BN254_FIELD_MODULUS: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
+#[allow(dead_code)]
 static FIELD_MODULUS: OnceLock<BigUint> = OnceLock::new();
 
+#[allow(dead_code)]
 fn get_field_modulus() -> &'static BigUint {
     FIELD_MODULUS.get_or_init(|| {
         BigUint::from_str_radix(BN254_FIELD_MODULUS, 10).expect("Invalid field modulus constant")
     })
 }
+
+/// Compiled regex patterns for sensitive data filtering (pre-compiled for performance)
+static SENSITIVE_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
+    vec![
+        (Regex::new("(?i)private_key").unwrap(), "private key"),
+        (Regex::new("(?i)private-key").unwrap(), "private key"),
+        (Regex::new("(?i)privatekey").unwrap(), "private key"),
+        (Regex::new("(?i)priv_key").unwrap(), "private key"),
+        (Regex::new("(?i)privkey").unwrap(), "private key"),
+        (Regex::new("(?i)0x[0-9a-f]{32,}").unwrap(), "hex credential"),
+        (Regex::new("(?i)seed").unwrap(), "seed"),
+        (Regex::new("(?i)mnemonic").unwrap(), "mnemonic"),
+        (Regex::new("(?i)credentials").unwrap(), "credentials"),
+        (Regex::new("(?i)api_key").unwrap(), "API key"),
+        (Regex::new("(?i)apikey").unwrap(), "API key"),
+        (Regex::new("(?i)access_token").unwrap(), "access token"),
+        (Regex::new("(?i)refresh_token").unwrap(), "refresh token"),
+        (Regex::new("(?i)access_key").unwrap(), "access key"),
+        (Regex::new("(?i)secret").unwrap(), "secret value"),
+        (Regex::new("(?i)secret_key").unwrap(), "secret key"),
+        (Regex::new("(?i)session").unwrap(), "session token"),
+        (Regex::new("(?i)signature").unwrap(), "signature"),
+        (Regex::new("(?i)auth_token").unwrap(), "auth token"),
+        (Regex::new("(?i)password").unwrap(), "password"),
+        (Regex::new("(?i)passwd").unwrap(), "password"),
+        (Regex::new("(?i)pwd").unwrap(), "password"),
+        (
+            Regex::new("(?i)authorization").unwrap(),
+            "authorization header",
+        ),
+        (Regex::new("(?i)bearer").unwrap(), "bearer token"),
+        (
+            Regex::new("(?i)0x[0-9a-f]{64,}").unwrap(),
+            "private key or hash",
+        ),
+        (
+            Regex::new(r"(?i)pk\s*=\s*[0-9a-f]+").unwrap(),
+            "private key param",
+        ),
+        (Regex::new(r"(?i)key\s*=\s*[0-9a-f]+").unwrap(), "key param"),
+        (
+            Regex::new(r"(?i)token\s*=\s*[a-z0-9\-._~+/]+=*").unwrap(),
+            "token param",
+        ),
+    ]
+});
 
 use crate::state::AppState;
 use crate::types_plonk::*;
@@ -75,50 +126,16 @@ fn validate_claim_input(
 }
 
 fn sanitize_error_message(error: &str) -> String {
-    let sensitive_patterns = [
-        ("private_key", "private key"),
-        ("private-key", "private key"),
-        ("privatekey", "private key"),
-        ("priv_key", "private key"),
-        ("privkey", "private key"),
-        ("0x[0-9a-fA-F]{32,}", "hex credential"),
-        ("seed", "seed"),
-        ("mnemonic", "mnemonic"),
-        ("credentials", "credentials"),
-        ("api_key", "API key"),
-        ("apikey", "API key"),
-        ("access_token", "access token"),
-        ("refresh_token", "refresh token"),
-        ("access_key", "access key"),
-        ("secret", "secret value"),
-        ("secret_key", "secret key"),
-        ("session", "session token"),
-        ("signature", "signature"),
-        ("auth_token", "auth token"),
-        ("password", "password"),
-        ("passwd", "password"),
-        ("pwd", "password"),
-        ("authorization", "authorization header"),
-        ("bearer", "bearer token"),
-        ("0x[0-9a-fA-F]{64,}", "private key or hash"),
-        ("pk\\s*=\\s*[0-9a-f]+", "private key param"),
-        ("key\\s*=\\s*[0-9a-f]+", "key param"),
-        ("token\\s*=\\s*[a-z0-9\\-._~+/]+=*", "token param"),
-    ];
-
     let lower = error.to_lowercase();
 
-    for (pattern, description) in &sensitive_patterns {
-        if let Ok(re) = regex::Regex::new(&("(?i)".to_string() + pattern)) {
-            if re.is_match(&lower) {
-                tracing::warn!(
-                    "Filtered sensitive error message containing {}: pattern='{}', error='{}'",
-                    description,
-                    pattern,
-                    error
-                );
-                return "Internal error occurred. Check logs for details.".to_string();
-            }
+    for (re, description) in SENSITIVE_PATTERNS.iter() {
+        if re.is_match(&lower) {
+            tracing::warn!(
+                "Filtered sensitive error message containing {}: error='{}'",
+                description,
+                error
+            );
+            return "Internal error occurred. Check logs for details.".to_string();
         }
     }
 
@@ -131,6 +148,7 @@ fn is_valid_hex_string(input: &str, expected_len: usize) -> bool {
         && hex::decode(&input[2..]).is_ok()
 }
 
+#[allow(dead_code)]
 fn is_valid_field_element(hex_str: &str) -> bool {
     if !hex_str.starts_with("0x") && !hex_str.starts_with("0X") {
         return false;

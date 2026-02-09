@@ -1,14 +1,14 @@
 use num_bigint::BigUint;
 use num_traits::Num;
-use rand::Rng;
 use sha2::{Digest, Sha256};
 
 const FIELD_PRIME: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
-/// Nullifier salt constant - must match the value used in the circuit
-const NULLIFIER_SALT: u64 =
-    87953108768114088221452414019732140257409482096940319490691914651639977587459u64;
+/// Nullifier salt constant - must match the value used in circuit
+#[allow(dead_code)]
+const NULLIFIER_SALT: &str =
+    "87953108768114088221452414019732140257409482096940319490691914651639977587459";
 
 fn field_prime() -> BigUint {
     BigUint::from_str_radix(FIELD_PRIME, 10).expect("Invalid field prime constant")
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn test_nullifier_salt_constant() {
         assert_eq!(
-            NULLIFIER_SALT.to_string(),
+            NULLIFIER_SALT,
             "87953108768114088221452414019732140257409482096940319490691914651639977587459"
         );
     }

@@ -71,16 +71,31 @@ pub async fn execute(
 
     let proof_data = ProofData {
         proof: Proof::Plonk(crate::types_plonk::PlonkProof {
-            proof: vec!["0".to_string(); 8],
+            proof: vec![
+                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+            ],
         }),
-        public_signals: ["0".to_string(), "0".to_string(), nullifier_hex.clone()],
+        public_signals: [
+            merkle_root_hex.clone(),
+            recipient.clone(),
+            nullifier_hex.clone(),
+        ],
         nullifier: nullifier_hex,
         recipient: recipient.clone(),
         merkle_root: merkle_root_hex,
         generated_at: chrono::Utc::now().to_rfc3339(),
     };
 
-    pb.finish_with_message("Proof generated!");
+    pb.finish_with_message(
+        "Proof generated! (placeholder proof - actual PLONK proof generation not yet implemented)",
+    );
 
     let output_path = output.unwrap_or_else(|| PathBuf::from("proof.json"));
 

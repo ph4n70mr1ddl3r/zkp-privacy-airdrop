@@ -101,38 +101,18 @@ pub async fn execute(
     loop {
         let last_time_ms = LAST_SUBMIT_TIME.load(Ordering::SeqCst);
 
-        if last_time_ms > 0 {
-            let elapsed_ms = current_ms.saturating_sub(last_time_ms);
-
-            if elapsed_ms < SUBMIT_RATE_LIMIT_WINDOW.as_millis() as u64 {
-                let count = SUBMIT_COUNT.fetch_add(1, Ordering::SeqCst);
-
-                if count >= MAX_SUBMITS_PER_WINDOW {
-                    SUBMIT_COUNT.fetch_sub(1, Ordering::SeqCst);
-                    let wait_time = SUBMIT_RATE_LIMIT_WINDOW - Duration::from_millis(elapsed_ms);
-                    println!(
-                        "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
-                        "Warning:".yellow(),
-                        wait_time.as_secs()
-                    );
-                    return Err(anyhow::anyhow!("Rate limit exceeded"));
-                }
+        if last_time_ms > 0
+            && current_ms.saturating_sub(last_time_ms)
+                >= SUBMIT_RATE_LIMIT_WINDOW.as_millis() as u64
+        {
+            if LAST_SUBMIT_TIME
+                .compare_exchange_weak(last_time_ms, current_ms, Ordering::SeqCst, Ordering::SeqCst)
+                .is_ok()
+            {
+                SUBMIT_COUNT.store(1, Ordering::SeqCst);
                 break;
-            } else {
-                if LAST_SUBMIT_TIME
-                    .compare_exchange_weak(
-                        last_time_ms,
-                        current_ms,
-                        Ordering::SeqCst,
-                        Ordering::SeqCst,
-                    )
-                    .is_ok()
-                {
-                    SUBMIT_COUNT.store(1, Ordering::SeqCst);
-                    break;
-                }
             }
-        } else {
+        } else if last_time_ms == 0 {
             if LAST_SUBMIT_TIME
                 .compare_exchange_weak(0, current_ms, Ordering::SeqCst, Ordering::SeqCst)
                 .is_ok()
@@ -140,6 +120,21 @@ pub async fn execute(
                 SUBMIT_COUNT.store(1, Ordering::SeqCst);
                 break;
             }
+        } else {
+            let count = SUBMIT_COUNT.fetch_add(1, Ordering::SeqCst);
+
+            if count >= MAX_SUBMITS_PER_WINDOW {
+                SUBMIT_COUNT.fetch_sub(1, Ordering::SeqCst);
+                let elapsed_ms = current_ms.saturating_sub(last_time_ms);
+                let wait_time = SUBMIT_RATE_LIMIT_WINDOW - Duration::from_millis(elapsed_ms);
+                println!(
+                    "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
+                    "Warning:".yellow(),
+                    wait_time.as_secs()
+                );
+                return Err(anyhow::anyhow!("Rate limit exceeded"));
+            }
+            break;
         }
     }
 

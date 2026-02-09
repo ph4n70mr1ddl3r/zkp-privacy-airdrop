@@ -6,12 +6,59 @@ use ethers::types::Address;
 use parking_lot::RwLock;
 use rand::Rng;
 use redis::aio::ConnectionManager;
+use redis::Script;
 use sqlx::PgPool;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use tokio::sync::Mutex;
 
 const RPC_TIMEOUT_SECONDS: u64 = 10;
+
+/// Pre-compiled Lua script for rate limiting
+static RATE_LIMIT_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
+    Script::new(
+        r#"
+        local key = KEYS[1]
+        local limit = tonumber(ARGV[1])
+        local window_size = tonumber(ARGV[2])
+        local current = tonumber(redis.call("GET", key) or "0")
+
+        if current < limit then
+            local new_count = redis.call("INCR", key)
+            if new_count == 1 then
+                redis.call("EXPIRE", key, window_size)
+            end
+            return {true, new_count}
+        else
+            return {false, current}
+        end
+    "#,
+    )
+});
+
+/// Pre-compiled Lua script for nullifier check-and-set (atomic)
+static NULLIFIER_CHECK_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
+    Script::new(
+        r#"
+        local key = KEYS[1]
+        local recipient = ARGV[1]
+
+        -- Check if key exists
+        local existing = redis.call("GET", key)
+
+        -- If key doesn't exist, set it atomically
+        if not existing then
+            redis.call("SET", key, recipient)
+            redis.call("EXPIRE", key, 31536000) -- 1 year expiry
+            return 1 -- Success
+        else
+            return 0 -- Already exists
+        end
+    "#,
+    )
+});
+
 const RPC_HEALTH_CHECK_TIMEOUT_SECONDS: u64 = 5;
 const RATE_LIMIT_WINDOW_SECONDS: u64 = 120;
 const MAX_TRANSACTION_RETRIES: u32 = 3;
@@ -288,26 +335,7 @@ impl AppState {
         let count_key = format!("{}:{}", redis_key, window_start);
         let mut redis = self.redis.lock().await;
 
-        use redis::Script;
-        let lua_script = r#"
-            local key = KEYS[1]
-            local limit = tonumber(ARGV[1])
-            local window_size = tonumber(ARGV[2])
-            local current = tonumber(redis.call("GET", key) or "0")
-
-            if current < limit then
-                local new_count = redis.call("INCR", key)
-                if new_count == 1 then
-                    redis.call("EXPIRE", key, window_size)
-                end
-                return {true, new_count}
-            else
-                return {false, current}
-            end
-        "#;
-
-        let script = Script::new(lua_script);
-        let result: (bool, u64) = script
+        let result: (bool, u64) = RATE_LIMIT_SCRIPT
             .key(&count_key)
             .arg(limit)
             .arg(RATE_LIMIT_WINDOW_SECONDS)
@@ -390,27 +418,7 @@ impl AppState {
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
-        // Use Redis Lua script for atomic check-and-set to prevent race conditions
-        use redis::Script;
-        let lua_script = r#"
-            local key = KEYS[1]
-            local recipient = ARGV[1]
-            
-            -- Check if key exists
-            local existing = redis.call("GET", key)
-            
-            -- If key doesn't exist, set it atomically
-            if not existing then
-                redis.call("SET", key, recipient)
-                redis.call("EXPIRE", key, 31536000) -- 1 year expiry
-                return 1 -- Success
-            else
-                return 0 -- Already exists
-            end
-        "#;
-
-        let script = Script::new(lua_script);
-        let result: u32 = script
+        let result: u32 = NULLIFIER_CHECK_SCRIPT
             .key(&key)
             .arg(&claim.recipient)
             .invoke_async(&mut *redis)
@@ -525,14 +533,12 @@ impl AppState {
                         format!("Failed to get gas price: {}", e)
                     })?;
 
-                    let gas_randomization_factor = self.config.relayer.gas_price_randomization;
-                    let random_factor =
-                        rand::thread_rng().gen_range(0.0..=gas_randomization_factor);
-
                     let base_gas_price_u128 = base_gas_price.as_u128();
-                    let multiplier = (1.0 + random_factor) as u128;
+                    let gas_randomization_factor =
+                        (self.config.relayer.gas_price_randomization * 100.0) as u64;
+                    let random_factor = rand::thread_rng().gen_range(0..=gas_randomization_factor);
                     let adjusted_price = base_gas_price_u128
-                        .checked_mul(multiplier)
+                        .checked_mul(100 + random_factor as u128)
                         .and_then(|v| v.checked_div(100))
                         .unwrap_or_else(|| {
                             tracing::warn!("Gas price calculation overflow, using base price");
@@ -629,10 +635,14 @@ impl AppState {
             let timestamp = chrono::Utc::now().to_rfc3339();
 
             let tx_key = format!("{}:tx_hash", key);
-            let _ = redis.set::<_, _, ()>(&tx_key, &tx_hash.to_string()).await;
+            if let Err(e) = redis.set::<_, _, ()>(&tx_key, &tx_hash.to_string()).await {
+                tracing::warn!("Failed to set tx_hash in Redis: {}", e);
+            }
 
             let timestamp_key = format!("{}:timestamp", key);
-            let _ = redis.set::<_, _, ()>(&timestamp_key, &timestamp).await;
+            if let Err(e) = redis.set::<_, _, ()>(&timestamp_key, &timestamp).await {
+                tracing::warn!("Failed to set timestamp in Redis: {}", e);
+            }
 
             let mut stats = self.stats.write();
             stats.total_claims += 1;
