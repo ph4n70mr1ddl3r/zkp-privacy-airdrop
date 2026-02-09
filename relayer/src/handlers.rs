@@ -9,24 +9,26 @@ use crate::types_plonk::*;
 fn sanitize_error_message(error: &str) -> String {
     let sensitive_patterns = [
         ("private key", "private key"),
+        ("private-key", "private key"),
         ("privatekey", "private key"),
         ("priv_key", "private key"),
+        ("privkey", "private key"),
         ("secret", "secret"),
         ("password", "password"),
         ("passwd", "password"),
         ("0x", "hex"),
         ("seed", "seed"),
         ("mnemonic", "mnemonic"),
-        ("wallet", "wallet"),
         ("credentials", "credentials"),
-        ("auth", "auth"),
-        ("token", "token"),
         ("api_key", "API key"),
         ("apikey", "API key"),
+        ("access_token", "access token"),
+        ("refresh_token", "refresh token"),
         ("access_key", "access key"),
         ("secret_key", "secret key"),
         ("session", "session"),
         ("signature", "signature"),
+        ("auth_token", "auth token"),
     ];
 
     let lower = error.to_lowercase();
@@ -51,6 +53,35 @@ fn is_valid_hex_string(input: &str, expected_len: usize) -> bool {
         && hex::decode(&input[2..]).is_ok()
 }
 
+fn is_valid_field_element(hex_str: &str) -> bool {
+    use num_bigint::BigUint;
+    use num_traits::Num;
+
+    if !hex_str.starts_with("0x") && !hex_str.starts_with("0X") {
+        return false;
+    }
+
+    let hex_value = match hex::decode(&hex_str[2..]) {
+        Ok(bytes) => bytes,
+        Err(_) => return false,
+    };
+
+    if hex_value.len() != 32 {
+        return false;
+    }
+
+    let value = BigUint::from_bytes_be(&hex_value);
+    let field_modulus = match BigUint::from_str_radix(
+        "21888242871839275222246405745257275088548364400416034343698204186575808495617",
+        10,
+    ) {
+        Ok(modulus) => modulus,
+        Err(_) => return false,
+    };
+
+    value < field_modulus
+}
+
 pub fn is_valid_address(address: &str) -> bool {
     if !is_valid_hex_string(address, 42) {
         return false;
@@ -63,6 +94,10 @@ pub fn is_valid_address(address: &str) -> bool {
 
 pub fn is_valid_nullifier(nullifier: &str) -> bool {
     if !is_valid_hex_string(nullifier, 66) {
+        return false;
+    }
+
+    if !is_valid_field_element(nullifier) {
         return false;
     }
 
@@ -220,31 +255,6 @@ pub async fn submit_claim(
             code: Some("RATE_LIMITED".to_string()),
             retry_after: Some(60),
         });
-    }
-
-    // Check if already claimed
-    match state.is_nullifier_used(&claim.nullifier).await {
-        Ok(true) => {
-            warn!("Nullifier already claimed: {}", claim.nullifier);
-            return HttpResponse::BadRequest().json(ErrorResponse {
-                success: false,
-                error:
-                    "This nullifier has already been used. Each qualified account can only claim once."
-                        .to_string(),
-                code: Some("ALREADY_CLAIMED".to_string()),
-                retry_after: None,
-            });
-        }
-        Err(e) => {
-            error!("Failed to check nullifier status: {}", e);
-            return HttpResponse::InternalServerError().json(ErrorResponse {
-                success: false,
-                error: "Internal error checking nullifier status".to_string(),
-                code: Some("INTERNAL_ERROR".to_string()),
-                retry_after: Some(60),
-            });
-        }
-        _ => {}
     }
 
     if !claim.proof.is_valid_structure() {

@@ -4,6 +4,7 @@ use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Address;
 use parking_lot::RwLock;
+use rand::Rng;
 use redis::aio::ConnectionManager;
 use sqlx::PgPool;
 use std::str::FromStr;
@@ -233,7 +234,13 @@ impl AppState {
             }
         };
 
-        let redis_key = format!("rate_limit:{}", key);
+        let nullifier_prefix = match limit_type {
+            RateLimitType::SubmitClaim => "submit_claim",
+            RateLimitType::GetMerklePath => "get_merkle_path",
+            RateLimitType::CheckStatus => "check_status",
+        };
+        let redis_key = format!("rate_limit:{}:{}", nullifier_prefix, key);
+
         let current_time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_err(|e| e.to_string())?
@@ -249,7 +256,7 @@ impl AppState {
             local limit = tonumber(ARGV[1])
             local window_size = tonumber(ARGV[2])
             local current = tonumber(redis.call("GET", key) or "0")
-            
+
             if current < limit then
                 local new_count = redis.call("INCR", key)
                 if new_count == 1 then
@@ -404,7 +411,7 @@ impl AppState {
                 })?;
 
                 let wallet_with_chain = wallet.with_chain_id(chain_id.as_u32());
-                let plonk_verifier = IPLONKVerifier::new(airdrop_address, provider);
+                let plonk_verifier = IPLONKVerifier::new(airdrop_address, provider.clone());
 
                 if proof.proof.len() != 8 {
                     self.increment_failed_claims();
@@ -440,11 +447,57 @@ impl AppState {
                     )
                 })?;
 
+                let nonce = tokio::time::timeout(
+                    std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
+                    provider.get_transaction_count(wallet_with_chain.address(), None),
+                )
+                .await
+                .map_err(|_| {
+                    self.increment_failed_claims();
+                    format!(
+                        "Failed to get transaction nonce: timeout after {} seconds",
+                        RPC_TIMEOUT_SECONDS
+                    )
+                })?
+                .map_err(|e| {
+                    self.increment_failed_claims();
+                    format!("Failed to get transaction nonce: {}", e)
+                })?;
+
                 let mut retry_count = 0;
 
                 loop {
                     let call = plonk_verifier.claim(proof_array, nullifier_array, recipient);
-                    let builder = call.from(wallet_with_chain.address());
+
+                    let base_gas_price = tokio::time::timeout(
+                        std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
+                        provider.get_gas_price(),
+                    )
+                    .await
+                    .map_err(|_| {
+                        self.increment_failed_claims();
+                        format!(
+                            "Failed to get gas price: timeout after {} seconds",
+                            RPC_TIMEOUT_SECONDS
+                        )
+                    })?
+                    .map_err(|e| {
+                        self.increment_failed_claims();
+                        format!("Failed to get gas price: {}", e)
+                    })?;
+
+                    let gas_randomization_factor = self.config.relayer.gas_price_randomization;
+                    let random_factor =
+                        rand::thread_rng().gen_range(0.0..=gas_randomization_factor);
+                    let gas_price = ethers::types::U256::from(
+                        (base_gas_price.as_u128() as f64 * (1.0 + random_factor)) as u128,
+                    );
+
+                    let builder = call
+                        .from(wallet_with_chain.address())
+                        .nonce(nonce + retry_count as u64)
+                        .gas_price(gas_price);
+
                     let send_result = tokio::time::timeout(
                         std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
                         builder.send(),
@@ -590,15 +643,19 @@ impl AppState {
         let total_tokens_distributed = successful_claims
             .checked_mul(CLAIM_AMOUNT)
             .and_then(|v| v.checked_mul(1000))
-            .unwrap_or_else(|| {
-                tracing::warn!("Token distribution calculation overflow, using max value");
-                u64::MAX
-            });
+            .ok_or_else(|| {
+                tracing::error!("Token distribution calculation overflow");
+                anyhow::anyhow!("Token distribution calculation overflow")
+            })
+            .unwrap_or_else(|_| u64::MAX);
 
-        let total_gas_used = successful_claims.checked_mul(AVG_GAS).unwrap_or_else(|| {
-            tracing::warn!("Gas usage calculation overflow, using max value");
-            u64::MAX
-        });
+        let total_gas_used = successful_claims
+            .checked_mul(AVG_GAS)
+            .ok_or_else(|| {
+                tracing::error!("Gas usage calculation overflow");
+                anyhow::anyhow!("Gas usage calculation overflow")
+            })
+            .unwrap_or_else(|_| u64::MAX);
 
         StatsResponse {
             total_claims,

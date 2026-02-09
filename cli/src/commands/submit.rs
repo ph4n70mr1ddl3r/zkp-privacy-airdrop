@@ -41,6 +41,8 @@ pub async fn execute(
     let proof_content = std::fs::read_to_string(&proof_path)
         .with_context(|| format!("Failed to read proof file from {}", proof_path.display()))?;
 
+    use zeroize::Zeroize;
+
     let proof_data: ProofData = serde_json::from_str(&proof_content).with_context(|| {
         format!(
             "Failed to parse proof JSON from file {}",
@@ -48,7 +50,6 @@ pub async fn execute(
         )
     })?;
 
-    use zeroize::Zeroize;
     proof_content.zeroize();
 
     validate_proof_structure(&proof_data).context("Invalid proof structure")?;

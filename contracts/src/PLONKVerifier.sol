@@ -93,21 +93,29 @@ contract PLONKVerifier {
      * @dev Do NOT use this contract in production without implementing proper verification.
      *
      * REQUIRED PRODUCTION IMPLEMENTATION:
-     * 1. Generate verification key using snarkjs
-     * 2. Export verifier: snarkjs zkey export solidityverifier <zkey> verifier.sol
-     * 3. Replace this entire contract with the generated verifier
+     * 1. Generate verification key using snarkjs:
+     *    - Compile circuit: circom circuits/merkle_membership.circom --r1cs --wasm
+     *    - Generate powers of tau: snarkjs powersoftau new bn128 14 pot14_0000.ptau -v
+     *    - Contribute to ceremony: snarkjs powersoftau contribute pot14_0000.ptau pot14_0001.ptau -n="..." -e="-v"
+     *    - Prepare phase 2: snarkjs powersoftau prepare phase2 pot14_0001.ptau pot14_final.ptau -v
+     *    - Generate proving key: snarkjs groth16 setup merkle_membership.r1cs pot14_final.ptau merkle_membership_0000.zkey
+     *    - Export verification key: snarkjs zkey export solidityverifier merkle_membership_0000.zkey Verifier.sol
+     * 2. Deploy the generated verifier contract
+     * 3. Update the verifier address in PrivacyAirdropPLONK.sol
      *
      * The generated verifier will include:
-     * - Verification key constants
+     * - Verification key constants (IC, alpha, beta, gamma, etc.)
      * - Polynomial commitment verification
      * - Batch pairing checks
      * - Complete PLONK proof validation
+     *
+     * SECURITY: Never deploy with this placeholder implementation!
      */
     function _verifyPLONK(
         uint256[8] calldata _proof,
         uint256[3] calldata _instances
     ) internal pure returns (bool) {
-        revert("PLONK_VERIFIER_NOT_IMPLEMENTED: Replace with generated verifier before production use");
+        revert("PLONK_VERIFIER_NOT_IMPLEMENTED: Replace with generated verifier before production use. Generate using: snarkjs zkey export solidityverifier <zkey> verifier.sol");
     }
     
     /**

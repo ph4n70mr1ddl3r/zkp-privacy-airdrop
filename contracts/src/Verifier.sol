@@ -5,6 +5,18 @@ pragma solidity ^0.8.19;
  * @title Verifier
  * @notice Groth16 proof verifier contract for Merkle membership ZK proofs
  * @dev Implements elliptic curve pairing operations for proof verification
+ *
+ * SECURITY WARNING: This contract contains TEST VALUES and is not suitable for production!
+ *
+ * The P1() and P2() functions return hardcoded test values that must be replaced
+ * with actual Groth16 verification key constants generated from a trusted setup ceremony.
+ *
+ * To generate proper verification keys:
+ * 1. Compile the circuit: circom circuits/merkle_membership.circom --r1cs --wasm
+ * 2. Run trusted setup ceremony with multiple participants
+ * 3. Generate proving key: snarkjs groth16 setup merkle_membership.r1cs pot14_final.ptau merkle_membership_0000.zkey
+ * 4. Export verifier: snarkjs zkey export solidityverifier merkle_membership_0000.zkey Verifier.sol
+ * 5. Replace this contract with the generated Verifier.sol
  */
 contract Verifier {
     function verifyProof(

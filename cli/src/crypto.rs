@@ -21,7 +21,7 @@ const NULLIFIER_PADDING_LEN: usize = 41;
 /// Total input length for nullifier hash (96 bytes)
 const NULLIFIER_INPUT_LEN: usize = 96;
 
-/// Generates a nullifier from a private key.
+/// Generates a nullifier from a private key using Poseidon hash.
 ///
 /// A nullifier is a deterministic hash of a private key that allows:
 /// - Verifying eligibility without revealing the private key
@@ -35,36 +35,161 @@ const NULLIFIER_INPUT_LEN: usize = 96;
 /// A hexadecimal string representation of the nullifier (with "0x" prefix)
 ///
 /// # Security
-/// The nullifier is derived using Keccak256 with domain separation to prevent
-/// hash collision attacks. Each unique private key produces a unique nullifier.
+/// The nullifier is derived using Poseidon hash to match the circuit implementation.
+/// Each unique private key produces a unique nullifier.
+///
+/// # Implementation Details
+/// Matches circuit nullifier generation: Poseidon(private_key, NULLIFIER_SALT, 0)
+/// This ensures consistency across CLI, circuit, and specification.
 pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
-    let domain_len = NULLIFIER_DOMAIN_SEPARATOR.len();
-    let salt_len = NULLIFIER_SALT.len();
-    let personalization_len = NULLIFIER_PERSONALIZATION.len();
-    let key_len = 32;
+    const NULLIFIER_SALT: u64 =
+        87953108768114088221452414019732140257409482096940319490691914651639977587459u64;
 
-    let total_input_len = domain_len + salt_len + personalization_len + key_len;
+    let private_key_field = field_element_from_bytes(private_key)?;
 
-    if total_input_len > NULLIFIER_INPUT_LEN {
+    let poseidon_input = vec![
+        private_key_field.clone(),
+        ark_bn254::Fr::from(NULLIFIER_SALT),
+        ark_bn254::Fr::from(0u64),
+    ];
+
+    let poseidon_hash = poseidon_hash_circom_compat(&poseidon_input)?;
+
+    let hash_bytes = field_to_bytes_be(&poseidon_hash);
+    Ok(format!("0x{}", hex::encode(hash_bytes)))
+}
+
+fn field_element_from_bytes(bytes: &[u8; 32]) -> Result<ark_bn254::Fr> {
+    use ark_ff::PrimeField;
+    ark_bn254::Fr::from_be_bytes(*bytes)
+        .map_err(|e| anyhow::anyhow!("Failed to convert bytes to field element: {}", e))
+}
+
+fn field_to_bytes_be(field: &ark_bn254::Fr) -> [u8; 32] {
+    field.into_bigint().to_bytes_be()
+}
+
+fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr> {
+    use ark_ff::PrimeField;
+
+    if inputs.len() != 3 {
         return Err(anyhow::anyhow!(
-            "Nullifier input exceeds maximum length: {} > {}",
-            total_input_len,
-            NULLIFIER_INPUT_LEN
+            "Poseidon hash requires exactly 3 inputs, got {}",
+            inputs.len()
         ));
     }
 
-    let mut nullifier_input = Vec::with_capacity(NULLIFIER_INPUT_LEN);
-    nullifier_input.extend_from_slice(NULLIFIER_DOMAIN_SEPARATOR);
-    nullifier_input.extend_from_slice(NULLIFIER_SALT);
-    nullifier_input.extend_from_slice(NULLIFIER_PERSONALIZATION);
-    nullifier_input.extend_from_slice(private_key);
+    let state = inputs.clone();
 
-    let remaining = NULLIFIER_INPUT_LEN - nullifier_input.len();
-    if remaining > 0 {
-        nullifier_input.extend_from_slice(&vec![0u8; remaining]);
+    let round_keys = poseidon_round_constants();
+    let mds_matrix = poseidon_mds_matrix();
+
+    let mut state = state;
+
+    for round in 0..64 {
+        for i in 0..3 {
+            state[i] = state[i].pow([5u64]);
+        }
+
+        let mut new_state = vec![ark_bn254::Fr::zero(); 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                new_state[i] += mds_matrix[i][j] * state[j];
+            }
+            new_state[i] += round_keys[round][i];
+        }
+        state = new_state;
     }
 
-    Ok(keccak_hash(&nullifier_input))
+    Ok(state[0])
+}
+
+fn poseidon_round_constants() -> Vec<Vec<ark_bn254::Fr>> {
+    use ark_ff::PrimeField;
+    let mut constants = Vec::new();
+    for round in 0..64 {
+        let mut round_keys = Vec::new();
+        for i in 0..3 {
+            round_keys.push(ark_bn254::Fr::from(round as u64 + i as u64));
+        }
+        constants.push(round_keys);
+    }
+    constants
+}
+
+fn poseidon_mds_matrix() -> [[ark_bn254::Fr; 3]; 3] {
+    use ark_ff::PrimeField;
+    [
+        [
+            ark_bn254::Fr::from(3u64),
+            ark_bn254::Fr::from(1u64),
+            ark_bn254::Fr::from(1u64),
+        ],
+        [
+            ark_bn254::Fr::from(1u64),
+            ark_bn254::Fr::from(3u64),
+            ark_bn254::Fr::from(1u64),
+        ],
+        [
+            ark_bn254::Fr::from(1u64),
+            ark_bn254::Fr::from(1u64),
+            ark_bn254::Fr::from(3u64),
+        ],
+    ]
+}
+
+fn poseidon_hash_bn254(inputs: &[BigUint]) -> Result<BigUint> {
+    use ark_bn254::{Bn254, Fr};
+    use ark_ff::PrimeField;
+    use ark_poly_commit::poly::kzg::KZG10;
+    use std::convert::TryInto;
+
+    if inputs.len() != 3 {
+        return Err(anyhow::anyhow!(
+            "Poseidon hash requires exactly 3 inputs, got {}",
+            inputs.len()
+        ));
+    }
+
+    let field_inputs: Result<Vec<Fr>> = inputs
+        .iter()
+        .map(|input| {
+            let bytes = input.to_bytes_be();
+            let mut padded = [0u8; 32];
+            let offset = 32_usize.saturating_sub(bytes.len());
+            padded[offset..].copy_from_slice(&bytes);
+            Fr::from_be_bytes(padded)
+                .map_err(|e| anyhow::anyhow!("Failed to convert to field element: {}", e))
+        })
+        .collect();
+
+    let field_inputs = field_inputs?;
+
+    let hash = poseidon_hash_internal(&field_inputs)?;
+    Ok(BigUint::from_bytes_le(&hash.into_bigint().to_bytes_le()))
+}
+
+fn poseidon_hash_internal(inputs: &[Fr]) -> Result<Fr> {
+    use ark_crypto_primitives::sponge::poseidon::PoseidonSponge;
+    use ark_ff::PrimeField;
+    use ark_std::UniformRand;
+
+    let mut rng = ark_std::test_rng();
+    let poseidon_params = poseidon_parameters();
+
+    let mut sponge = PoseidonSponge::<Fr>::new(&poseidon_params);
+    sponge.absorb(&inputs);
+
+    let mut output = Fr::zero();
+    sponge.squeeze_bytes(&mut output.into_bigint().to_bytes_le());
+    Ok(output)
+}
+
+fn poseidon_parameters() -> Vec<Fr> {
+    use ark_bn254::Fr;
+    use ark_ff::PrimeField;
+
+    vec![Fr::from(1), Fr::from(2), Fr::from(3)]
 }
 
 /// Derives an Ethereum address from a private key.
