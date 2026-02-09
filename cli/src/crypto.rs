@@ -8,13 +8,35 @@ use std::path::PathBuf;
 
 use crate::types::ProofData;
 
+/// Domain separator for nullifier generation to prevent cross-context attacks
 const NULLIFIER_DOMAIN_SEPARATOR: &[u8] = b"ZKP_AIRDROP_NULLIFIER_V1";
+/// Salt to add randomness to nullifier generation
 const NULLIFIER_SALT: &[u8] = b"SALT_2024_SECURE";
+/// Personalization string for cryptographic hash function
 const NULLIFIER_PERSONALIZATION: &[u8] = b"ZKP_NULLIFIER_PERSONALIZATION";
+/// Standard Ethereum private key length in bytes
 const PRIVATE_KEY_LEN: usize = 32;
+/// Padding length for nullifier input to reach 96 bytes
 const NULLIFIER_PADDING_LEN: usize = 41;
+/// Total input length for nullifier hash (96 bytes)
 const NULLIFIER_INPUT_LEN: usize = 96;
 
+/// Generates a nullifier from a private key.
+///
+/// A nullifier is a deterministic hash of a private key that allows:
+/// - Verifying eligibility without revealing the private key
+/// - Ensuring each address can only claim once
+/// - Maintaining privacy by nullifiers being one-way
+///
+/// # Arguments
+/// * `private_key` - The 32-byte Ethereum private key
+///
+/// # Returns
+/// A hexadecimal string representation of the nullifier (with "0x" prefix)
+///
+/// # Security
+/// The nullifier is derived using Keccak256 with domain separation to prevent
+/// hash collision attacks. Each unique private key produces a unique nullifier.
 pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
     let mut nullifier_input = Vec::with_capacity(NULLIFIER_INPUT_LEN);
     nullifier_input.extend_from_slice(NULLIFIER_DOMAIN_SEPARATOR);
@@ -40,6 +62,21 @@ pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
     Ok(keccak_hash(&nullifier_input))
 }
 
+/// Derives an Ethereum address from a private key.
+///
+/// This follows the standard Ethereum address derivation:
+/// 1. Derive public key from private key using secp256k1
+/// 2. Keccak256 hash the uncompressed public key (excluding first byte)
+/// 3. Take last 20 bytes as the address
+///
+/// # Arguments
+/// * `private_key` - The 32-byte Ethereum private key
+///
+/// # Returns
+/// The derived Ethereum address
+///
+/// # Errors
+/// Returns an error if the private key is invalid
 pub fn derive_address(private_key: &[u8; 32]) -> Result<Address> {
     let secret_key = SecretKey::from_slice(private_key).context("Invalid private key")?;
 
@@ -52,6 +89,32 @@ pub fn derive_address(private_key: &[u8; 32]) -> Result<Address> {
     Address::from_slice(address_bytes).context("Failed to derive address")
 }
 
+/// Reads a private key from multiple possible sources.
+///
+/// Supports multiple input methods with the following priority:
+/// 1. `private_key_opt` - Direct key string
+/// 2. `private_key_file` - Path to file containing key
+/// 3. `private_key_stdin` - Read from stdin
+/// 4. `ZKP_AIRDROP_PRIVATE_KEY` environment variable
+///
+/// # Arguments
+/// * `private_key_opt` - Optional direct private key string
+/// * `private_key_file` - Optional path to file containing key
+/// * `private_key_stdin` - If true, read key from stdin
+///
+/// # Returns
+/// The decoded private key as a byte vector
+///
+/// # Security
+/// - Keys are zeroized from memory after use
+/// - Supports both "0x" prefix and raw hex format
+/// - Validates hex encoding
+///
+/// # Errors
+/// Returns an error if:
+/// - No key source is provided
+/// - Hex decoding fails
+/// - File reading fails
 pub fn read_private_key(
     private_key_opt: Option<String>,
     private_key_file: Option<PathBuf>,
@@ -102,6 +165,21 @@ pub fn read_private_key(
     Ok(key_bytes)
 }
 
+/// Validates an Ethereum address.
+///
+/// Checks that the address:
+/// - Is a valid hex string
+/// - Can be parsed as an Ethereum address
+/// - Optionally warns on checksum mismatch (non-fatal)
+///
+/// # Arguments
+/// * `address` - The address string to validate
+///
+/// # Returns
+/// The parsed Address if valid
+///
+/// # Errors
+/// Returns an error if address format is invalid
 pub fn validate_address(address: &str) -> Result<Address> {
     let addr: Address = address
         .parse::<Address>()
@@ -119,6 +197,18 @@ pub fn validate_address(address: &str) -> Result<Address> {
     Ok(addr)
 }
 
+/// Validates a nullifier string format.
+///
+/// Checks that nullifier:
+/// - Is exactly 66 characters (0x + 64 hex chars)
+/// - Starts with "0x" or "0X"
+/// - Contains valid hexadecimal characters
+///
+/// # Arguments
+/// * `nullifier` - The nullifier string to validate
+///
+/// # Errors
+/// Returns an error if nullifier format is invalid
 pub fn validate_nullifier(nullifier: &str) -> Result<()> {
     if nullifier.len() != 66 {
         return Err(anyhow::anyhow!(
@@ -138,6 +228,19 @@ pub fn validate_nullifier(nullifier: &str) -> Result<()> {
     Ok(())
 }
 
+/// Validates a Merkle root hash format.
+///
+/// Checks that merkle_root:
+/// - Is exactly 66 characters (0x + 64 hex chars)
+/// - Starts with "0x" or "0X"
+/// - Contains valid hexadecimal characters
+/// - Decodes to exactly 32 bytes
+///
+/// # Arguments
+/// * `merkle_root` - The Merkle root string to validate
+///
+/// # Errors
+/// Returns an error if merkle_root format is invalid
 pub fn validate_merkle_root(merkle_root: &str) -> Result<()> {
     if merkle_root.len() != 66 {
         return Err(anyhow::anyhow!(

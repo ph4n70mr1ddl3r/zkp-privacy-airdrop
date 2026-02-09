@@ -152,16 +152,28 @@ pub async fn submit_claim(
     }
 
     // Check if already claimed
-    if state.is_nullifier_used(&claim.nullifier).await {
-        warn!("Nullifier already claimed: {}", claim.nullifier);
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            success: false,
-            error:
-                "This nullifier has already been used. Each qualified account can only claim once."
-                    .to_string(),
-            code: Some("ALREADY_CLAIMED".to_string()),
-            retry_after: None,
-        });
+    match state.is_nullifier_used(&claim.nullifier).await {
+        Ok(true) => {
+            warn!("Nullifier already claimed: {}", claim.nullifier);
+            return HttpResponse::BadRequest().json(ErrorResponse {
+                success: false,
+                error:
+                    "This nullifier has already been used. Each qualified account can only claim once."
+                        .to_string(),
+                code: Some("ALREADY_CLAIMED".to_string()),
+                retry_after: None,
+            });
+        }
+        Err(e) => {
+            error!("Failed to check nullifier status: {}", e);
+            return HttpResponse::InternalServerError().json(ErrorResponse {
+                success: false,
+                error: "Internal error checking nullifier status".to_string(),
+                code: Some("INTERNAL_ERROR".to_string()),
+                retry_after: Some(60),
+            });
+        }
+        _ => {}
     }
 
     if !claim.proof.is_valid_structure() {
@@ -227,6 +239,15 @@ pub async fn submit_claim(
             })
         }
         Err(e) => {
+            if e.contains("already been used") {
+                warn!("Nullifier already claimed: {}", claim.nullifier);
+                return HttpResponse::BadRequest().json(ErrorResponse {
+                    success: false,
+                    error: e,
+                    code: Some("ALREADY_CLAIMED".to_string()),
+                    retry_after: None,
+                });
+            }
             error!("Failed to submit claim: {} - Error: {}", claim.nullifier, e);
             HttpResponse::InternalServerError().json(ErrorResponse {
                 success: false,

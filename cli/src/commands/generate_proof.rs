@@ -21,8 +21,8 @@ pub async fn execute(
     info!("Generating proof...");
 
     let private_key_bytes = read_private_key(private_key_opt, private_key_file, private_key_stdin)?;
-    let mut private_key = [0u8; 32];
-    private_key.copy_from_slice(&private_key_bytes);
+    let private_key: [u8; 32] = private_key_bytes.try_into()
+        .map_err(|e| anyhow::anyhow!("Invalid private key length: expected 32 bytes, got {} bytes", e.len()))?;
     private_key_bytes.zeroize();
 
     let address =

@@ -10,6 +10,10 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+const RPC_TIMEOUT_SECONDS: u64 = 10;
+const RPC_HEALTH_CHECK_TIMEOUT_SECONDS: u64 = 5;
+const RATE_LIMIT_WINDOW_SECONDS: u64 = 120;
+
 pub struct AppState {
     pub config: Arc<Config>,
     pub db: PgPool,
@@ -91,10 +95,19 @@ impl AppState {
             }
         };
 
-        match provider.get_balance(address, None).await {
-            Ok(balance) => balance.as_u128(),
-            Err(e) => {
+        let balance_result = tokio::time::timeout(
+            std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
+            provider.get_balance(address, None)
+        ).await;
+
+        match balance_result {
+            Ok(Ok(balance)) => balance.as_u128(),
+            Ok(Err(e)) => {
                 tracing::warn!("Failed to query balance from RPC: {}, using fallback", e);
+                0
+            }
+            Err(_) => {
+                tracing::warn!("RPC query timed out after 10 seconds, using fallback");
                 0
             }
         }
@@ -156,7 +169,15 @@ impl AppState {
     async fn check_rpc_connection(&self) -> bool {
         use ethers::providers::Provider;
         match Provider::<Http>::try_from(self.config.network.rpc_url.as_str()) {
-            Ok(provider) => provider.get_block_number().await.is_ok(),
+            Ok(provider) => {
+                tokio::time::timeout(
+                    std::time::Duration::from_secs(RPC_HEALTH_CHECK_TIMEOUT_SECONDS),
+                    provider.get_block_number()
+                ).await
+                .ok()
+                .and_then(|r| r.ok())
+                .is_some()
+            },
             Err(_) => false,
         }
     }
@@ -205,7 +226,7 @@ impl AppState {
         let result: (bool, u64) = script
             .key(&count_key)
             .arg(limit)
-            .arg(120)
+            .arg(RATE_LIMIT_WINDOW_SECONDS)
             .invoke_async(&mut *redis)
             .await
             .map_err(|e| e.to_string())?;
@@ -217,7 +238,7 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn is_nullifier_used(&self, nullifier: &str) -> bool {
+    pub async fn is_nullifier_used(&self, nullifier: &str) -> Result<bool, String> {
         use redis::AsyncCommands;
 
         let key = format!("nullifier:{}", nullifier);
@@ -227,9 +248,9 @@ impl AppState {
             .exists::<_, i64>(&key)
             .await
             .map(|count| count > 0)
-            .unwrap_or_else(|e| {
+            .map_err(|e| {
                 tracing::error!("Failed to check nullifier existence in Redis: {}", e);
-                false
+                format!("Redis error: {}", e)
             })
     }
 
@@ -304,13 +325,19 @@ impl AppState {
                 e.to_string()
             })?;
 
-        redis
-            .set::<_, _, ()>(&key, &claim.recipient)
+        let set_result: bool = redis
+            .set_nx::<_, _, bool>(&key, &claim.recipient)
             .await
             .map_err(|e| {
                 self.increment_failed_claims();
                 e.to_string()
             })?;
+
+        if !set_result {
+            self.increment_failed_claims();
+            drop(redis);
+            return Err("This nullifier has already been used. Each qualified account can only claim once.".to_string());
+        }
 
         {
             let mut stats = self.stats.write();

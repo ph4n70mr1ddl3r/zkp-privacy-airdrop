@@ -10,6 +10,10 @@ use crate::config::Config;
 use crate::crypto::{validate_address, validate_merkle_root, validate_nullifier};
 use crate::types_plonk::{Proof, ProofData, SubmitClaimRequest, SubmitClaimResponse};
 
+const HTTP_TIMEOUT_SECONDS: u64 = 30;
+const MAX_RETRY_AFTER_SECONDS: u64 = 86400;
+const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
+
 pub async fn execute(
     proof_path: PathBuf,
     relayer_url_opt: Option<String>,
@@ -81,8 +85,6 @@ pub async fn execute(
         }
     );
 
-    const HTTP_TIMEOUT_SECONDS: u64 = 30;
-
     let client = Client::builder()
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))
         .build()
@@ -108,13 +110,10 @@ pub async fn execute(
         serde_json::from_str(&response_text).context("Failed to parse response JSON")?;
 
     if !status.is_success() {
-        println!(
-            "\n{} {}",
-            "Error:".red(),
-            submit_response
-                .error
-                .unwrap_or_else(|| "Unknown error".to_string())
-        );
+        let error_msg = submit_response
+            .error
+            .unwrap_or_else(|| "Unknown error".to_string());
+        println!("\n{} {}", "Error:".red(), error_msg);
 
         if let Some(code) = &submit_response.code {
             match code.as_str() {
@@ -122,8 +121,7 @@ pub async fn execute(
                     if let Some(retry_after) = response.headers().get("Retry-After") {
                         if let Ok(seconds_str) = retry_after.to_str() {
                             if let Ok(secs) = seconds_str.parse::<u64>() {
-                                const MAX_RETRY_AFTER: u64 = 86400;
-                                if secs > MAX_RETRY_AFTER {
+                                if secs > MAX_RETRY_AFTER_SECONDS {
                                     tracing::warn!("Suspicious Retry-After value: {}", secs);
                                 } else {
                                     println!("{} Try again in {} seconds.", "Note:".yellow(), secs);
@@ -161,10 +159,12 @@ pub async fn execute(
                         "Info:".blue()
                     );
                 }
-                _ => {}
+                _ => {
+                    tracing::warn!("Unhandled error code: {}", code);
+                }
             }
         }
-        return Ok(());
+        return Err(anyhow::anyhow!("Relayer returned error: {} (code: {:?})", error_msg, submit_response.code));
     }
 
     println!(
@@ -190,7 +190,7 @@ pub async fn execute(
             let mut confirmed = false;
 
             while start.elapsed().as_secs() < timeout {
-                sleep(Duration::from_secs(5)).await;
+                sleep(Duration::from_secs(TRANSACTION_CHECK_INTERVAL_SECONDS)).await;
                 print!(".");
                 std::io::stdout().flush()?;
 

@@ -7,7 +7,7 @@ mod state;
 mod types_plonk;
 
 use actix_web::http::header::HeaderName;
-use actix_web::{middleware, web, App, HttpServer};
+use actix_web::{middleware, web, App, HttpServer, HttpResponse};
 use std::sync::Arc;
 use tokio::signal;
 use tracing::info;
@@ -44,6 +44,21 @@ async fn main() -> anyhow::Result<()> {
             .wrap(middleware::Logger::default())
             .wrap(middleware::Compress::default())
             .wrap(middleware::NormalizePath::trim())
+            .app_data(
+                web::JsonConfig::default()
+                    .limit(1024 * 1024)
+                    .error_handler(|err, _| {
+                        actix_web::error::InternalError::from_response(
+                            err,
+                            HttpResponse::PayloadTooLarge().json(serde_json::json!({
+                                "success": false,
+                                "error": "Request payload too large. Maximum size is 1MB.",
+                                "code": "PAYLOAD_TOO_LARGE"
+                            })),
+                        )
+                        .into()
+                    })
+            )
             .wrap({
                 let allowed_origins = Arc::clone(&allowed_origins);
                 actix_cors::Cors::default()
