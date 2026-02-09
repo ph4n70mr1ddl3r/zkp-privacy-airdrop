@@ -1,6 +1,10 @@
 use ethers::contract::abigen;
 use serde::{Deserialize, Serialize};
 
+const MAX_PROOF_SIZE: usize = 8;
+const MAX_ELEMENT_LENGTH: usize = 78;
+const MAX_PROOF_BYTES: usize = MAX_PROOF_SIZE * MAX_ELEMENT_LENGTH;
+
 abigen!(
     IPLONKVerifier,
     r#"[
@@ -67,15 +71,19 @@ impl Proof {
                 valid_a && valid_c && valid_b
             }
             Proof::Plonk(ref proof) => {
-                const MAX_PROOF_SIZE: usize = 100;
-                const MIN_PROOF_SIZE: usize = 8;
-                let size_ok =
-                    proof.proof.len() >= MIN_PROOF_SIZE && proof.proof.len() <= MAX_PROOF_SIZE;
-                let content_ok = proof
-                    .proof
-                    .iter()
-                    .all(|s| !s.is_empty() && s.len() < 1000 && is_valid_field_element(s));
-                size_ok && content_ok
+                if proof.proof.len() != MAX_PROOF_SIZE {
+                    return false;
+                }
+
+                let total_bytes: usize = proof.proof.iter().map(|s| s.len()).sum();
+                if total_bytes > MAX_PROOF_BYTES {
+                    return false;
+                }
+
+                let content_ok = proof.proof.iter().all(|s| {
+                    !s.is_empty() && s.len() <= MAX_ELEMENT_LENGTH && is_valid_field_element(s)
+                });
+                content_ok
             }
         }
     }
@@ -205,6 +213,7 @@ pub struct Services {
     pub redis: String,
     pub optimism_node: String,
     pub relayer_wallet: RelayerWalletInfo,
+    pub merkle_tree: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -132,8 +132,9 @@ impl AppState {
         let db_healthy = self.check_db_connection().await;
         let redis_healthy = self.check_redis_connection().await;
         let balance_healthy = self.has_sufficient_balance().await;
+        let merkle_tree_healthy = self.check_merkle_tree().await;
 
-        db_healthy && redis_healthy && balance_healthy
+        db_healthy && redis_healthy && balance_healthy && merkle_tree_healthy
     }
 
     pub async fn check_db_connection(&self) -> bool {
@@ -183,6 +184,34 @@ impl AppState {
             .is_some(),
             Err(_) => false,
         }
+    }
+
+    pub async fn check_merkle_tree(&self) -> bool {
+        let root = &self.config.merkle_tree.merkle_root;
+        if root.is_empty() {
+            tracing::error!("Merkle tree root is empty");
+            return false;
+        }
+
+        if !root.starts_with("0x") {
+            tracing::error!("Merkle tree root must start with 0x");
+            return false;
+        }
+
+        match hex::decode(&root[2..]) {
+            Ok(bytes) => {
+                if bytes.len() != 32 {
+                    tracing::error!("Merkle tree root must be 32 bytes, got {}", bytes.len());
+                    return false;
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to decode merkle tree root: {}", e);
+                return false;
+            }
+        }
+
+        true
     }
 
     pub async fn check_rate_limit(
@@ -306,18 +335,37 @@ impl AppState {
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
-        // Atomic check-and-set: set_nx only sets the key if it doesn't exist
-        // This prevents race conditions where multiple claims with the same nullifier
-        // could be processed simultaneously
-        let set_result: bool = redis
-            .set_nx::<_, _, bool>(&key, &claim.recipient)
+        // Use Redis Lua script for atomic check-and-set to prevent race conditions
+        use redis::Script;
+        let lua_script = r#"
+            local key = KEYS[1]
+            local recipient = ARGV[1]
+            
+            -- Check if key exists
+            local existing = redis.call("GET", key)
+            
+            -- If key doesn't exist, set it atomically
+            if not existing then
+                redis.call("SET", key, recipient)
+                redis.call("EXPIRE", key, 31536000) -- 1 year expiry
+                return 1 -- Success
+            else
+                return 0 -- Already exists
+            end
+        "#;
+
+        let script = Script::new(lua_script);
+        let result: u32 = script
+            .key(&key)
+            .arg(&claim.recipient)
+            .invoke_async(&mut *redis)
             .await
             .map_err(|e| {
                 self.increment_failed_claims();
-                e.to_string()
+                format!("Redis error during nullifier check: {}", e)
             })?;
 
-        if !set_result {
+        if result != 1 {
             self.increment_failed_claims();
             drop(redis);
             return Err(
@@ -349,14 +397,31 @@ impl AppState {
 
                 let wallet_with_chain = wallet.with_chain_id(chain_id.as_u32());
                 let plonk_verifier = IPLONKVerifier::new(airdrop_address, provider);
+
+                if proof.proof.len() != 8 {
+                    self.increment_failed_claims();
+                    return Err(format!(
+                        "Invalid PLONK proof: expected 8 elements, got {}",
+                        proof.proof.len()
+                    ));
+                }
+
                 let proof_array: [ethers::types::U256; 8] = proof
                     .proof
                     .iter()
-                    .take(8)
-                    .map(|s| ethers::types::U256::from_dec_str(s).unwrap_or_default())
-                    .collect::<Vec<_>>()
+                    .enumerate()
+                    .map(|(i, s)| {
+                        ethers::types::U256::from_dec_str(s).map_err(|e| {
+                            format!("Invalid proof element at index {}: '{}': {}", i, s, e)
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| {
+                        self.increment_failed_claims();
+                        e
+                    })?
                     .try_into()
-                    .unwrap_or_default();
+                    .unwrap();
 
                 let mut retry_count = 0;
 

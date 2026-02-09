@@ -249,11 +249,13 @@ impl Config {
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()
                 .unwrap_or(8080),
-            database_url: std::env::var("DATABASE_URL").unwrap_or_else(|_| "".to_string()),
-            redis_url: std::env::var("REDIS_URL").unwrap_or_else(|_| "".to_string()),
+            database_url: std::env::var("DATABASE_URL")
+                .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?,
+            redis_url: std::env::var("REDIS_URL")
+                .map_err(|_| anyhow::anyhow!("REDIS_URL is required"))?,
             network: NetworkConfig {
                 rpc_url: std::env::var("RPC_URL")
-                    .unwrap_or_else(|_| "https://optimism.drpc.org".to_string()),
+                    .map_err(|_| anyhow::anyhow!("RPC_URL is required"))?,
                 chain_id: std::env::var("CHAIN_ID")
                     .unwrap_or_else(|_| "10".to_string())
                     .parse()

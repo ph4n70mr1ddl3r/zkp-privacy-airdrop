@@ -107,6 +107,7 @@ pub async fn health(state: web::Data<AppState>) -> impl Responder {
                         balance: "0".to_string(),
                         sufficient: false,
                     },
+                    merkle_tree: "unknown".to_string(),
                 },
             });
         }
@@ -120,6 +121,11 @@ pub async fn health(state: web::Data<AppState>) -> impl Responder {
             address: relayer_address,
             balance: state.get_relayer_balance().await.to_string(),
             sufficient: state.has_sufficient_balance().await,
+        },
+        merkle_tree: if state.check_merkle_tree().await {
+            "valid".to_string()
+        } else {
+            "invalid".to_string()
         },
     };
 

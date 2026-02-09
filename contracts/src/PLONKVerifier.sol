@@ -10,12 +10,30 @@ contract PLONKVerifier {
     // Verification key parameters
     // These would be generated during setup
     uint256 internal constant PRIME_Q = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
-    
+
     // Circuit public inputs: [merkle_root, recipient, nullifier]
     // All are field elements in BN128 scalar field
-    
+
     uint256[8] public proof_commitments;
     uint256[9] public instances;
+
+    // Events for debugging and monitoring
+    event ProofVerified(
+        uint256 indexed nullifier,
+        address indexed recipient,
+        bytes32 merkleRoot,
+        uint256[8] proof,
+        uint256[9] instances,
+        uint256 timestamp
+    );
+
+    event ProofFailed(
+        uint256 indexed nullifier,
+        address indexed recipient,
+        bytes32 merkleRoot,
+        string reason,
+        uint256 timestamp
+    );
     
     /**
      * @notice Verify a PLONK proof
@@ -26,7 +44,7 @@ contract PLONKVerifier {
     function verifyProof(
         uint256[8] calldata _proof,
         uint256[3] calldata _instances
-    ) public view returns (bool) {
+    ) public returns (bool) {
         // Store for verification
         proof_commitments = _proof;
         instances = [
@@ -53,7 +71,19 @@ contract PLONKVerifier {
         // The actual verification key would be deployed as constants
         // or read from storage for smaller deployment cost
 
-        return _verifyPLONK(_proof, _instances);
+        bool valid = _verifyPLONK(_proof, _instances);
+        bytes32 merkleRoot = bytes32(_instances[0]);
+        address recipient = address(uint160(_instances[1]));
+        uint256 nullifier = _instances[2];
+        uint256 timestamp = block.timestamp;
+
+        if (valid) {
+            emit ProofVerified(nullifier, recipient, merkleRoot, _proof, instances, timestamp);
+        } else {
+            emit ProofFailed(nullifier, recipient, merkleRoot, "PLONK proof verification failed", timestamp);
+        }
+
+        return valid;
     }
     
     /**
@@ -79,8 +109,23 @@ contract PLONKVerifier {
         uint256[3] calldata _instances
     ) internal pure returns (bool) {
         // SECURITY WARNING: Placeholder verification - NOT SECURE!
-        // Rejecting all proofs until proper PLONK verification is implemented
-        revert("PLONK verification not yet implemented. Please generate proper verifier using snarkjs.");
+        // This function currently returns false for all proofs.
+        // Proper PLONK verification must be implemented before production use.
+        //
+        // Real implementation must:
+        // 1. Compute Lagrange basis evaluations
+        // 2. Verify polynomial commitments
+        // 3. Check linearization polynomial
+        // 4. Verify quotient polynomial
+        // 5. Perform batch pairing checks using verification key
+        //
+        // Use snarkjs plonk verifier command to generate actual verification code
+        // Implementation steps:
+        // - Run: snarkjs zkey contribute <verification_key> <contribution>
+        // - Generate verifier: snarkjs zkey export solidityverifier <zkey> verifier.sol
+        // - Replace this function with the generated verifier
+
+        return false;
     }
     
     /**
@@ -98,11 +143,4 @@ contract PLONKVerifier {
     function getProofElementCount() public pure returns (uint256) {
         return 8;
     }
-    
-    // Events for debugging
-    event ProofVerified(
-        uint256[8] proof,
-        uint256[9] instances,
-        bool valid
-    );
 }
