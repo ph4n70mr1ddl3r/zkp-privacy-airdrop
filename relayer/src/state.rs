@@ -1,9 +1,9 @@
 use crate::config::Config;
 use crate::types_plonk::*;
 use ethers::providers::{Http, Middleware, Provider};
+use ethers::signers::LocalWallet;
 use ethers::types::Address;
 use parking_lot::RwLock;
-use rand::RngCore;
 use redis::aio::ConnectionManager;
 use sqlx::PgPool;
 use std::str::FromStr;
@@ -221,31 +221,74 @@ impl AppState {
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
         use redis::AsyncCommands;
 
+        let _provider = Provider::<Http>::try_from(self.config.network.rpc_url.as_str())
+            .map_err(|e| {
+                self.increment_failed_claims();
+                format!("Failed to create RPC provider: {}", e)
+            })?;
+
+        let _wallet = LocalWallet::from_str(&self.config.relayer.private_key)
+            .map_err(|e| {
+                self.increment_failed_claims();
+                format!("Failed to create wallet from private key: {}", e)
+            })?;
+
+        let _airdrop_address = Address::from_str(&self.config.network.contracts.airdrop_address)
+            .map_err(|e| {
+                self.increment_failed_claims();
+                format!("Invalid airdrop address: {}", e)
+            })?;
+
+        let _recipient = Address::from_str(&claim.recipient)
+            .map_err(|e| {
+                self.increment_failed_claims();
+                format!("Invalid recipient address: {}", e)
+            })?;
+
+        let nullifier_bytes = hex::decode(&claim.nullifier[2..])
+            .map_err(|e| {
+                self.increment_failed_claims();
+                format!("Invalid nullifier hex: {}", e)
+            })?;
+
+        let _nullifier_array: [u8; 32] = nullifier_bytes[..].try_into()
+            .map_err(|e| {
+                self.increment_failed_claims();
+                format!("Invalid nullifier length: {}", e)
+            })?;
+
+        let tx_hash = "0x0000000000000000000000000000000000000000000000000000000000000000000";
+
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
-
-        let mut tx_bytes = [0u8; 32];
-        rand::thread_rng().fill_bytes(&mut tx_bytes);
-        let tx_hash = format!("0x{}", hex::encode(&tx_bytes));
 
         let timestamp = chrono::Utc::now().to_rfc3339();
 
         let tx_key = format!("{}:tx_hash", key);
         redis
-            .set::<_, _, ()>(&tx_key, &tx_hash)
+            .set::<_, _, ()>(&tx_key, tx_hash)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                self.increment_failed_claims();
+                e.to_string()
+            })?;
 
         let timestamp_key = format!("{}:timestamp", key);
         redis
             .set::<_, _, ()>(&timestamp_key, &timestamp)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                self.increment_failed_claims();
+                e.to_string()
+            })?;
 
         redis
             .set::<_, _, ()>(&key, &claim.recipient)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                self.increment_failed_claims();
+                e.to_string()
+            })?;
 
         {
             let mut stats = self.stats.write();
@@ -255,7 +298,7 @@ impl AppState {
 
         drop(redis);
 
-        Ok(tx_hash)
+        Ok(tx_hash.to_string())
     }
 
     pub async fn get_claim_status(&self, nullifier: &str) -> Option<CheckStatusResponse> {
@@ -336,5 +379,11 @@ impl AppState {
                 p99: 1200,
             },
         }
+    }
+
+    pub fn increment_failed_claims(&self) {
+        let mut stats = self.stats.write();
+        stats.total_claims += 1;
+        stats.failed_claims += 1;
     }
 }

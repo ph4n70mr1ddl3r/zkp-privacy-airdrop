@@ -8,6 +8,11 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  * @notice Privacy-preserving ERC20 token airdrop using PLONK ZK proofs
  * @dev Allows users to claim tokens without revealing their address from the Merkle tree
  * Uses universal trusted setup (Perpetual Powers of Tau) instead of per-circuit trusted setup
+ *
+ * TODO: Consider refactoring to use a base contract pattern with PrivacyAirdrop.sol
+ * to reduce code duplication. Both contracts share similar logic for constructor validation,
+ * claim checks, and token transfer. The main difference is the proof verification step
+ * (PLONK vs Groth16).
  */
 contract PrivacyAirdropPLONK is ReentrancyGuard {
     bytes32 public immutable merkleRoot;
@@ -65,7 +70,7 @@ contract PrivacyAirdropPLONK is ReentrancyGuard {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant {
-        require(block.timestamp < claimDeadline, "Claim period ended");
+        require(block.timestamp <= claimDeadline, "Claim period ended");
         require(recipient != address(0), "Invalid recipient");
         require(!nullifiers[nullifier], "Already claimed");
 
@@ -80,12 +85,12 @@ contract PrivacyAirdropPLONK is ReentrancyGuard {
             "Invalid proof"
         );
 
-        nullifiers[nullifier] = true;
-
         (bool success, bytes memory data) = address(token).call(
             abi.encodeWithSelector(IERC20.transfer.selector, recipient, claimAmount)
         );
         require(success && (data.length == 0 || abi.decode(data, (bool))), "Token transfer failed");
+
+        nullifiers[nullifier] = true;
 
         emit Claimed(nullifier, recipient, block.timestamp);
     }

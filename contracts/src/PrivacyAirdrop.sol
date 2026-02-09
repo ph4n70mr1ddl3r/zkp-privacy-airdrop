@@ -28,6 +28,11 @@ interface IVerifier {
  * @title PrivacyAirdrop
  * @notice Privacy-preserving ERC20 token airdrop using Groth16 ZK proofs
  * @dev Allows users to claim tokens without revealing their address from the Merkle tree
+ *
+ * TODO: Consider refactoring to use a base contract pattern with PrivacyAirdropPLONK.sol
+ * to reduce code duplication. Both contracts share similar logic for constructor validation,
+ * claim checks, and token transfer. The main difference is the proof verification step
+ * (Groth16 vs PLONK).
  */
 contract PrivacyAirdrop is ReentrancyGuard {
     bytes32 public immutable merkleRoot;
@@ -84,7 +89,7 @@ contract PrivacyAirdrop is ReentrancyGuard {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant {
-        require(block.timestamp < claimDeadline, "Claim period ended");
+        require(block.timestamp <= claimDeadline, "Claim period ended");
         require(recipient != address(0), "Invalid recipient");
         require(!nullifiers[nullifier], "Already claimed");
 
@@ -96,12 +101,12 @@ contract PrivacyAirdrop is ReentrancyGuard {
 
         require(verifier.verifyProof(proof.a, proof.b, proof.c, publicSignals), "Invalid proof");
 
-        nullifiers[nullifier] = true;
-
         (bool success, bytes memory data) = address(token).call(
             abi.encodeWithSelector(IERC20.transfer.selector, recipient, claimAmount)
         );
         require(success && (data.length == 0 || abi.decode(data, (bool))), "Token transfer failed");
+
+        nullifiers[nullifier] = true;
 
         emit Claimed(nullifier, recipient, block.timestamp);
     }

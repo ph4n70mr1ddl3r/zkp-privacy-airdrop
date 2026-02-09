@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 interface IRelayerRegistry {
     function authorizeRelayer(address relayer) external;
@@ -12,8 +13,7 @@ interface IRelayerRegistry {
     function defaultRelayer() external view returns (address);
 }
 
-contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard {
-    address public owner;
+contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     address public defaultRelayer;
     mapping(address => bool) public authorizedRelayers;
     mapping(address => uint256) public relayerBalances;
@@ -21,11 +21,6 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard {
     event RelayerAuthorized(address indexed relayer);
     event DonationReceived(address indexed donor, uint256 amount);
     event FundsWithdrawn(address indexed relayer, uint256 amount);
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
-        _;
-    }
 
     modifier onlyAuthorized() {
         require(authorizedRelayers[msg.sender], "Not authorized");
@@ -37,8 +32,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard {
         _;
     }
 
-    constructor(address _defaultRelayer) {
-        owner = msg.sender;
+    constructor(address _defaultRelayer) Ownable(msg.sender) {
         defaultRelayer = _defaultRelayer;
         authorizedRelayers[_defaultRelayer] = true;
         emit RelayerAuthorized(_defaultRelayer);

@@ -1,5 +1,7 @@
 use anyhow::Result;
+use ethers::types::Address;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use zeroize::Zeroize;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,6 +69,57 @@ impl Drop for RelayerConfig {
     }
 }
 
+impl ContractsConfig {
+    pub fn validate(&self) -> Result<()> {
+        let zero_address = Address::zero();
+
+        if self.airdrop_address.trim().is_empty() {
+            return Err(anyhow::anyhow!("AIRDROP_CONTRACT_ADDRESS is required"));
+        }
+
+        if self.token_address.trim().is_empty() {
+            return Err(anyhow::anyhow!("TOKEN_CONTRACT_ADDRESS is required"));
+        }
+
+        let airdrop_addr = Address::from_str(&self.airdrop_address)
+            .map_err(|_| anyhow::anyhow!("Invalid airdrop contract address format"))?;
+
+        let token_addr = Address::from_str(&self.token_address)
+            .map_err(|_| anyhow::anyhow!("Invalid token contract address format"))?;
+
+        if airdrop_addr == zero_address {
+            return Err(anyhow::anyhow!(
+                "AIRDROP_CONTRACT_ADDRESS cannot be zero address (0x0)"
+            ));
+        }
+
+        if token_addr == zero_address {
+            return Err(anyhow::anyhow!(
+                "TOKEN_CONTRACT_ADDRESS cannot be zero address (0x0)"
+            ));
+        }
+
+        if let Some(ref registry_addr) = self.relayer_registry_address {
+            if registry_addr.trim().is_empty() {
+                return Err(anyhow::anyhow!(
+                    "RELAYER_REGISTRY_ADDRESS cannot be empty if provided"
+                ));
+            }
+
+            let registry = Address::from_str(registry_addr)
+                .map_err(|_| anyhow::anyhow!("Invalid relayer registry address format"))?;
+
+            if registry == zero_address {
+                return Err(anyhow::anyhow!(
+                    "RELAYER_REGISTRY_ADDRESS cannot be zero address (0x0)"
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RateLimitConfig {
     pub per_nullifier: u64,
@@ -85,6 +138,84 @@ pub struct MerkleTreeConfig {
     pub merkle_root: String,
 }
 
+impl RateLimitConfig {
+    pub fn validate(&self) -> Result<()> {
+        if self.per_nullifier == 0 {
+            return Err(anyhow::anyhow!(
+                "RATE_LIMIT_PER_NULLIFIER must be greater than 0"
+            ));
+        }
+        if self.per_ip == 0 {
+            return Err(anyhow::anyhow!("RATE_LIMIT_PER_IP must be greater than 0"));
+        }
+        if self.global == 0 {
+            return Err(anyhow::anyhow!("RATE_LIMIT_GLOBAL must be greater than 0"));
+        }
+        if self.burst_factor <= 0.0 {
+            return Err(anyhow::anyhow!(
+                "RATE_LIMIT_BURST_FACTOR must be greater than 0"
+            ));
+        }
+        if self.burst_window == 0 {
+            return Err(anyhow::anyhow!(
+                "RATE_LIMIT_BURST_WINDOW must be greater than 0"
+            ));
+        }
+        if self.claims_per_minute == 0 {
+            return Err(anyhow::anyhow!(
+                "RATE_LIMIT_CLAIMS_PER_MINUTE must be greater than 0"
+            ));
+        }
+        if self.requests_per_minute == 0 {
+            return Err(anyhow::anyhow!(
+                "RATE_LIMIT_REQUESTS_PER_MINUTE must be greater than 0"
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl MerkleTreeConfig {
+    pub fn validate(&self) -> Result<()> {
+        if self.merkle_root.is_empty() {
+            return Err(anyhow::anyhow!("MERKLE_TREE_ROOT cannot be empty"));
+        }
+
+        let zero_root = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        if self.merkle_root == zero_root {
+            return Err(anyhow::anyhow!("MERKLE_TREE_ROOT cannot be zero root"));
+        }
+
+        if self.source.is_empty() {
+            return Err(anyhow::anyhow!("MERKLE_TREE_SOURCE cannot be empty"));
+        }
+
+        if self.cache_path.is_empty() {
+            return Err(anyhow::anyhow!("MERKLE_TREE_CACHE_PATH cannot be empty"));
+        }
+
+        Ok(())
+    }
+}
+
+impl CorsConfig {
+    pub fn validate(&self) -> Result<()> {
+        if self.allowed_origins.is_empty() {
+            return Err(anyhow::anyhow!("CORS_ALLOWED_ORIGINS cannot be empty"));
+        }
+
+        if self.allowed_methods.is_empty() {
+            return Err(anyhow::anyhow!("CORS_ALLOWED_METHODS cannot be empty"));
+        }
+
+        if self.max_age == 0 {
+            return Err(anyhow::anyhow!("CORS_MAX_AGE must be greater than 0"));
+        }
+
+        Ok(())
+    }
+}
+
 impl Config {
     pub fn from_env() -> Result<Self> {
         let config = Self {
@@ -93,11 +224,8 @@ impl Config {
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()
                 .unwrap_or(8080),
-            database_url: std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-                "postgresql://postgres:postgres@localhost:5432/zkp_airdrop".to_string()
-            }),
-            redis_url: std::env::var("REDIS_URL")
-                .unwrap_or_else(|_| "redis://localhost:6379".to_string()),
+            database_url: std::env::var("DATABASE_URL").unwrap_or_else(|_| "".to_string()),
+            redis_url: std::env::var("REDIS_URL").unwrap_or_else(|_| "".to_string()),
             network: NetworkConfig {
                 rpc_url: std::env::var("RPC_URL")
                     .unwrap_or_else(|_| "https://optimism.drpc.org".to_string()),
@@ -106,12 +234,10 @@ impl Config {
                     .parse()
                     .unwrap_or(10),
                 contracts: ContractsConfig {
-                    airdrop_address: std::env::var("AIRDROP_CONTRACT_ADDRESS").unwrap_or_else(
-                        |_| "0x0000000000000000000000000000000000000000".to_string(),
-                    ),
-                    token_address: std::env::var("TOKEN_CONTRACT_ADDRESS").unwrap_or_else(|_| {
-                        "0x0000000000000000000000000000000000000000".to_string()
-                    }),
+                    airdrop_address: std::env::var("AIRDROP_CONTRACT_ADDRESS")
+                        .unwrap_or_else(|_| "".to_string()),
+                    token_address: std::env::var("TOKEN_CONTRACT_ADDRESS")
+                        .unwrap_or_else(|_| "".to_string()),
                     relayer_registry_address: std::env::var("RELAYER_REGISTRY_ADDRESS").ok(),
                 },
             },
@@ -199,13 +325,10 @@ impl Config {
                     .unwrap_or(100),
             },
             merkle_tree: MerkleTreeConfig {
-                source: std::env::var("MERKLE_TREE_SOURCE")
-                    .unwrap_or_else(|_| "https://api.merkle-tree.io/tree.json".to_string()),
+                source: std::env::var("MERKLE_TREE_SOURCE").unwrap_or_else(|_| "".to_string()),
                 cache_path: std::env::var("MERKLE_TREE_CACHE_PATH")
                     .unwrap_or_else(|_| "/data/merkle_tree.bin".to_string()),
-                merkle_root: std::env::var("MERKLE_TREE_ROOT").unwrap_or_else(|_| {
-                    "0x0000000000000000000000000000000000000000000000000000000000000000".to_string()
-                }),
+                merkle_root: std::env::var("MERKLE_TREE_ROOT").unwrap_or_else(|_| "".to_string()),
             },
             cors: CorsConfig {
                 allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
@@ -241,7 +364,27 @@ impl Config {
             return Err(anyhow::anyhow!("RELAYER_PRIVATE_KEY cannot be empty"));
         }
 
+        if self.host.is_empty() {
+            return Err(anyhow::anyhow!("RELAYER_HOST cannot be empty"));
+        }
+
+        if self.port == 0 {
+            return Err(anyhow::anyhow!("RELAYER_PORT must be greater than 0"));
+        }
+
+        if self.database_url.trim().is_empty() {
+            return Err(anyhow::anyhow!("DATABASE_URL cannot be empty"));
+        }
+
+        if self.redis_url.trim().is_empty() {
+            return Err(anyhow::anyhow!("REDIS_URL cannot be empty"));
+        }
+
         self.network.validate()?;
+        self.network.contracts.validate()?;
+        self.rate_limit.validate()?;
+        self.merkle_tree.validate()?;
+        self.cors.validate()?;
 
         Ok(())
     }
