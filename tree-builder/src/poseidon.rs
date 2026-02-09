@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn test_hash_address() {
-        let decoded = hex::decode("0000000000000000c0d7d3017b342ff039b55b0879")
+        let decoded = hex::decode("c0d7d3017b342ff039b55b087900000000000000")
             .expect("Failed to decode hex address");
         let address: [u8; 20] = decoded.try_into().expect("Invalid address length");
         let hash = hash_address(address);

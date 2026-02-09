@@ -284,6 +284,7 @@ impl AppState {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn is_nullifier_used(&self, nullifier: &str) -> Result<bool, String> {
         use redis::AsyncCommands;
 
@@ -641,21 +642,10 @@ impl AppState {
         const AVG_GAS: u64 = 700_000;
 
         let total_tokens_distributed = successful_claims
-            .checked_mul(CLAIM_AMOUNT)
-            .and_then(|v| v.checked_mul(1000))
-            .ok_or_else(|| {
-                tracing::error!("Token distribution calculation overflow");
-                anyhow::anyhow!("Token distribution calculation overflow")
-            })
-            .unwrap_or_else(|_| u64::MAX);
+            .saturating_mul(CLAIM_AMOUNT)
+            .saturating_mul(1000);
 
-        let total_gas_used = successful_claims
-            .checked_mul(AVG_GAS)
-            .ok_or_else(|| {
-                tracing::error!("Gas usage calculation overflow");
-                anyhow::anyhow!("Gas usage calculation overflow")
-            })
-            .unwrap_or_else(|_| u64::MAX);
+        let total_gas_used = successful_claims.saturating_mul(AVG_GAS);
 
         StatsResponse {
             total_claims,

@@ -8,18 +8,8 @@ use std::path::PathBuf;
 
 use crate::types::ProofData;
 
-/// Domain separator for nullifier generation to prevent cross-context attacks
-const NULLIFIER_DOMAIN_SEPARATOR: &[u8] = b"ZKP_AIRDROP_NULLIFIER_V1";
-/// Salt to add randomness to nullifier generation
-const NULLIFIER_SALT: &[u8] = b"SALT_2024_SECURE";
-/// Personalization string for cryptographic hash function
-const NULLIFIER_PERSONALIZATION: &[u8] = b"ZKP_NULLIFIER_PERSONALIZATION";
 /// Standard Ethereum private key length in bytes
 const PRIVATE_KEY_LEN: usize = 32;
-/// Padding length for nullifier input to reach 96 bytes
-const NULLIFIER_PADDING_LEN: usize = 41;
-/// Total input length for nullifier hash (96 bytes)
-const NULLIFIER_INPUT_LEN: usize = 96;
 
 /// Generates a nullifier from a private key using Poseidon hash.
 ///
