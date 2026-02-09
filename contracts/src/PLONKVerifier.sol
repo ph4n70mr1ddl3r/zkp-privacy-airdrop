@@ -122,6 +122,7 @@ contract PlonkVerifier {
     
     uint16 constant lastMem = 896;
 
+    /* eslint-disable */ 
     function verifyProof(uint256[24] calldata _proof, uint256[3] calldata _pubSignals) public view returns (bool) {
         assembly {
             /////////
