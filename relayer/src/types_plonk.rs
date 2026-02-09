@@ -87,6 +87,24 @@ impl Proof {
             }
         }
     }
+
+    /// Estimate proof size in bytes for logging purposes
+    #[must_use]
+    pub fn estimated_size_bytes(&self) -> usize {
+        match self {
+            Proof::Groth16(ref proof) => {
+                proof.a.iter().map(|s| s.len()).sum::<usize>()
+                    + proof
+                        .b
+                        .iter()
+                        .flat_map(|row| row.iter())
+                        .map(|s| s.len())
+                        .sum::<usize>()
+                    + proof.c.iter().map(|s| s.len()).sum::<usize>()
+            }
+            Proof::Plonk(ref proof) => proof.proof.iter().map(|s| s.len()).sum(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -10,7 +10,7 @@ interface IRelayerRegistry {
     function withdraw(uint256 amount) external;
     function isAuthorized(address relayer) external view returns (bool);
     function balanceOf(address relayer) external view returns (uint256);
-    function defaultRelayer() external view returns (address);
+    function getDefaultRelayer() external view returns (address);
 }
 
 contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
@@ -66,7 +66,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
         return relayerBalances[relayer];
     }
 
-    function defaultRelayer() external view returns (address) {
+    function getDefaultRelayer() external view returns (address) {
         return defaultRelayer;
     }
 

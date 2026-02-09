@@ -93,7 +93,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @param recipient Address to receive tokens
      * @param amount Amount of tokens to transfer
      */
-    function _transferTokens(address recipient, uint256 amount) internal {
+    function _transferTokens(address recipient, uint256 amount) internal nonReentrant {
         token.safeTransfer(recipient, amount);
         emit TokensTransferred(recipient, amount, block.timestamp);
     }

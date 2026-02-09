@@ -9,6 +9,27 @@ pub struct Proof {
     pub c: [String; 2],
 }
 
+impl Proof {
+    /// Get proof type name
+    #[must_use]
+    pub fn type_name(&self) -> &str {
+        "Groth16"
+    }
+
+    /// Estimate proof size in bytes for logging purposes
+    #[must_use]
+    pub fn estimated_size_bytes(&self) -> usize {
+        self.a.iter().map(|s| s.len()).sum::<usize>()
+            + self
+                .b
+                .iter()
+                .flat_map(|row| row.iter())
+                .map(|s| s.len())
+                .sum::<usize>()
+            + self.c.iter().map(|s| s.len()).sum::<usize>()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofData {
     pub proof: Proof,

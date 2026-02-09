@@ -2,6 +2,9 @@
 accounts.csv
 *.csv
 merkle_tree.bin
+*.db
+*.sqlite
+*.sqlite3
 
 # Build artifacts
 node_modules/
@@ -10,6 +13,8 @@ artifacts/
 cache/
 target/
 Cargo.lock
+typechain
+typechain-types
 
 # Environment files
 .env
@@ -34,7 +39,10 @@ Thumbs.db
 coverage/
 *.cover
 *.log
+test-results
 
 # Temporary files
 *.tmp
 *.temp
+*.bak
+*.swp

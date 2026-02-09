@@ -1,0 +1,17 @@
+extends: solhint:recommended
+
+rules:
+  max-line-length: ["error", 120]
+  func-name-mixedcase: "error"
+  var-name-mixedcase: "error"
+  const-name-snakecase: "error"
+  quotes: ["error", "double"]
+  reason-string: ["warn", {maxLength: 64}]
+  not-rely-on-time: "warn"
+  state-visibility: "error"
+  avoid-low-level-calls: "warn"
+  no-inline-assembly: "warn"
+  compiler-version: ["error", "^0.8.0"]
+  payable-fallback: "warn"
+  func-visibility: ["warn", {"ignoreConstructors": true}]
+  no-unused-vars: "warn"

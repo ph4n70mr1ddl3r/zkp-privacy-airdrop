@@ -289,14 +289,16 @@ impl AppState {
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
         use redis::AsyncCommands;
 
-        let provider =
-            Provider::<Http>::try_from(self.config.network.rpc_url.as_str()).map_err(|e| {
+        let provider = Provider::<Http>::try_from(self.config.network.rpc_url.as_str())
+            .inspect_err(|e| {
                 self.increment_failed_claims();
-                format!(
+                tracing::error!(
                     "Failed to create RPC provider from {}: {}",
-                    self.config.network.rpc_url, e
-                )
-            })?;
+                    self.config.network.rpc_url,
+                    e
+                );
+            })
+            .map_err(|e| e.to_string())?;
 
         let provider = Arc::new(provider);
 
@@ -405,7 +407,7 @@ impl AppState {
                     ));
                 }
 
-                let proof_array: [ethers::types::U256; 8] = proof
+                let proof_array: [ethers::types::U256; 8] = match proof
                     .proof
                     .iter()
                     .enumerate()
@@ -415,18 +417,21 @@ impl AppState {
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|e| {
+                {
+                    Ok(v) => v,
+                    Err(e) => {
                         self.increment_failed_claims();
-                        e
-                    })?
-                    .try_into()
-                    .map_err(|_e| {
-                        self.increment_failed_claims();
-                        format!(
-                            "Failed to convert proof to array: expected 8 elements, got {}",
-                            proof.proof.len()
-                        )
-                    })?;
+                        return Err(e);
+                    }
+                }
+                .try_into()
+                .map_err(|_e| {
+                    self.increment_failed_claims();
+                    format!(
+                        "Failed to convert proof to array: expected 8 elements, got {}",
+                        proof.proof.len()
+                    )
+                })?;
 
                 let mut retry_count = 0;
 
