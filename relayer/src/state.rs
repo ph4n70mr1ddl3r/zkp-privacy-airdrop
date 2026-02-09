@@ -97,8 +97,9 @@ impl AppState {
 
         let balance_result = tokio::time::timeout(
             std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
-            provider.get_balance(address, None)
-        ).await;
+            provider.get_balance(address, None),
+        )
+        .await;
 
         match balance_result {
             Ok(Ok(balance)) => balance.as_u128(),
@@ -169,15 +170,14 @@ impl AppState {
     async fn check_rpc_connection(&self) -> bool {
         use ethers::providers::Provider;
         match Provider::<Http>::try_from(self.config.network.rpc_url.as_str()) {
-            Ok(provider) => {
-                tokio::time::timeout(
-                    std::time::Duration::from_secs(RPC_HEALTH_CHECK_TIMEOUT_SECONDS),
-                    provider.get_block_number()
-                ).await
-                .ok()
-                .and_then(|r| r.ok())
-                .is_some()
-            },
+            Ok(provider) => tokio::time::timeout(
+                std::time::Duration::from_secs(RPC_HEALTH_CHECK_TIMEOUT_SECONDS),
+                provider.get_block_number(),
+            )
+            .await
+            .ok()
+            .and_then(|r| r.ok())
+            .is_some(),
             Err(_) => false,
         }
     }
@@ -257,17 +257,16 @@ impl AppState {
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
         use redis::AsyncCommands;
 
-        let provider = Provider::<Http>::try_from(self.config.network.rpc_url.as_str())
-            .map_err(|e| {
+        let provider =
+            Provider::<Http>::try_from(self.config.network.rpc_url.as_str()).map_err(|e| {
                 self.increment_failed_claims();
                 format!("Failed to create RPC provider: {}", e)
             })?;
 
-        let wallet = LocalWallet::from_str(&self.config.relayer.private_key)
-            .map_err(|e| {
-                self.increment_failed_claims();
-                format!("Failed to create wallet from private key: {}", e)
-            })?;
+        let wallet = LocalWallet::from_str(&self.config.relayer.private_key).map_err(|e| {
+            self.increment_failed_claims();
+            format!("Failed to create wallet from private key: {}", e)
+        })?;
 
         let airdrop_address = Address::from_str(&self.config.network.contracts.airdrop_address)
             .map_err(|e| {
@@ -275,23 +274,20 @@ impl AppState {
                 format!("Invalid airdrop address: {}", e)
             })?;
 
-        let recipient = Address::from_str(&claim.recipient)
-            .map_err(|e| {
-                self.increment_failed_claims();
-                format!("Invalid recipient address: {}", e)
-            })?;
+        let recipient = Address::from_str(&claim.recipient).map_err(|e| {
+            self.increment_failed_claims();
+            format!("Invalid recipient address: {}", e)
+        })?;
 
-        let nullifier_bytes = hex::decode(&claim.nullifier[2..])
-            .map_err(|e| {
-                self.increment_failed_claims();
-                format!("Invalid nullifier hex: {}", e)
-            })?;
+        let nullifier_bytes = hex::decode(&claim.nullifier[2..]).map_err(|e| {
+            self.increment_failed_claims();
+            format!("Invalid nullifier hex: {}", e)
+        })?;
 
-        let nullifier_array: [u8; 32] = nullifier_bytes[..].try_into()
-            .map_err(|e| {
-                self.increment_failed_claims();
-                format!("Invalid nullifier length: {}", e)
-            })?;
+        let nullifier_array: [u8; 32] = nullifier_bytes[..].try_into().map_err(|e| {
+            self.increment_failed_claims();
+            format!("Invalid nullifier length: {}", e)
+        })?;
 
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
@@ -307,7 +303,10 @@ impl AppState {
         if !set_result {
             self.increment_failed_claims();
             drop(redis);
-            return Err("This nullifier has already been used. Each qualified account can only claim once.".to_string());
+            return Err(
+                "This nullifier has already been used. Each qualified account can only claim once."
+                    .to_string(),
+            );
         }
 
         drop(redis);
@@ -315,14 +314,15 @@ impl AppState {
         let tx_hash = match &claim.proof {
             crate::types_plonk::Proof::Plonk(proof) => {
                 let client = Arc::new(provider.clone());
-                let chain_id = client.get_chainid().await
-                    .map_err(|e| {
-                        self.increment_failed_claims();
-                        format!("Failed to get chain ID: {}", e)
-                    })?;
+                let chain_id = client.get_chainid().await.map_err(|e| {
+                    self.increment_failed_claims();
+                    format!("Failed to get chain ID: {}", e)
+                })?;
                 let wallet_with_chain = wallet.with_chain_id(chain_id.as_u32());
                 let plonk_verifier = IPLONKVerifier::new(airdrop_address, client);
-                let proof_array: [ethers::types::U256; 8] = proof.proof.iter()
+                let proof_array: [ethers::types::U256; 8] = proof
+                    .proof
+                    .iter()
                     .take(8)
                     .map(|s| ethers::types::U256::from_dec_str(s).unwrap_or_default())
                     .collect::<Vec<_>>()
@@ -331,7 +331,8 @@ impl AppState {
 
                 let call = plonk_verifier.claim(proof_array, nullifier_array, recipient);
                 let builder = call.from(wallet_with_chain.address());
-                let x = builder.send()
+                let x = builder
+                    .send()
                     .await
                     .map_err(|e| {
                         self.increment_failed_claims();
@@ -342,7 +343,9 @@ impl AppState {
             }
             crate::types_plonk::Proof::Groth16(_) => {
                 self.increment_failed_claims();
-                return Err("Groth16 proofs are no longer supported. Please use PLONK proofs.".to_string());
+                return Err(
+                    "Groth16 proofs are no longer supported. Please use PLONK proofs.".to_string(),
+                );
             }
         };
 

@@ -124,7 +124,11 @@ pub async fn execute(
                                 if secs > MAX_RETRY_AFTER_SECONDS {
                                     tracing::warn!("Suspicious Retry-After value: {}", secs);
                                 } else {
-                                    println!("{} Try again in {} seconds.", "Note:".yellow(), secs);
+                                    println!(
+                                        "{} Try again in {} seconds.",
+                                        "Note:".yellow(),
+                                        secs
+                                    );
                                 }
                             }
                         }

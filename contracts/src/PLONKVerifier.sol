@@ -67,8 +67,12 @@ contract PLONKVerifier {
      * 3. Check linearization polynomial
      * 4. Verify quotient polynomial
      * 5. Perform batch pairing checks using verification key
-     * 
-     * Use snarkjs plonk verifier command to generate the actual verification code
+     *
+     * Use snarkjs plonk verifier command to generate actual verification code
+     * Implementation steps:
+     * - Run: snarkjs zkey contribute <verification_key> <contribution>
+     * - Generate verifier: snarkjs zkey export solidityverifier <zkey> verifier.sol
+     * - Replace this function with the generated verifier
      */
     function _verifyPLONK(
         uint256[8] calldata _proof,

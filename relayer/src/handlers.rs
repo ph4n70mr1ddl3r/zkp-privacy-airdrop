@@ -33,7 +33,10 @@ fn sanitize_error_message(error: &str) -> String {
 
     for pattern in &sensitive_patterns {
         if lower.contains(pattern) {
-            tracing::warn!("Filtered sensitive error message containing pattern: {}", pattern);
+            tracing::warn!(
+                "Filtered sensitive error message containing pattern: {}",
+                pattern
+            );
             return "Internal error occurred".to_string();
         }
     }
@@ -357,10 +360,16 @@ pub async fn donate(claim: web::Json<DonateRequest>, state: web::Data<AppState>)
     }
 
     if let Err(e) = claim.amount.parse::<u128>() {
-        warn!("Invalid donation amount format from {}: {}", claim.donor, e);
+        warn!(
+            "Invalid donation amount format from {}: {}",
+            claim.donor, e
+        );
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
-            error: format!("Invalid donation amount '{}': {}", claim.amount, e),
+            error: format!(
+                "Invalid donation amount '{}': {}. Amount must be a positive integer.",
+                claim.amount, e
+            ),
             code: Some("INVALID_AMOUNT".to_string()),
             retry_after: None,
         });

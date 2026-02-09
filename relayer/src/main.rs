@@ -7,7 +7,7 @@ mod state;
 mod types_plonk;
 
 use actix_web::http::header::HeaderName;
-use actix_web::{middleware, web, App, HttpServer, HttpResponse};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use std::sync::Arc;
 use tokio::signal;
 use tracing::info;
@@ -38,16 +38,15 @@ async fn main() -> anyhow::Result<()> {
     info!("Listening on {}", bind_address);
     info!("CORS allowed origins: {:?}", config.cors.allowed_origins);
 
-    let server = HttpServer::new(move || {
-        App::new()
-            .app_data(web::Data::new(app_state.clone()))
-            .wrap(middleware::Logger::default())
-            .wrap(middleware::Compress::default())
-            .wrap(middleware::NormalizePath::trim())
-            .app_data(
-                web::JsonConfig::default()
-                    .limit(1024 * 1024)
-                    .error_handler(|err, _req| {
+    let server =
+        HttpServer::new(move || {
+            App::new()
+                .app_data(web::Data::new(app_state.clone()))
+                .wrap(middleware::Logger::default())
+                .wrap(middleware::Compress::default())
+                .wrap(middleware::NormalizePath::trim())
+                .app_data(web::JsonConfig::default().limit(1024 * 1024).error_handler(
+                    |err, _req| {
                         actix_web::error::InternalError::from_response(
                             err,
                             HttpResponse::PayloadTooLarge().json(serde_json::json!({
@@ -57,67 +56,67 @@ async fn main() -> anyhow::Result<()> {
                             })),
                         )
                         .into()
-                    })
-            )
-            .wrap({
-                let allowed_origins = Arc::clone(&allowed_origins);
-                actix_cors::Cors::default()
-                    .allowed_origin_fn(move |origin, _req_head| {
-                        if let Ok(origin_str) = origin.to_str() {
-                            allowed_origins
+                    },
+                ))
+                .wrap({
+                    let allowed_origins = Arc::clone(&allowed_origins);
+                    actix_cors::Cors::default()
+                        .allowed_origin_fn(move |origin, _req_head| {
+                            if let Ok(origin_str) = origin.to_str() {
+                                allowed_origins
+                                    .iter()
+                                    .any(|allowed| allowed == "*" || origin_str == *allowed)
+                            } else {
+                                false
+                            }
+                        })
+                        .allowed_methods(
+                            config
+                                .cors
+                                .allowed_methods
                                 .iter()
-                                .any(|allowed| allowed == "*" || origin_str == *allowed)
-                        } else {
-                            false
-                        }
-                    })
-                    .allowed_methods(
-                        config
-                            .cors
-                            .allowed_methods
-                            .iter()
-                            .map(|s| s.as_str())
-                            .collect::<Vec<_>>(),
-                    )
-                    .allowed_headers(
-                        config
-                            .cors
-                            .allowed_headers
-                            .iter()
-                            .filter_map(|h| match HeaderName::from_bytes(h.as_bytes()) {
-                                Ok(header_name) => Some(header_name),
-                                Err(_) => {
-                                    tracing::warn!("Invalid header name: {}", h);
-                                    None
-                                }
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                    .max_age(config.cors.max_age)
-                    .supports_credentials()
-                    .expose_any_header()
-            })
-            .service(
-                web::scope("/api/v1")
-                    .route("/health", web::get().to(handlers::health))
-                    .route("/submit-claim", web::post().to(handlers::submit_claim))
-                    .route(
-                        "/check-status/{nullifier}",
-                        web::get().to(handlers::check_status),
-                    )
-                    .route("/merkle-root", web::get().to(handlers::get_merkle_root))
-                    .route("/contract-info", web::get().to(handlers::get_contract_info))
-                    .route("/donate", web::post().to(handlers::donate))
-                    .route("/stats", web::get().to(handlers::get_stats))
-                    .route(
-                        "/merkle-path/{address}",
-                        web::get().to(handlers::get_merkle_path),
-                    ),
-            )
-            .route("/metrics", web::get().to(metrics::metrics))
-    })
-    .bind(&bind_address)?
-    .run();
+                                .map(|s| s.as_str())
+                                .collect::<Vec<_>>(),
+                        )
+                        .allowed_headers(
+                            config
+                                .cors
+                                .allowed_headers
+                                .iter()
+                                .filter_map(|h| match HeaderName::from_bytes(h.as_bytes()) {
+                                    Ok(header_name) => Some(header_name),
+                                    Err(_) => {
+                                        tracing::warn!("Invalid header name: {}", h);
+                                        None
+                                    }
+                                })
+                                .collect::<Vec<_>>(),
+                        )
+                        .max_age(config.cors.max_age)
+                        .supports_credentials()
+                        .expose_any_header()
+                })
+                .service(
+                    web::scope("/api/v1")
+                        .route("/health", web::get().to(handlers::health))
+                        .route("/submit-claim", web::post().to(handlers::submit_claim))
+                        .route(
+                            "/check-status/{nullifier}",
+                            web::get().to(handlers::check_status),
+                        )
+                        .route("/merkle-root", web::get().to(handlers::get_merkle_root))
+                        .route("/contract-info", web::get().to(handlers::get_contract_info))
+                        .route("/donate", web::post().to(handlers::donate))
+                        .route("/stats", web::get().to(handlers::get_stats))
+                        .route(
+                            "/merkle-path/{address}",
+                            web::get().to(handlers::get_merkle_path),
+                        ),
+                )
+                .route("/metrics", web::get().to(metrics::metrics))
+        })
+        .bind(&bind_address)?
+        .run();
 
     let handle = server.handle();
 

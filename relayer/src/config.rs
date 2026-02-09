@@ -249,19 +249,22 @@ impl Config {
                         .map_err(|_| anyhow::anyhow!("RELAYER_PRIVATE_KEY not set"))?;
 
                     if key.trim().is_empty() {
+                        key.zeroize();
                         return Err(anyhow::anyhow!("RELAYER_PRIVATE_KEY cannot be empty"));
                     }
 
-                    let normalized_key = key.trim().to_lowercase();
+                    let mut normalized_key = key.trim().to_lowercase();
                     let insecure_keys = [
-                        "0x0000000000000000000000000000000000000000000000000000000000000",
-                        "0000000000000000000000000000000000000000000000000000000000000",
+                        "0x0000000000000000000000000000000000000000000000000000000000000000",
+                        "0000000000000000000000000000000000000000000000000000000000000000",
                         "your_private_key_here",
                         "example_private_key",
-                        "0000000000000000000000000000000000000000000000000000000000001",
-                        "0x0000000000000000000000000000000000000000000000000000000000000001",
+                        "0000000000000000000000000000000000000000000000000000000000000001",
+                        "0x0000000000000000000000000000000000000000000000000000000000000000001",
                     ];
                     if insecure_keys.contains(&normalized_key.as_str()) {
+                        key.zeroize();
+                        normalized_key.zeroize();
                         return Err(anyhow::anyhow!(
                             "CRITICAL ERROR: Insecure default private key detected! \
                              Please set RELAYER_PRIVATE_KEY to a secure, randomly generated private key. \
@@ -273,6 +276,8 @@ impl Config {
                         .map_err(|_| anyhow::anyhow!("Invalid hex private key"))?;
 
                     if decoded.len() != 32 {
+                        key.zeroize();
+                        normalized_key.zeroize();
                         return Err(anyhow::anyhow!(
                             "Private key must be 32 bytes, got {}",
                             decoded.len()
@@ -310,7 +315,7 @@ impl Config {
                     .parse()
                     .unwrap_or(0.05),
                 max_gas_price: std::env::var("RELAYER_MAX_GAS_PRICE")
-                    .unwrap_or_else(|_| "100000000000".to_string()), // 100 gwei (updated from 10 gwei)
+                    .unwrap_or_else(|_| "100000000000".to_string()), // 100 gwei
             },
             rate_limit: RateLimitConfig {
                 per_nullifier: std::env::var("RATE_LIMIT_PER_NULLIFIER")

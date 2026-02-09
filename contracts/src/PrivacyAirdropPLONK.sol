@@ -6,8 +6,14 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 /**
  * @title PrivacyAirdropPLONK
  * @notice Privacy-preserving ERC20 token airdrop using PLONK ZK proofs
- * @dev Allows users to claim tokens without revealing their address from the Merkle tree
+ * @dev Allows users to claim tokens without revealing their address from Merkle tree
  * Uses universal trusted setup (Perpetual Powers of Tau) instead of per-circuit trusted setup
+ *
+ * SECURITY NOTICE: The PLONK verifier contract currently contains placeholder verification
+ * logic that will reject all proofs. Before deploying to production:
+ * 1. Generate proper verification key using snarkjs
+ * 2. Deploy the generated verifier contract
+ * 3. Update the verifier address in this contract's constructor
  *
  * TODO: Consider refactoring to use a base contract pattern with PrivacyAirdrop.sol
  * to reduce code duplication. Both contracts share similar logic for constructor validation,
