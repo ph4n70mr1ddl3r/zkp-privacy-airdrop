@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use reqwest::Client;
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::time::sleep;
 use tracing::info;
 
@@ -13,6 +13,10 @@ use crate::types_plonk::{Proof, ProofData, SubmitClaimRequest, SubmitClaimRespon
 const HTTP_TIMEOUT_SECONDS: u64 = 30;
 const MAX_RETRY_AFTER_SECONDS: u64 = 86400;
 const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
+const SUBMIT_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
+const MAX_SUBMITS_PER_WINDOW: u32 = 10;
+
+static LAST_SUBMIT_TIME: std::sync::Mutex<(Instant, u32)> = std::sync::Mutex::new((Instant::now(), 0));
 
 pub async fn execute(
     proof_path: PathBuf,
@@ -41,6 +45,10 @@ pub async fn execute(
             proof_path.display()
         )
     })?;
+
+    use zeroize::Zeroize;
+    let mut proof_bytes = proof_content.into_bytes();
+    proof_bytes.zeroize();
 
     validate_proof_structure(&proof_data).context("Invalid proof structure")?;
 
@@ -84,6 +92,29 @@ pub async fn execute(
             _ => "3-field",
         }
     );
+
+    let mut rate_limit_guard = LAST_SUBMIT_TIME.lock().map_err(|e| {
+        anyhow::anyhow!("Failed to acquire rate limit lock: {}", e)
+    })?;
+    let (last_time, count) = *rate_limit_guard;
+    let now = Instant::now();
+
+    if now.duration_since(last_time) < SUBMIT_RATE_LIMIT_WINDOW {
+        if count >= MAX_SUBMITS_PER_WINDOW {
+            drop(rate_limit_guard);
+            let wait_time = SUBMIT_RATE_LIMIT_WINDOW - now.duration_since(last_time);
+            println!(
+                "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
+                "Warning:".yellow(),
+                wait_time.as_secs()
+            );
+            return Err(anyhow::anyhow!("Rate limit exceeded"));
+        }
+        *rate_limit_guard = (last_time, count + 1);
+    } else {
+        *rate_limit_guard = (now, 1);
+    }
+    drop(rate_limit_guard);
 
     let client = Client::builder()
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))
@@ -213,9 +244,14 @@ pub async fn execute(
                     "Timeout:".yellow(),
                     "Transaction not confirmed within timeout. Check manually:"
                 );
+                let explorer_url = match config.network.as_str() {
+                    "optimism" => "https://optimism.etherscan.io",
+                    "optimism-sepolia" => "https://sepolia-optimism.etherscan.io",
+                    _ => "https://optimism.etherscan.io",
+                };
                 println!(
                     "  {}",
-                    format!("https://optimism.etherscan.io/tx/{}", tx_hash).cyan()
+                    format!("{}/tx/{}", explorer_url, tx_hash).cyan()
                 );
             }
         }

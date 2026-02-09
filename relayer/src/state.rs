@@ -263,8 +263,10 @@ impl AppState {
         let provider =
             Provider::<Http>::try_from(self.config.network.rpc_url.as_str()).map_err(|e| {
                 self.increment_failed_claims();
-                format!("Failed to create RPC provider: {}", e)
+                format!("Failed to create RPC provider from {}: {}", self.config.network.rpc_url, e)
             })?;
+
+        let provider = Arc::new(provider);
 
         let wallet = LocalWallet::from_str(&self.config.relayer.private_key).map_err(|e| {
             self.increment_failed_claims();
@@ -274,22 +276,22 @@ impl AppState {
         let airdrop_address = Address::from_str(&self.config.network.contracts.airdrop_address)
             .map_err(|e| {
                 self.increment_failed_claims();
-                format!("Invalid airdrop address: {}", e)
+                format!("Invalid airdrop address '{}': {}", self.config.network.contracts.airdrop_address, e)
             })?;
 
         let recipient = Address::from_str(&claim.recipient).map_err(|e| {
             self.increment_failed_claims();
-            format!("Invalid recipient address: {}", e)
+            format!("Invalid recipient address '{}': {}", claim.recipient, e)
         })?;
 
         let nullifier_bytes = hex::decode(&claim.nullifier[2..]).map_err(|e| {
             self.increment_failed_claims();
-            format!("Invalid nullifier hex: {}", e)
+            format!("Invalid nullifier hex '{}': {}", claim.nullifier, e)
         })?;
 
         let nullifier_array: [u8; 32] = nullifier_bytes[..].try_into().map_err(|e| {
             self.increment_failed_claims();
-            format!("Invalid nullifier length: {}", e)
+            format!("Invalid nullifier length for '{}': expected 32 bytes, got {}", claim.nullifier, e)
         })?;
 
         let key = format!("nullifier:{}", claim.nullifier);
@@ -319,13 +321,22 @@ impl AppState {
 
         let tx_hash: ethers::types::H256 = match &claim.proof {
             crate::types_plonk::Proof::Plonk(proof) => {
-                let client = Arc::new(provider.clone());
-                let chain_id = client.get_chainid().await.map_err(|e| {
+                let chain_id = tokio::time::timeout(
+                    std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
+                    provider.get_chainid(),
+                )
+                .await
+                .map_err(|_| {
+                    self.increment_failed_claims();
+                    "Failed to get chain ID: timeout after {} seconds".to_string()
+                })?
+                .map_err(|e| {
                     self.increment_failed_claims();
                     format!("Failed to get chain ID: {}", e)
                 })?;
+
                 let wallet_with_chain = wallet.with_chain_id(chain_id.as_u32());
-                let plonk_verifier = IPLONKVerifier::new(airdrop_address, client);
+                let plonk_verifier = IPLONKVerifier::new(airdrop_address, provider);
                 let proof_array: [ethers::types::U256; 8] = proof
                     .proof
                     .iter()
@@ -341,11 +352,17 @@ impl AppState {
                 let mut retry_count = 0;
 
                 loop {
-                    match builder.clone().send().await {
-                        Ok(pending_tx) => {
+                    let send_result = tokio::time::timeout(
+                        std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
+                        builder.clone().send(),
+                    )
+                    .await;
+
+                    match send_result {
+                        Ok(Ok(pending_tx)) => {
                             break pending_tx.tx_hash();
                         }
-                        Err(e) => {
+                        Ok(Err(e)) => {
                             retry_count += 1;
                             if retry_count >= MAX_TRANSACTION_RETRIES {
                                 self.increment_failed_claims();
@@ -357,6 +374,23 @@ impl AppState {
                                 MAX_TRANSACTION_RETRIES,
                                 TRANSACTION_RETRY_DELAY_MS,
                                 e
+                            );
+                            tokio::time::sleep(tokio::time::Duration::from_millis(
+                                TRANSACTION_RETRY_DELAY_MS,
+                            ))
+                            .await;
+                        }
+                        Err(_) => {
+                            retry_count += 1;
+                            if retry_count >= MAX_TRANSACTION_RETRIES {
+                                self.increment_failed_claims();
+                                return Err(format!("Failed to submit PLONK claim after {} retries: timeout after {} seconds", MAX_TRANSACTION_RETRIES, RPC_TIMEOUT_SECONDS));
+                            }
+                            tracing::warn!(
+                                "Transaction timed out (attempt {}/{}), retrying in {}ms",
+                                retry_count,
+                                MAX_TRANSACTION_RETRIES,
+                                TRANSACTION_RETRY_DELAY_MS
                             );
                             tokio::time::sleep(tokio::time::Duration::from_millis(
                                 TRANSACTION_RETRY_DELAY_MS,
@@ -460,21 +494,20 @@ impl AppState {
         let total_tokens_distributed = successful_claims
             .checked_mul(CLAIM_AMOUNT)
             .and_then(|v| v.checked_mul(1000))
-            .unwrap_or(u64::MAX)
-            .to_string();
+            .unwrap_or(u64::MAX);
 
         let total_gas_used = successful_claims
-            .saturating_mul(AVG_GAS)
-            .to_string();
+            .checked_mul(AVG_GAS)
+            .unwrap_or(u64::MAX);
 
         StatsResponse {
             total_claims,
             successful_claims,
             failed_claims,
-            total_tokens_distributed,
+            total_tokens_distributed: total_tokens_distributed.to_string(),
             unique_recipients: successful_claims,
             average_gas_price: "25000000000".to_string(),
-            total_gas_used,
+            total_gas_used: total_gas_used.to_string(),
             relayer_balance: self.get_relayer_balance().await.to_string(),
             uptime_percentage: if uptime > 0.0 { 100.0 } else { 0.0 },
             response_time_ms: ResponseTime {

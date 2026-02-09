@@ -59,11 +59,34 @@ pub fn is_valid_address(address: &str) -> bool {
 }
 
 pub fn is_valid_nullifier(nullifier: &str) -> bool {
-    is_valid_hex_string(nullifier, 66)
+    if !is_valid_hex_string(nullifier, 66) {
+        return false;
+    }
+
+    let hex = &nullifier[2..];
+    if let Ok(bytes) = hex::decode(hex) {
+        if bytes.len() == 32 {
+            return true;
+        }
+    }
+
+    false
 }
 
 pub fn is_valid_merkle_root(merkle_root: &str) -> bool {
-    is_valid_hex_string(merkle_root, 66)
+    if !is_valid_hex_string(merkle_root, 66) {
+        return false;
+    }
+
+    let hex = &merkle_root[2..];
+    if let Ok(bytes) = hex::decode(hex) {
+        if bytes.len() == 32 {
+            let zero_root = [0u8; 32];
+            return bytes != zero_root;
+        }
+    }
+
+    false
 }
 
 pub async fn health(state: web::Data<AppState>) -> impl Responder {

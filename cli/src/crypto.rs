@@ -119,12 +119,20 @@ pub fn read_private_key(
 
     let mut key_str = if private_key_stdin {
         let mut input = String::new();
-        io::stdin().read_to_string(&mut input)?;
+        io::stdin()
+            .read_to_string(&mut input)
+            .context("Failed to read private key from stdin")?;
         let trimmed = input.trim().to_string();
         input.zeroize();
         trimmed
     } else if let Some(file) = private_key_file {
-        let key = std::fs::read_to_string(file)?.trim().to_string();
+        let key = std::fs::read_to_string(&file)
+            .context(format!(
+                "Failed to read private key file: {}",
+                file.display()
+            ))?
+            .trim()
+            .to_string();
         let mut key_bytes = key.into_bytes();
         let key_str = String::from_utf8_lossy(&key_bytes).to_string();
         key_bytes.zeroize();
