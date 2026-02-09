@@ -291,9 +291,23 @@ impl Config {
                         "0000000000000000000000000000000000000000000000000000000000000000001",
                         "0x0000000000000000000000000000000000000000000000000000000000000000000001",
                     ];
-                    let is_insecure = insecure_keys
-                        .iter()
-                        .any(|&key| normalized_key.eq_ignore_ascii_case(key));
+
+                    let is_insecure = insecure_keys.iter().any(|insecure_key| {
+                        let mut result = 0u8;
+                        let key_bytes = normalized_key.as_bytes();
+                        let insecure_bytes = insecure_key.as_bytes();
+                        let min_len = std::cmp::min(key_bytes.len(), insecure_bytes.len());
+
+                        for i in 0..min_len {
+                            result |= key_bytes[i] ^ insecure_bytes[i];
+                        }
+
+                        if key_bytes.len() != insecure_bytes.len() {
+                            result |= 1;
+                        }
+
+                        result == 0
+                    });
                     if is_insecure {
                         normalized_key.zeroize();
                         return Err(anyhow::anyhow!(

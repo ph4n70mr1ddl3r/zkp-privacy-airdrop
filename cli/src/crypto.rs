@@ -283,29 +283,7 @@ pub fn validate_address(address: &str) -> Result<Address> {
 /// # Errors
 /// Returns an error if nullifier format is invalid
 pub fn validate_nullifier(nullifier: &str) -> Result<()> {
-    if nullifier.len() != 66 {
-        return Err(anyhow::anyhow!(
-            "Invalid nullifier length: expected 66 chars (0x + 64 hex), got {}",
-            nullifier.len()
-        ));
-    }
-
-    if !nullifier.starts_with("0x") && !nullifier.starts_with("0X") {
-        return Err(anyhow::anyhow!(
-            "Invalid nullifier format: must start with 0x"
-        ));
-    }
-
-    let decoded =
-        hex::decode(&nullifier[2..]).context("Invalid nullifier: invalid hex encoding")?;
-    if decoded.len() != 32 {
-        return Err(anyhow::anyhow!(
-            "Invalid nullifier: expected 32 bytes, got {}",
-            decoded.len()
-        ));
-    }
-
-    Ok(())
+    validate_hex_bytes(nullifier, "nullifier")
 }
 
 /// Validates a Merkle root hash format.
@@ -322,24 +300,31 @@ pub fn validate_nullifier(nullifier: &str) -> Result<()> {
 /// # Errors
 /// Returns an error if merkle_root format is invalid
 pub fn validate_merkle_root(merkle_root: &str) -> Result<()> {
-    if merkle_root.len() != 66 {
+    validate_hex_bytes(merkle_root, "merkle_root")
+}
+
+fn validate_hex_bytes(input: &str, field_name: &str) -> Result<()> {
+    if input.len() != 66 {
         return Err(anyhow::anyhow!(
-            "Invalid merkle_root length: expected 66 chars (0x + 64 hex), got {}",
-            merkle_root.len()
+            "Invalid {} length: expected 66 chars (0x + 64 hex), got {}",
+            field_name,
+            input.len()
         ));
     }
 
-    if !merkle_root.starts_with("0x") && !merkle_root.starts_with("0X") {
+    if !input.starts_with("0x") && !input.starts_with("0X") {
         return Err(anyhow::anyhow!(
-            "Invalid merkle_root format: must start with 0x"
+            "Invalid {} format: must start with 0x",
+            field_name
         ));
     }
 
-    let decoded =
-        hex::decode(&merkle_root[2..]).context("Invalid merkle_root: invalid hex encoding")?;
+    let decoded = hex::decode(&input[2..])
+        .context(format!("Invalid {}: invalid hex encoding", field_name))?;
     if decoded.len() != 32 {
         return Err(anyhow::anyhow!(
-            "Invalid merkle_root: expected 32 bytes, got {}",
+            "Invalid {}: expected 32 bytes, got {}",
+            field_name,
             decoded.len()
         ));
     }

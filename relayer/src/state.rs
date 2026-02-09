@@ -6,6 +6,7 @@ use ethers::types::Address;
 use parking_lot::RwLock;
 use rand::Rng;
 use redis::aio::ConnectionManager;
+use sha3::{Digest, Keccak256};
 use sqlx::PgPool;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -16,12 +17,20 @@ const RPC_HEALTH_CHECK_TIMEOUT_SECONDS: u64 = 5;
 const RATE_LIMIT_WINDOW_SECONDS: u64 = 120;
 const MAX_TRANSACTION_RETRIES: u32 = 3;
 const TRANSACTION_RETRY_DELAY_MS: u64 = 1000;
+const BALANCE_CACHE_TTL_SECONDS: u64 = 30;
+
+#[derive(Clone, Copy)]
+struct BalanceCache {
+    balance: u128,
+    timestamp: std::time::Instant,
+}
 
 pub struct AppState {
     pub config: Arc<Config>,
     pub db: PgPool,
     pub redis: Arc<Mutex<ConnectionManager>>,
     pub stats: Arc<RwLock<RelayerStats>>,
+    balance_cache: Arc<RwLock<Option<BalanceCache>>>,
 }
 
 impl Clone for AppState {
@@ -31,6 +40,7 @@ impl Clone for AppState {
             db: self.db.clone(),
             redis: Arc::clone(&self.redis),
             stats: Arc::clone(&self.stats),
+            balance_cache: Arc::clone(&self.balance_cache),
         }
     }
 }
@@ -60,12 +70,14 @@ impl AppState {
         redis_conn: ConnectionManager,
     ) -> Result<Self, sqlx::Error> {
         let stats = Arc::new(RwLock::new(RelayerStats::default()));
+        let balance_cache = Arc::new(RwLock::new(None));
 
         Ok(Self {
             config: Arc::new(config),
             db,
             redis: Arc::new(Mutex::new(redis_conn)),
             stats,
+            balance_cache,
         })
     }
 
@@ -76,6 +88,15 @@ impl AppState {
     }
 
     pub async fn get_relayer_balance(&self) -> u128 {
+        {
+            let cache_read = self.balance_cache.read();
+            if let Some(cached) = *cache_read {
+                if cached.timestamp.elapsed().as_secs() < BALANCE_CACHE_TTL_SECONDS {
+                    return cached.balance;
+                }
+            }
+        }
+
         let address_str = match self.relayer_address() {
             Ok(addr) => addr,
             Err(e) => {
@@ -105,7 +126,7 @@ impl AppState {
         )
         .await;
 
-        match balance_result {
+        let balance = match balance_result {
             Ok(Ok(balance)) => balance.as_u128(),
             Ok(Err(e)) => {
                 tracing::warn!("Failed to query balance from RPC: {}, using fallback", e);
@@ -115,7 +136,17 @@ impl AppState {
                 tracing::warn!("RPC query timed out after 10 seconds, using fallback");
                 0
             }
+        };
+
+        {
+            let mut cache_write = self.balance_cache.write();
+            *cache_write = Some(BalanceCache {
+                balance,
+                timestamp: std::time::Instant::now(),
+            });
         }
+
+        balance
     }
 
     pub async fn has_sufficient_balance(&self) -> bool {
@@ -349,7 +380,8 @@ impl AppState {
             )
         })?;
 
-        let key = format!("nullifier:{}", claim.nullifier);
+        let hashed_nullifier = format!("{:x}", Keccak256::digest(nullifier_array));
+        let key = format!("nullifier:{}", hashed_nullifier);
         let mut redis = self.redis.lock().await;
 
         // Use Redis Lua script for atomic check-and-set to prevent race conditions

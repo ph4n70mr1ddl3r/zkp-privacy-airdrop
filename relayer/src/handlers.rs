@@ -3,11 +3,20 @@ use ethers::types::Address;
 use num_bigint::BigUint;
 use num_traits::Num;
 use std::str::FromStr;
+use std::sync::OnceLock;
 use tracing::{error, info, warn};
 
 /// BN254 scalar field modulus
 const BN254_FIELD_MODULUS: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
+
+static FIELD_MODULUS: OnceLock<BigUint> = OnceLock::new();
+
+fn get_field_modulus() -> &'static BigUint {
+    FIELD_MODULUS.get_or_init(|| {
+        BigUint::from_str_radix(BN254_FIELD_MODULUS, 10).expect("Invalid field modulus constant")
+    })
+}
 
 use crate::state::AppState;
 use crate::types_plonk::*;
@@ -74,12 +83,9 @@ fn is_valid_field_element(hex_str: &str) -> bool {
     }
 
     let value = BigUint::from_bytes_be(&hex_value);
-    let field_modulus = match BigUint::from_str_radix(BN254_FIELD_MODULUS, 10) {
-        Ok(modulus) => modulus,
-        Err(_) => return false,
-    };
+    let field_modulus = get_field_modulus();
 
-    value < field_modulus
+    value < *field_modulus
 }
 
 pub fn is_valid_address(address: &str) -> bool {
@@ -93,34 +99,26 @@ pub fn is_valid_address(address: &str) -> bool {
 }
 
 pub fn is_valid_nullifier(nullifier: &str) -> bool {
-    if !is_valid_hex_string(nullifier, 66) {
-        return false;
-    }
-
-    if !is_valid_field_element(nullifier) {
-        return false;
-    }
-
-    let hex = &nullifier[2..];
-    if let Ok(bytes) = hex::decode(hex) {
-        if bytes.len() == 32 {
-            return true;
-        }
-    }
-
-    false
+    is_valid_hex_bytes(nullifier, 66, false)
 }
 
 pub fn is_valid_merkle_root(merkle_root: &str) -> bool {
-    if !is_valid_hex_string(merkle_root, 66) {
+    is_valid_hex_bytes(merkle_root, 66, true)
+}
+
+fn is_valid_hex_bytes(input: &str, expected_len: usize, reject_zero: bool) -> bool {
+    if !is_valid_hex_string(input, expected_len) {
         return false;
     }
 
-    let hex = &merkle_root[2..];
+    let hex = &input[2..];
     if let Ok(bytes) = hex::decode(hex) {
         if bytes.len() == 32 {
-            let zero_root = [0u8; 32];
-            return bytes != zero_root;
+            if !reject_zero {
+                return true;
+            }
+            let zero_value = [0u8; 32];
+            return bytes != zero_value;
         }
     }
 

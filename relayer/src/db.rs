@@ -8,8 +8,8 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool> {
     info!("Connecting to PostgreSQL database...");
 
     let pool = PgPoolOptions::new()
-        .max_connections(20)
-        .min_connections(2)
+        .max_connections(50)
+        .min_connections(5)
         .acquire_timeout(Duration::from_secs(30))
         .idle_timeout(Duration::from_secs(600))
         .max_lifetime(Duration::from_secs(1800))
