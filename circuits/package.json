@@ -9,10 +9,12 @@
     "clean": "rm -rf build"
   },
   "dependencies": {
-    "circom": "^2.1.0",
     "circomlib": "^2.0.5"
   },
   "devDependencies": {
     "snarkjs": "^0.7.0"
+  },
+  "peerDependencies": {
+    "circom": "^2.1.0"
   }
 }
