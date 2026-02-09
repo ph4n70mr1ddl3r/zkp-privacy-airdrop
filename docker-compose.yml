@@ -4,9 +4,9 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: zkp_airdrop
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_in_production}
+      POSTGRES_DB: ${POSTGRES_DB:-zkp_airdrop}
     ports:
       - "5432:5432"
     volumes:
@@ -38,7 +38,7 @@ services:
     environment:
       - RELAYER_HOST=0.0.0.0
       - RELAYER_PORT=8080
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/zkp_airdrop
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme_in_production}@postgres:5432/${POSTGRES_DB:-zkp_airdrop}
       - REDIS_URL=redis://redis:6379
       - RPC_URL=${RPC_URL:-https://optimism.drpc.org}
       - CHAIN_ID=10

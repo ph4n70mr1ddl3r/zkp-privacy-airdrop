@@ -6,7 +6,7 @@ const FIELD_PRIME: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
 fn field_prime() -> BigUint {
-    BigUint::from_str_radix(FIELD_PRIME, 10).unwrap()
+    BigUint::from_str_radix(FIELD_PRIME, 10).expect("Invalid field prime constant")
 }
 
 pub fn hash_address(address: [u8; 20]) -> [u8; 32] {
@@ -45,7 +45,7 @@ fn mod_field(bytes: &[u8; 32]) -> [u8; 32] {
     let bytes = reduced.to_bytes_be();
     let offset = 32 - bytes.len();
     result[offset..].copy_from_slice(&bytes);
-    result.try_into().unwrap()
+    result.try_into().expect("Failed to convert result to [u8; 32]")
 }
 
 #[cfg(test)]
@@ -54,10 +54,9 @@ mod tests {
 
     #[test]
     fn test_hash_address() {
-        let address = hex::decode("0000000000000000c0d7d3017b342ff039b55b0879")
-            .unwrap()
-            .try_into()
-            .unwrap();
+        let decoded = hex::decode("0000000000000000c0d7d3017b342ff039b55b0879")
+            .expect("Failed to decode hex address");
+        let address: [u8; 20] = decoded.try_into().expect("Invalid address length");
         let hash = hash_address(address);
         assert_eq!(hash.len(), 32);
     }

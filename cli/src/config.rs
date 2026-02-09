@@ -18,11 +18,16 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            network: "optimism".to_string(),
-            relayer_url: Some("https://relayer.zkp-airdrop.io".to_string()),
-            merkle_tree_source: None,
-            rpc_url: None,
-            chain_id: 10,
+            network: std::env::var("ZKP_NETWORK")
+                .unwrap_or_else(|_| "optimism".to_string()),
+            relayer_url: std::env::var("ZKP_RELAYER_URL").ok()
+                .or_else(|| Some("https://relayer.zkp-airdrop.io".to_string())),
+            merkle_tree_source: std::env::var("ZKP_MERKLE_TREE_SOURCE").ok(),
+            rpc_url: std::env::var("ZKP_RPC_URL").ok(),
+            chain_id: std::env::var("ZKP_CHAIN_ID")
+                .unwrap_or_else(|_| "10".to_string())
+                .parse()
+                .unwrap_or(10),
         }
     }
 }
@@ -66,9 +71,19 @@ impl Config {
     }
 
     pub fn get_default_rpc_url(&self) -> Result<String> {
+        if let Ok(url) = std::env::var("ZKP_RPC_URL") {
+            return Ok(url);
+        }
+
         match self.network.as_str() {
-            "optimism" => Ok("https://optimism.drpc.org".to_string()),
-            "optimism-sepolia" => Ok("https://sepolia.drpc.org/ogrpc".to_string()),
+            "optimism" => {
+                Ok(std::env::var("ZKP_OPTIMISM_RPC_URL")
+                    .unwrap_or_else(|_| "https://optimism.drpc.org".to_string()))
+            }
+            "optimism-sepolia" => {
+                Ok(std::env::var("ZKP_OPTIMISM_SEPOLIA_RPC_URL")
+                    .unwrap_or_else(|_| "https://sepolia.drpc.org/ogrpc".to_string()))
+            }
             _ => Err(anyhow::anyhow!("Unsupported network: {}", self.network)),
         }
     }

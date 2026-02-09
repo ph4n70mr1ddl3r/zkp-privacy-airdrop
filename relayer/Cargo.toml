@@ -35,3 +35,4 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 zeroize = "1.7"
 num-bigint = "0.4"
 num-traits = "0.2"
+url = "2.5"

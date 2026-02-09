@@ -38,9 +38,35 @@ impl NetworkConfig {
         if self.rpc_url.trim().is_empty() {
             return Err(anyhow::anyhow!("RPC_URL cannot be empty"));
         }
+
+        let url = self.rpc_url.trim();
+
+        if !url.starts_with("https://") && !url.starts_with("http://") {
+            return Err(anyhow::anyhow!(
+                "RPC_URL must start with https:// or http://, got: {}",
+                url
+            ));
+        }
+
+        let parsed = url::Url::parse(url).map_err(|e| {
+            anyhow::anyhow!("Invalid RPC URL format '{}': {}", url, e)
+        })?;
+
+        if parsed.scheme() != "https" && parsed.scheme() != "http" {
+            return Err(anyhow::anyhow!(
+                "RPC_URL must use https:// or http:// scheme, got: {}",
+                parsed.scheme()
+            ));
+        }
+
+        if parsed.host_str().is_none() || parsed.host_str().unwrap().is_empty() {
+            return Err(anyhow::anyhow!("RPC_URL must have a valid host"));
+        }
+
         if self.chain_id == 0 {
             return Err(anyhow::anyhow!("CHAIN_ID must be non-zero"));
         }
+
         Ok(())
     }
 }
