@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
@@ -9,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @notice Base contract containing common functionality for privacy airdrop implementations
  * @dev This contract provides shared logic for different proof systems (Groth16, PLONK)
  */
-abstract contract BasePrivacyAirdrop is ReentrancyGuard {
+abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     bytes32 public immutable merkleRoot;
@@ -35,7 +36,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard {
         bytes32 _merkleRoot,
         uint256 _claimAmount,
         uint256 _claimDeadline
-    ) {
+    ) Ownable(msg.sender) {
         require(_token != address(0), "Invalid token address");
         require(_merkleRoot != bytes32(0), "Invalid merkle root");
         require(_claimAmount > 0, "Invalid claim amount");
@@ -61,18 +62,18 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard {
 
     /**
      * @notice Pause the contract in case of emergency
-     * @dev Only callable by admin
+     * @dev Only callable by contract owner
      */
-    function pause() external {
+    function pause() external onlyOwner {
         paused = true;
         emit Paused(msg.sender);
     }
 
     /**
      * @notice Unpause the contract to resume claims
-     * @dev Only callable by admin
+     * @dev Only callable by contract owner
      */
-    function unpause() external {
+    function unpause() external onlyOwner {
         paused = false;
         emit Unpaused(msg.sender);
     }

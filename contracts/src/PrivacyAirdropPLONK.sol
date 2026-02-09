@@ -46,32 +46,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         verifier = IPLONKVerifier(_verifier);
     }
 
-    /**
-     * @notice Initialize the PLONK airdrop contract
-     * @param _token Address of the ERC20 token to distribute
-     * @param _merkleRoot Root of the Merkle tree containing eligible addresses
-     * @param _claimAmount Number of tokens each eligible address can claim
-     * @param _claimDeadline Unix timestamp after which claims are no longer accepted
-     * @param _verifier Address of the PLONK verifier contract
-     */
-    constructor(
-        address _token,
-        bytes32 _merkleRoot,
-        uint256 _claimAmount,
-        uint256 _claimDeadline,
-        address _verifier
-    ) {
-        require(_token != address(0), "Invalid token address");
-        require(_merkleRoot != bytes32(0), "Invalid merkle root");
-        require(_claimAmount > 0, "Invalid claim amount");
-        require(_claimDeadline > block.timestamp, "Invalid deadline");
-        require(_verifier != address(0), "Invalid verifier address");
-        token = _token;
-        merkleRoot = _merkleRoot;
-        claimAmount = _claimAmount;
-        claimDeadline = _claimDeadline;
-        verifier = IPLONKVerifier(_verifier);
-    }
+
 
     /**
      * @notice Claim tokens by presenting a PLONK zero-knowledge proof
@@ -110,20 +85,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     function estimateClaimGas() external pure returns (uint256) {
         return 1_300_000;
     }
-}
-
-/**
- * @title IERC20
- * @notice Interface for ERC20 token transfers
- */
-interface IERC20 {
-    /**
-     * @notice Transfer tokens from contract to recipient
-     * @param to Recipient address
-     * @param amount Number of tokens to transfer
-     * @return True if transfer successful
-     */
-    function transfer(address to, uint256 amount) external returns (bool);
 }
 
 /**

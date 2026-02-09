@@ -6,6 +6,13 @@ include "../node_modules/circomlib/circuits/mux1.circom";
 include "./circomlib/circuits/escalarmulany.circom";
 include "./circomlib/circuits/ecc.circom";
 
+// Salt value for nullifier generation to prevent precomputation attacks
+// This value should be generated securely and kept constant for the circuit's lifetime
+// Changing this value requires recomputing all nullifiers and regenerating verification keys
+// Current value: 87953108768114088221452414019732140257409482096940319490691914651639977587459
+// Randomly generated 256-bit value
+const NULLIFIER_SALT = 87953108768114088221452414019732140257409482096940319490691914651639977587459;
+
 template MerklePathVerifier(n) {
     signal input leaf;
     signal input root;
@@ -116,7 +123,7 @@ template MerkleMembership() {
     
     component poseidon_nullifier = Poseidon(3);
     poseidon_nullifier.in[0] <== private_key;
-    poseidon_nullifier.in[1] <== 87953108768114088221452414019732140257409482096940319490691914651639977587459;
+    poseidon_nullifier.in[1] <== NULLIFIER_SALT;
     poseidon_nullifier.in[2] <== 0;
     computed_nullifier <== poseidon_nullifier.out;
     computed_nullifier === nullifier;

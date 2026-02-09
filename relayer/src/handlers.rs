@@ -380,6 +380,19 @@ pub async fn donate(claim: web::Json<DonateRequest>, state: web::Data<AppState>)
         claim.donor, claim.amount
     );
 
+    if let Err(e) = state
+        .check_rate_limit(&claim.donor, RateLimitType::GetMerklePath)
+        .await
+    {
+        warn!("Rate limit exceeded for donation: {}", e);
+        return HttpResponse::TooManyRequests().json(ErrorResponse {
+            success: false,
+            error: "Rate limit exceeded. Try again later.".to_string(),
+            code: Some("RATE_LIMITED".to_string()),
+            retry_after: Some(60),
+        });
+    }
+
     let donation_address = state.relayer_address();
 
     HttpResponse::Ok().json(DonateResponse {

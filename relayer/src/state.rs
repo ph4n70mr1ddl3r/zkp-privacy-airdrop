@@ -13,6 +13,8 @@ use tokio::sync::Mutex;
 const RPC_TIMEOUT_SECONDS: u64 = 10;
 const RPC_HEALTH_CHECK_TIMEOUT_SECONDS: u64 = 5;
 const RATE_LIMIT_WINDOW_SECONDS: u64 = 120;
+const MAX_TRANSACTION_RETRIES: u32 = 3;
+const TRANSACTION_RETRY_DELAY_MS: u64 = 1000;
 
 pub struct AppState {
     pub config: Arc<Config>,
@@ -292,6 +294,9 @@ impl AppState {
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
+        // Atomic check-and-set: set_nx only sets the key if it doesn't exist
+        // This prevents race conditions where multiple claims with the same nullifier
+        // could be processed simultaneously
         let set_result: bool = redis
             .set_nx::<_, _, bool>(&key, &claim.recipient)
             .await
@@ -311,7 +316,7 @@ impl AppState {
 
         drop(redis);
 
-        let tx_hash = match &claim.proof {
+        let tx_hash: ethers::types::H256 = match &claim.proof {
             crate::types_plonk::Proof::Plonk(proof) => {
                 let client = Arc::new(provider.clone());
                 let chain_id = client.get_chainid().await.map_err(|e| {
@@ -331,15 +336,34 @@ impl AppState {
 
                 let call = plonk_verifier.claim(proof_array, nullifier_array, recipient);
                 let builder = call.from(wallet_with_chain.address());
-                let x = builder
-                    .send()
-                    .await
-                    .map_err(|e| {
-                        self.increment_failed_claims();
-                        format!("Failed to submit PLONK claim: {}", e)
-                    })?
-                    .tx_hash();
-                x
+
+                let mut retry_count = 0;
+
+                loop {
+                    match builder.clone().send().await {
+                        Ok(pending_tx) => {
+                            break pending_tx.tx_hash();
+                        }
+                        Err(e) => {
+                            retry_count += 1;
+                            if retry_count >= MAX_TRANSACTION_RETRIES {
+                                self.increment_failed_claims();
+                                return Err(format!("Failed to submit PLONK claim after {} retries: {}", MAX_TRANSACTION_RETRIES, e));
+                            }
+                            tracing::warn!(
+                                "Transaction failed (attempt {}/{}), retrying in {}ms: {}",
+                                retry_count,
+                                MAX_TRANSACTION_RETRIES,
+                                TRANSACTION_RETRY_DELAY_MS,
+                                e
+                            );
+                            tokio::time::sleep(tokio::time::Duration::from_millis(
+                                TRANSACTION_RETRY_DELAY_MS,
+                            ))
+                            .await;
+                        }
+                    }
+                }
             }
             crate::types_plonk::Proof::Groth16(_) => {
                 self.increment_failed_claims();
@@ -429,14 +453,28 @@ impl AppState {
             )
         };
 
+        const CLAIM_AMOUNT: u64 = 1_000_000_000_000_000_000;
+        const AVG_GAS: u64 = 700_000;
+
+        let total_tokens_distributed = successful_claims
+            .checked_mul(CLAIM_AMOUNT)
+            .and_then(|v| v.checked_mul(1000))
+            .unwrap_or(u64::MAX)
+            .to_string();
+
+        let total_gas_used = successful_claims
+            .checked_mul(AVG_GAS)
+            .unwrap_or(u64::MAX)
+            .to_string();
+
         StatsResponse {
             total_claims,
             successful_claims,
             failed_claims,
-            total_tokens_distributed: (successful_claims * 1000 * 10u64.pow(18)).to_string(),
+            total_tokens_distributed,
             unique_recipients: successful_claims,
             average_gas_price: "25000000000".to_string(),
-            total_gas_used: (successful_claims * 700_000).to_string(),
+            total_gas_used,
             relayer_balance: self.get_relayer_balance().await.to_string(),
             uptime_percentage: if uptime > 0.0 { 100.0 } else { 0.0 },
             response_time_ms: ResponseTime {
