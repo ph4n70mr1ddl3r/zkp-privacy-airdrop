@@ -31,16 +31,6 @@ impl Proof {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProofData {
-    pub proof: Proof,
-    pub public_signals: [String; 3],
-    pub nullifier: String,
-    pub recipient: String,
-    pub merkle_root: String,
-    pub generated_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubmitClaimRequest {
     pub proof: Proof,
     pub recipient: String,

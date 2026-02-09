@@ -90,6 +90,7 @@ impl Proof {
 
     /// Estimate proof size in bytes for logging purposes
     #[must_use]
+    #[allow(dead_code)]
     pub fn estimated_size_bytes(&self) -> usize {
         match self {
             Proof::Groth16(ref proof) => {

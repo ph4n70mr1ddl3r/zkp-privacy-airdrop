@@ -124,7 +124,14 @@ impl AppState {
             .relayer
             .min_balance_critical
             .parse()
-            .unwrap_or(500_000_000_000_000_000_u128);
+            .unwrap_or_else(|e| {
+                tracing::warn!(
+                    "Failed to parse min_balance_critical '{}', using default: {}",
+                    self.config.relayer.min_balance_critical,
+                    e
+                );
+                500_000_000_000_000_000_u128
+            });
         balance > min_critical
     }
 

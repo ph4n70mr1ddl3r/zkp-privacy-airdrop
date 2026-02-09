@@ -38,6 +38,7 @@ pub fn hash_domain(input: &[u8]) -> [u8; 32] {
     mod_field(&result.into())
 }
 
+#[allow(dead_code)]
 fn mod_field(bytes: &[u8; 32]) -> [u8; 32] {
     let value = BigUint::from_bytes_be(bytes);
     let reduced = &value % &field_prime();

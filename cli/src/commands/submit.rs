@@ -49,8 +49,7 @@ pub async fn execute(
     })?;
 
     use zeroize::Zeroize;
-    let mut proof_bytes = proof_content.into_bytes();
-    proof_bytes.zeroize();
+    proof_content.zeroize();
 
     validate_proof_structure(&proof_data).context("Invalid proof structure")?;
 
@@ -96,30 +95,51 @@ pub async fn execute(
     );
 
     let now = Instant::now();
-    let last_time_ms = LAST_SUBMIT_TIME.load(Ordering::Relaxed);
+    let current_ms = now.elapsed().as_millis() as u64;
 
-    if last_time_ms > 0 {
-        let elapsed_ms = now.elapsed().as_millis() as u64 - last_time_ms;
+    loop {
+        let last_time_ms = LAST_SUBMIT_TIME.load(Ordering::SeqCst);
 
-        if elapsed_ms < SUBMIT_RATE_LIMIT_WINDOW.as_millis() as u64 {
-            let count = SUBMIT_COUNT.fetch_add(1, Ordering::Relaxed);
-            if count >= MAX_SUBMITS_PER_WINDOW {
-                SUBMIT_COUNT.fetch_sub(1, Ordering::Relaxed);
-                let wait_time = SUBMIT_RATE_LIMIT_WINDOW - Duration::from_millis(elapsed_ms);
-                println!(
-                    "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
-                    "Warning:".yellow(),
-                    wait_time.as_secs()
-                );
-                return Err(anyhow::anyhow!("Rate limit exceeded"));
+        if last_time_ms > 0 {
+            let elapsed_ms = current_ms.saturating_sub(last_time_ms);
+
+            if elapsed_ms < SUBMIT_RATE_LIMIT_WINDOW.as_millis() as u64 {
+                let count = SUBMIT_COUNT.fetch_add(1, Ordering::SeqCst);
+
+                if count >= MAX_SUBMITS_PER_WINDOW {
+                    SUBMIT_COUNT.fetch_sub(1, Ordering::SeqCst);
+                    let wait_time = SUBMIT_RATE_LIMIT_WINDOW - Duration::from_millis(elapsed_ms);
+                    println!(
+                        "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
+                        "Warning:".yellow(),
+                        wait_time.as_secs()
+                    );
+                    return Err(anyhow::anyhow!("Rate limit exceeded"));
+                }
+                break;
+            } else {
+                if LAST_SUBMIT_TIME
+                    .compare_exchange_weak(
+                        last_time_ms,
+                        current_ms,
+                        Ordering::SeqCst,
+                        Ordering::SeqCst,
+                    )
+                    .is_ok()
+                {
+                    SUBMIT_COUNT.store(1, Ordering::SeqCst);
+                    break;
+                }
             }
         } else {
-            LAST_SUBMIT_TIME.store(now.elapsed().as_millis() as u64, Ordering::Relaxed);
-            SUBMIT_COUNT.store(1, Ordering::Relaxed);
+            if LAST_SUBMIT_TIME
+                .compare_exchange_weak(0, current_ms, Ordering::SeqCst, Ordering::SeqCst)
+                .is_ok()
+            {
+                SUBMIT_COUNT.store(1, Ordering::SeqCst);
+                break;
+            }
         }
-    } else {
-        LAST_SUBMIT_TIME.store(now.elapsed().as_millis() as u64, Ordering::Relaxed);
-        SUBMIT_COUNT.store(1, Ordering::Relaxed);
     }
 
     let client = Client::builder()

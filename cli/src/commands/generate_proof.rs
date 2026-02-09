@@ -6,7 +6,7 @@ use tracing::info;
 
 use crate::config::Config;
 use crate::crypto::{derive_address, generate_nullifier, read_private_key};
-use crate::types::ProofData;
+use crate::types_plonk::{Proof, ProofData};
 
 pub async fn execute(
     private_key_opt: Option<String>,
@@ -70,14 +70,9 @@ pub async fn execute(
     let merkle_root_hex = format!("0x{}", hex::encode(&merkle_root));
 
     let proof_data = ProofData {
-        proof: crate::types::Proof {
-            a: ["0".to_string(), "0".to_string()],
-            b: [
-                ["0".to_string(), "0".to_string()],
-                ["0".to_string(), "0".to_string()],
-            ],
-            c: ["0".to_string(), "0".to_string()],
-        },
+        proof: Proof::Plonk(crate::types_plonk::PlonkProof {
+            proof: vec!["0".to_string(); 8],
+        }),
         public_signals: ["0".to_string(), "0".to_string(), nullifier_hex.clone()],
         nullifier: nullifier_hex,
         recipient: recipient.clone(),
