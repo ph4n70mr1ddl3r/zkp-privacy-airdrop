@@ -304,21 +304,40 @@ async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
 fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {
     match &proof_data.proof {
         Proof::Plonk(plonk_proof) => {
+            if plonk_proof.proof.is_empty() {
+                return Err(anyhow::anyhow!("Invalid Plonk proof: proof array is empty"));
+            }
             if plonk_proof.proof.len() < 8 {
                 return Err(anyhow::anyhow!(
                     "Invalid Plonk proof: must have at least 8 elements, found {}",
                     plonk_proof.proof.len()
                 ));
             }
+
+            for (idx, element) in plonk_proof.proof.iter().enumerate() {
+                if element.is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "Invalid Plonk proof: element at index {} is empty",
+                        idx
+                    ));
+                }
+                if !element.starts_with("0x") {
+                    return Err(anyhow::anyhow!(
+                        "Invalid Plonk proof: element at index {} must be hex string starting with 0x",
+                        idx
+                    ));
+                }
+            }
         }
         Proof::Groth16(groth16_proof) => {
-            if groth16_proof.a.len() != 2 {
+            if groth16_proof.a.is_empty() || groth16_proof.a.len() != 2 {
                 return Err(anyhow::anyhow!(
                     "Invalid Groth16 proof: a field must have 2 elements, found {}",
                     groth16_proof.a.len()
                 ));
             }
-            if groth16_proof.b.len() != 2
+            if groth16_proof.b.is_empty()
+                || groth16_proof.b.len() != 2
                 || groth16_proof.b[0].len() != 2
                 || groth16_proof.b[1].len() != 2
             {
@@ -326,13 +345,32 @@ fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {
                     "Invalid Groth16 proof: b field must be 2x2 array"
                 ));
             }
-            if groth16_proof.c.len() != 2 {
+            if groth16_proof.c.is_empty() || groth16_proof.c.len() != 2 {
                 return Err(anyhow::anyhow!(
                     "Invalid Groth16 proof: c field must have 2 elements, found {}",
                     groth16_proof.c.len()
                 ));
             }
+
+            for element in groth16_proof.a.iter().chain(groth16_proof.c.iter()) {
+                if element.is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "Invalid Groth16 proof: found empty element in proof fields"
+                    ));
+                }
+                if !element.starts_with("0x") {
+                    return Err(anyhow::anyhow!(
+                        "Invalid Groth16 proof: proof elements must be hex strings starting with 0x"
+                    ));
+                }
+            }
         }
+    }
+
+    if proof_data.public_signals.is_empty() {
+        return Err(anyhow::anyhow!(
+            "Invalid proof: public_signals array is empty"
+        ));
     }
 
     if proof_data.public_signals.len() != 3 {
@@ -340,6 +378,21 @@ fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {
             "Invalid proof: public_signals must have 3 elements, found {}",
             proof_data.public_signals.len()
         ));
+    }
+
+    for (idx, signal) in proof_data.public_signals.iter().enumerate() {
+        if signal.is_empty() {
+            return Err(anyhow::anyhow!(
+                "Invalid proof: public_signal at index {} is empty",
+                idx
+            ));
+        }
+        if !signal.starts_with("0x") {
+            return Err(anyhow::anyhow!(
+                "Invalid proof: public_signal at index {} must be hex string starting with 0x",
+                idx
+            ));
+        }
     }
 
     Ok(())

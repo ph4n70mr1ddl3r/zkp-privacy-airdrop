@@ -40,13 +40,28 @@ pub async fn execute(
     println!("{} {}", "Recipient:".green(), recipient);
     println!("{} Proof System: {}", "Using:".blue().bold(), proof_system);
 
-    let merkle_tree = match merkle_tree.as_str() {
-        path if path.starts_with('.') || path.starts_with('/') => {
-            crate::tree::MerkleTree::from_file(&PathBuf::from(path))?
-                .context("Failed to load Merkle tree file")?
-        }
-        _ => anyhow::bail!("Merkle tree must be a valid file path"),
-    };
+    let path = PathBuf::from(&merkle_tree);
+
+    let canonical_path = path
+        .canonicalize()
+        .with_context(|| format!("Failed to canonicalize path: {}", merkle_tree))?;
+
+    if !canonical_path.exists() {
+        anyhow::bail!(
+            "Merkle tree file does not exist: {}",
+            canonical_path.display()
+        );
+    }
+
+    if !canonical_path.is_file() {
+        anyhow::bail!(
+            "Merkle tree path is not a file: {}",
+            canonical_path.display()
+        );
+    }
+
+    let merkle_tree = crate::tree::MerkleTree::from_file(&canonical_path)
+        .context("Failed to load Merkle tree file")?;
 
     let pb = indicatif::ProgressBar::new(100);
     pb.set_style(

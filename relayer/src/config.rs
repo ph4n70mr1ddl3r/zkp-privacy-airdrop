@@ -377,7 +377,7 @@ impl Config {
                             max_gas_price
                         );
                     }
-                    max_gas_price
+                    max_gas_price.to_string()
                 },
             },
             rate_limit: RateLimitConfig {

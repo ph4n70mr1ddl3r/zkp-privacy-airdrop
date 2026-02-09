@@ -2,7 +2,6 @@ use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use ethers::types::Address;
 use num_bigint::BigUint;
 use num_traits::Num;
-use regex::Regex;
 use std::str::FromStr;
 use std::sync::OnceLock;
 use tracing::{error, info, warn};
@@ -82,7 +81,7 @@ fn sanitize_error_message(error: &str) -> String {
         ("privatekey", "private key"),
         ("priv_key", "private key"),
         ("privkey", "private key"),
-        ("0x[0-9a-f]{32,}", "hex credential"),
+        ("0x[0-9a-fA-F]{32,}", "hex credential"),
         ("seed", "seed"),
         ("mnemonic", "mnemonic"),
         ("credentials", "credentials"),
@@ -98,6 +97,10 @@ fn sanitize_error_message(error: &str) -> String {
         ("auth_token", "auth token"),
         ("password", "password"),
         ("passwd", "password"),
+        ("pwd", "password"),
+        ("authorization", "authorization header"),
+        ("bearer", "bearer token"),
+        ("0x[0-9a-fA-F]{64,}", "private key or hash"),
         ("pk\\s*=\\s*[0-9a-f]+", "private key param"),
         ("key\\s*=\\s*[0-9a-f]+", "key param"),
         ("token\\s*=\\s*[a-z0-9\\-._~+/]+=*", "token param"),
@@ -106,7 +109,7 @@ fn sanitize_error_message(error: &str) -> String {
     let lower = error.to_lowercase();
 
     for (pattern, description) in &sensitive_patterns {
-        if let Ok(re) = regex::Regex::new("(?i)".to_string() + pattern) {
+        if let Ok(re) = regex::Regex::new(&("(?i)".to_string() + pattern)) {
             if re.is_match(&lower) {
                 tracing::warn!(
                     "Filtered sensitive error message containing {}: pattern='{}', error='{}'",

@@ -6,7 +6,6 @@ use ethers::types::Address;
 use parking_lot::RwLock;
 use rand::Rng;
 use redis::aio::ConnectionManager;
-use sha3::{Digest, Keccak256};
 use sqlx::PgPool;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -234,6 +233,14 @@ impl AppState {
 
         if !root.starts_with("0x") {
             tracing::error!("Merkle tree root must start with 0x");
+            return false;
+        }
+
+        if root.len() < 2 {
+            tracing::error!(
+                "Merkle tree root must be at least 2 characters, got {}",
+                root.len()
+            );
             return false;
         }
 
@@ -521,9 +528,18 @@ impl AppState {
                     let gas_randomization_factor = self.config.relayer.gas_price_randomization;
                     let random_factor =
                         rand::thread_rng().gen_range(0.0..=gas_randomization_factor);
-                    let mut gas_price = ethers::types::U256::from(
-                        (base_gas_price.as_u128() as f64 * (1.0 + random_factor)) as u128,
-                    );
+
+                    let base_gas_price_u128 = base_gas_price.as_u128();
+                    let multiplier = (1.0 + random_factor) as u128;
+                    let adjusted_price = base_gas_price_u128
+                        .checked_mul(multiplier)
+                        .and_then(|v| v.checked_div(100))
+                        .unwrap_or_else(|| {
+                            tracing::warn!("Gas price calculation overflow, using base price");
+                            base_gas_price_u128
+                        });
+
+                    let mut gas_price = ethers::types::U256::from(adjusted_price);
 
                     let max_gas_price: ethers::types::U256 = self
                         .config
