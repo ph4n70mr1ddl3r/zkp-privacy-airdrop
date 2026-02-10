@@ -71,8 +71,8 @@ impl From<PlonkProofData> for crate::types_plonk::ProofData {
                 ],
             }),
             public_signals: [
-                format!("{:?}", data.public_inputs.merkle_root[0]),
-                format!("{:?}", data.public_inputs.recipient[0]),
+                data.public_inputs.merkle_root[0].to_string(),
+                data.public_inputs.recipient[0].to_string(),
                 format!("0x{}", hex::encode(data.nullifier)),
             ],
             nullifier: format!("0x{}", hex::encode(data.nullifier)),

@@ -253,7 +253,9 @@ fn poseidon_constants_seed() -> Result<[u8; 32]> {
 
     let mut hasher = Keccak256::new();
     hasher.update(b"POSEIDON_CONSTANTS_SEED");
-    hasher.update(NULLIFIER_SALT.to_be_bytes());
+    let salt = get_nullifier_salt();
+    let salt_bytes = salt.into_bigint().to_bytes_be();
+    hasher.update(&salt_bytes);
     let hash = hasher.finalize();
     hash.try_into()
         .map_err(|_| anyhow::anyhow!("Invalid hash length: expected 32 bytes"))

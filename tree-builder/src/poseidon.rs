@@ -11,6 +11,7 @@ const FIELD_PRIME: &str =
 #[cfg(test)]
 const NULLIFIER_SALT: u64 = 8795310876811408822u64;
 
+#[allow(dead_code)]
 fn field_prime() -> BigUint {
     BigUint::from_str_radix(FIELD_PRIME, 10).expect("Invalid field prime constant")
 }
@@ -30,19 +31,20 @@ pub fn poseidon_hash(inputs: &[Fr]) -> Result<Fr, String> {
 
     let mut state = inputs.to_vec();
 
+    #[allow(clippy::needless_range_loop)]
     for round in 0..64 {
-        for i in 0..3 {
-            state[i] = state[i].pow([5u64]);
+        for item in state.iter_mut().take(3) {
+            *item = item.pow([5u64]);
         }
 
-        let mut new_state = vec![Fr::zero(); 3];
+        let mut new_state = [ark_bn254::Fr::zero(); 3];
         for i in 0..3 {
             for j in 0..3 {
                 new_state[i] += mds_matrix[i][j] * state[j];
             }
             new_state[i] += round_keys[round][i];
         }
-        state = new_state;
+        state = new_state.to_vec();
     }
 
     Ok(state[0])
@@ -70,7 +72,7 @@ fn get_poseidon_round_constants() -> Result<Vec<Vec<Fr>>, String> {
             for _ in 0..64 {
                 let mut round_consts = Vec::new();
                 for _ in 0..3 {
-                    hasher.update(&[0u8]);
+                    hasher.update([0u8]);
                     let hash = hasher.clone().finalize();
                     let mut bytes = [0u8; 32];
                     bytes.copy_from_slice(&hash[..32]);

@@ -144,6 +144,7 @@ impl Proof {
         }
     }
 
+    #[allow(dead_code)]
     #[must_use]
     pub fn estimated_size_bytes(&self) -> usize {
         match self {
@@ -172,6 +173,7 @@ pub struct SubmitClaimRequest {
 
 impl SubmitClaimRequest {
     /// Create a minimal PLONK request for testing
+    #[allow(dead_code)]
     #[must_use]
     pub fn plonk_minimal() -> Self {
         Self {

@@ -6,7 +6,7 @@ use tracing::warn;
 use zeroize::Zeroize;
 
 /// Wrapper for private key string that zeroizes on drop
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct SecretKey(String);
 
 impl SecretKey {
@@ -21,10 +21,6 @@ impl SecretKey {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-
-    pub fn trim(&self) -> Self {
-        SecretKey(self.0.trim().to_lowercase())
-    }
 }
 
 impl std::fmt::Debug for SecretKey {
@@ -36,12 +32,6 @@ impl std::fmt::Debug for SecretKey {
 impl Drop for SecretKey {
     fn drop(&mut self) {
         self.0.zeroize();
-    }
-}
-
-impl Default for SecretKey {
-    fn default() -> Self {
-        SecretKey(String::new())
     }
 }
 

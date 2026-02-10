@@ -494,9 +494,8 @@ impl AppState {
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|e| {
+                    .inspect_err(|_| {
                         self.increment_failed_claims();
-                        e
                     })?;
 
                 let parsed_len = parsed_elements.len();

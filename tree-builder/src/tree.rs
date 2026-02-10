@@ -171,22 +171,17 @@ pub fn build_merkle_tree(addresses: &[[u8; 20]], height: u8) -> Result<MerkleTre
     let mut tree = MerkleTree::new(height);
 
     let pb = indicatif::ProgressBar::new(addresses.len() as u64);
-    let style_result = indicatif::ProgressStyle::default_bar()
-        .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}");
-
-    let pb = match style_result {
-        Ok(style) => {
-            pb.set_style(style.progress_chars("=>-"));
-            pb
-        }
-        Err(e) => {
+    let style = indicatif::ProgressStyle::default_bar()
+        .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+        .unwrap_or_else(|e| {
             eprintln!(
-                "Warning: Failed to set progress style: {}, using default",
+                "Warning: Failed to set progress style template: {}, using default",
                 e
             );
-            pb
-        }
-    };
+            indicatif::ProgressStyle::default_bar()
+        })
+        .progress_chars("=>-");
+    pb.set_style(style);
 
     pb.set_message("Hashing addresses...");
 

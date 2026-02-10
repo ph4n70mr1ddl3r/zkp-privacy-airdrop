@@ -172,8 +172,8 @@ fn is_valid_hex_bytes(input: &str, expected_len: usize, reject_zero: bool) -> bo
 }
 
 pub async fn health(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
-    let info = req.connection_info();
-    let client_ip = info
+    let client_ip = req
+        .connection_info()
         .realip_remote_addr()
         .map(|addr| addr.to_string())
         .unwrap_or_else(|| "unknown".to_string());
