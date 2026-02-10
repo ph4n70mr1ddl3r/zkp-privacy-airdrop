@@ -196,6 +196,11 @@ pub async fn execute(
                                 } else {
                                     println!("{} Try again in {} seconds.", "Note:".yellow(), secs);
                                 }
+                            } else {
+                                tracing::warn!(
+                                    "Failed to parse Retry-After header: {}",
+                                    seconds_str
+                                );
                             }
                         }
                     }

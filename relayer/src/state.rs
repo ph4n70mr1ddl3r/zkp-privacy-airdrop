@@ -148,14 +148,17 @@ impl AppState {
         let address_str = match self.relayer_address() {
             Ok(addr) => addr,
             Err(e) => {
-                tracing::warn!("Failed to get relayer address: {}, using fallback", e);
+                tracing::warn!(
+                    "Failed to get relayer address: {}, using fallback balance 0",
+                    e
+                );
                 return 0;
             }
         };
         let address = match Address::from_str(&address_str) {
             Ok(addr) => addr,
             Err(e) => {
-                tracing::warn!("Invalid relayer address: {}, using fallback", e);
+                tracing::warn!("Invalid relayer address: {}, using fallback balance 0", e);
                 return 0;
             }
         };
@@ -163,7 +166,10 @@ impl AppState {
         let provider = match Provider::<Http>::try_from(self.config.network.rpc_url.as_str()) {
             Ok(p) => p,
             Err(e) => {
-                tracing::warn!("Failed to create RPC provider: {}, using fallback", e);
+                tracing::warn!(
+                    "Failed to create RPC provider: {}, using fallback balance 0",
+                    e
+                );
                 return 0;
             }
         };
@@ -375,8 +381,6 @@ impl AppState {
     }
 
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
-        use redis::AsyncCommands;
-
         let provider = Provider::<Http>::try_from(self.config.network.rpc_url.as_str())
             .inspect_err(|e| {
                 self.increment_failed_claims();
@@ -706,16 +710,17 @@ impl AppState {
 
         {
             let mut redis = self.redis.lock().await;
+            use redis::AsyncCommands;
             let timestamp = chrono::Utc::now().to_rfc3339();
 
             let tx_key = format!("{}:tx_hash", key);
-            if let Err(e) = redis.set::<_, _, ()>(&tx_key, &tx_hash.to_string()).await {
-                tracing::warn!("Failed to set tx_hash in Redis: {}", e);
-            }
-
             let timestamp_key = format!("{}:timestamp", key);
-            if let Err(e) = redis.set::<_, _, ()>(&timestamp_key, &timestamp).await {
-                tracing::warn!("Failed to set timestamp in Redis: {}", e);
+
+            let tx_result: Result<(), _> = redis.set(&tx_key, tx_hash.to_string()).await;
+            let ts_result: Result<(), _> = redis.set(&timestamp_key, &timestamp).await;
+
+            if let Err(e) = tx_result.or(ts_result) {
+                tracing::warn!("Failed to set tx_hash and timestamp in Redis: {}", e);
             }
 
             let mut stats = self.stats.write();
@@ -728,7 +733,6 @@ impl AppState {
 
     pub async fn get_claim_status(&self, nullifier: &str) -> Option<CheckStatusResponse> {
         use redis::AsyncCommands;
-
         let key = format!("nullifier:{}", nullifier);
         let mut redis = self.redis.lock().await;
 
@@ -755,7 +759,6 @@ impl AppState {
 
     pub async fn get_merkle_path(&self, address: &str) -> Option<MerklePathResponse> {
         use redis::AsyncCommands;
-
         let key = format!("merkle_path:{}", address);
         let mut redis = self.redis.lock().await;
 

@@ -365,8 +365,9 @@ pub fn read_private_key(
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
 
+    const MIN_ENTROPY_SCORE: u32 = 450;
     let entropy_score = calculate_entropy_score(&key_bytes);
-    if entropy_score < 450 {
+    if entropy_score < MIN_ENTROPY_SCORE {
         key_str.zeroize();
         key_bytes.zeroize();
         anyhow::bail!(

@@ -76,7 +76,7 @@ impl From<PlonkProofData> for crate::types_plonk::ProofData {
                 format!("0x{}", hex::encode(data.nullifier)),
             ],
             nullifier: format!("0x{}", hex::encode(data.nullifier)),
-            recipient: format!("{:?}", data.recipient),
+            recipient: format!("{:#x}", data.recipient),
             merkle_root: format!("0x{}", hex::encode(data.merkle_root)),
             generated_at: data.generated_at,
         }

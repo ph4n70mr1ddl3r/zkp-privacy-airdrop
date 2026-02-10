@@ -23,9 +23,13 @@ pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
                 if attempt < MAX_RETRIES {
                     let delay_ms = calculate_backoff_delay(attempt);
                     tracing::warn!(
-                        "Redis connection attempt {} failed, retrying in {}ms...",
+                        "Redis connection attempt {} failed, retrying in {}ms: {}",
                         attempt,
-                        delay_ms
+                        delay_ms,
+                        last_error
+                            .as_ref()
+                            .map(|e| e.to_string())
+                            .unwrap_or_default()
                     );
                     tokio::time::sleep(Duration::from_millis(delay_ms)).await;
                 }
@@ -37,6 +41,7 @@ pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
         "Failed to connect to Redis after {} attempts: {}",
         MAX_RETRIES,
         last_error
+            .as_ref()
             .map(|e| e.to_string())
             .unwrap_or_else(|| "Unknown error".to_string())
     ))
