@@ -58,6 +58,7 @@ pub struct Config {
     pub rate_limit: RateLimitConfig,
     pub merkle_tree: MerkleTreeConfig,
     pub cors: CorsConfig,
+    pub airdrop: AirdropConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,7 +102,7 @@ impl NetworkConfig {
             ));
         }
 
-        if parsed.host_str().is_none() || parsed.host_str().unwrap().is_empty() {
+        if parsed.host_str().is_none_or(|h| h.is_empty()) {
             return Err(anyhow::anyhow!("RPC_URL must have a valid host"));
         }
 
@@ -198,6 +199,13 @@ pub struct MerkleTreeConfig {
     pub source: String,
     pub cache_path: String,
     pub merkle_root: String,
+    pub block_number: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AirdropConfig {
+    pub claim_amount: u64,
+    pub avg_gas_per_claim: u64,
 }
 
 impl RateLimitConfig {
@@ -452,6 +460,10 @@ impl Config {
                 cache_path: std::env::var("MERKLE_TREE_CACHE_PATH")
                     .unwrap_or_else(|_| "/data/merkle_tree.bin".to_string()),
                 merkle_root: std::env::var("MERKLE_TREE_ROOT").unwrap_or_else(|_| "".to_string()),
+                block_number: std::env::var("MERKLE_TREE_BLOCK_NUMBER")
+                    .unwrap_or_else(|_| "0".to_string())
+                    .parse()
+                    .unwrap_or(0),
             },
             cors: CorsConfig {
                 allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
@@ -477,6 +489,16 @@ impl Config {
                     .unwrap_or_else(|_| "false".to_string())
                     .parse()
                     .unwrap_or(false),
+            },
+            airdrop: AirdropConfig {
+                claim_amount: std::env::var("AIRDROP_CLAIM_AMOUNT")
+                    .unwrap_or_else(|_| "1000000000000000000".to_string())
+                    .parse()
+                    .unwrap_or(1_000_000_000_000_000_000),
+                avg_gas_per_claim: std::env::var("AIRDROP_AVG_GAS")
+                    .unwrap_or_else(|_| "700000".to_string())
+                    .parse()
+                    .unwrap_or(700_000),
             },
         };
         Ok(config)

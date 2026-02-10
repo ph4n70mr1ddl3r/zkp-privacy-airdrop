@@ -155,8 +155,14 @@ impl MerkleTree {
 }
 
 pub fn build_merkle_tree(addresses: &[[u8; 20]], height: u8) -> Result<MerkleTree, String> {
-    if height > 26 {
-        return Err("Tree height too large, maximum is 26".to_string());
+    const MIN_HEIGHT: u8 = 1;
+    const MAX_HEIGHT: u8 = 26;
+
+    if height < MIN_HEIGHT {
+        return Err(format!("Tree height too small, minimum is {}", MIN_HEIGHT));
+    }
+    if height > MAX_HEIGHT {
+        return Err(format!("Tree height too large, maximum is {}", MAX_HEIGHT));
     }
 
     if addresses.len() > 1 << height {

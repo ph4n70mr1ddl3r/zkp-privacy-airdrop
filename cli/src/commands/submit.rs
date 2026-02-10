@@ -100,19 +100,29 @@ pub async fn execute(
     let window_ms = SUBMIT_RATE_LIMIT_WINDOW.as_millis() as u64;
 
     loop {
-        let last_time_ms = LAST_SUBMIT_TIME.load(Ordering::SeqCst);
-        let elapsed_ms = current_ms.saturating_sub(last_time_ms);
+        let last_time_ms = LAST_SUBMIT_TIME.load(Ordering::Acquire);
+        let elapsed_ms = if last_time_ms == 0 {
+            window_ms
+        } else {
+            current_ms.saturating_sub(last_time_ms)
+        };
 
-        if elapsed_ms >= window_ms || last_time_ms == 0 {
-            if LAST_SUBMIT_TIME
-                .compare_exchange_weak(last_time_ms, current_ms, Ordering::SeqCst, Ordering::SeqCst)
-                .is_ok()
-            {
-                SUBMIT_COUNT.store(1, Ordering::SeqCst);
-                break;
+        if elapsed_ms >= window_ms {
+            let mut new_count = 1u32;
+            match LAST_SUBMIT_TIME.compare_exchange(
+                last_time_ms,
+                current_ms,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(_) => {
+                    SUBMIT_COUNT.store(new_count, Ordering::Release);
+                    break;
+                }
+                Err(_) => continue,
             }
         } else {
-            let mut count = SUBMIT_COUNT.load(Ordering::SeqCst);
+            let mut count = SUBMIT_COUNT.load(Ordering::Acquire);
             loop {
                 if count >= MAX_SUBMITS_PER_WINDOW {
                     let wait_time =
@@ -127,8 +137,8 @@ pub async fn execute(
                 match SUBMIT_COUNT.compare_exchange_weak(
                     count,
                     count + 1,
-                    Ordering::SeqCst,
-                    Ordering::SeqCst,
+                    Ordering::AcqRel,
+                    Ordering::Acquire,
                 ) {
                     Ok(_) => break,
                     Err(new_count) => count = new_count,

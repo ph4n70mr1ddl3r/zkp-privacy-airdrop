@@ -36,7 +36,9 @@ pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
     Err(anyhow::anyhow!(
         "Failed to connect to Redis after {} attempts: {}",
         MAX_RETRIES,
-        last_error.unwrap()
+        last_error
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "Unknown error".to_string())
     ))
 }
 

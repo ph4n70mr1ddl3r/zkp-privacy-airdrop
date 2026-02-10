@@ -8,45 +8,38 @@ use tracing::{error, info, warn};
 /// Compiled regex patterns for sensitive data filtering (pre-compiled for performance)
 static SENSITIVE_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
     vec![
-        (Regex::new("(?i)private_key").unwrap(), "private key"),
-        (Regex::new("(?i)private-key").unwrap(), "private key"),
-        (Regex::new("(?i)privatekey").unwrap(), "private key"),
-        (Regex::new("(?i)priv_key").unwrap(), "private key"),
-        (Regex::new("(?i)privkey").unwrap(), "private key"),
-        (Regex::new("(?i)0x[0-9a-f]{32,}").unwrap(), "hex credential"),
-        (Regex::new("(?i)seed").unwrap(), "seed"),
-        (Regex::new("(?i)mnemonic").unwrap(), "mnemonic"),
-        (Regex::new("(?i)credentials").unwrap(), "credentials"),
-        (Regex::new("(?i)api_key").unwrap(), "API key"),
-        (Regex::new("(?i)apikey").unwrap(), "API key"),
-        (Regex::new("(?i)access_token").unwrap(), "access token"),
-        (Regex::new("(?i)refresh_token").unwrap(), "refresh token"),
-        (Regex::new("(?i)access_key").unwrap(), "access key"),
-        (Regex::new("(?i)secret").unwrap(), "secret value"),
-        (Regex::new("(?i)secret_key").unwrap(), "secret key"),
-        (Regex::new("(?i)session").unwrap(), "session token"),
-        (Regex::new("(?i)signature").unwrap(), "signature"),
-        (Regex::new("(?i)auth_token").unwrap(), "auth token"),
-        (Regex::new("(?i)password").unwrap(), "password"),
-        (Regex::new("(?i)passwd").unwrap(), "password"),
-        (Regex::new("(?i)pwd").unwrap(), "password"),
         (
-            Regex::new("(?i)authorization").unwrap(),
-            "authorization header",
+            Regex::new(r"(?i)(private[-_]?key|priv[-_]?key)").unwrap(),
+            "private key",
         ),
-        (Regex::new("(?i)bearer").unwrap(), "bearer token"),
         (
-            Regex::new("(?i)0x[0-9a-f]{64,}").unwrap(),
+            Regex::new(r"(?i)0x[0-9a-f]{32,}").unwrap(),
+            "hex credential",
+        ),
+        (Regex::new(r"(?i)(mnemonic|seed)").unwrap(), "seed/mnemonic"),
+        (
+            Regex::new(r"(?i)(api[-_]?key|access[-_]?key|secret[-_]?key)").unwrap(),
+            "API/secret key",
+        ),
+        (
+            Regex::new(r"(?i)(access[-_]?token|refresh[-_]?token|auth[-_]?token|session)").unwrap(),
+            "token",
+        ),
+        (
+            Regex::new(r"(?i)(password|passwd|pwd)").unwrap(),
+            "password",
+        ),
+        (
+            Regex::new(r"(?i)(authorization|bearer)").unwrap(),
+            "auth header",
+        ),
+        (
+            Regex::new(r"(?i)0x[0-9a-f]{64,}").unwrap(),
             "private key or hash",
         ),
         (
-            Regex::new(r"(?i)pk\s*=\s*[0-9a-f]+").unwrap(),
-            "private key param",
-        ),
-        (Regex::new(r"(?i)key\s*=\s*[0-9a-f]+").unwrap(), "key param"),
-        (
-            Regex::new(r"(?i)token\s*=\s*[a-z0-9\-._~+/]+=*").unwrap(),
-            "token param",
+            Regex::new(r"(?i)(pk|key|token)\s*=\s*[a-z0-9\-._~+/]+").unwrap(),
+            "credential param",
         ),
         (
             Regex::new(r"(?i)[a-z0-9+/]{40,}={0,2}").unwrap(),
@@ -403,7 +396,7 @@ pub async fn check_status(
 pub async fn get_merkle_root(state: web::Data<AppState>) -> impl Responder {
     HttpResponse::Ok().json(MerkleRootResponse {
         merkle_root: state.config.merkle_tree.merkle_root.clone(),
-        block_number: 0,
+        block_number: state.config.merkle_tree.block_number,
         timestamp: chrono::Utc::now().to_rfc3339(),
     })
 }

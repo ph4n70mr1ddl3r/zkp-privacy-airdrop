@@ -546,6 +546,11 @@ impl AppState {
                         ));
                     }
 
+                    let retry_delay = std::cmp::min(
+                        TRANSACTION_RETRY_DELAY_MS * (1u64 << retry_count),
+                        TRANSACTION_RETRY_DELAY_MS * 8,
+                    );
+
                     let current_nonce = if retry_count == 0 {
                         nonce
                     } else {
@@ -663,30 +668,28 @@ impl AppState {
                                 "Transaction failed (attempt {}/{}), retrying in {}ms: {}",
                                 retry_count,
                                 MAX_TRANSACTION_RETRIES,
-                                TRANSACTION_RETRY_DELAY_MS,
+                                retry_delay,
                                 e
                             );
-                            tokio::time::sleep(tokio::time::Duration::from_millis(
-                                TRANSACTION_RETRY_DELAY_MS,
-                            ))
-                            .await;
+                            tokio::time::sleep(tokio::time::Duration::from_millis(retry_delay))
+                                .await;
                         }
                         Err(_) => {
                             retry_count += 1;
                             if retry_count >= MAX_TRANSACTION_RETRIES {
                                 self.increment_failed_claims();
-                                return Err(format!("Failed to submit PLONK claim after {} retries: timeout after {} seconds", MAX_TRANSACTION_RETRIES, RPC_TIMEOUT_SECONDS));
+                                return Err(format!(
+                                    "Failed to submit PLONK claim after {} retries: timeout after {} seconds",
+                                    MAX_TRANSACTION_RETRIES, RPC_TIMEOUT_SECONDS));
                             }
                             tracing::warn!(
                                 "Transaction timed out (attempt {}/{}), retrying in {}ms",
                                 retry_count,
                                 MAX_TRANSACTION_RETRIES,
-                                TRANSACTION_RETRY_DELAY_MS
+                                retry_delay
                             );
-                            tokio::time::sleep(tokio::time::Duration::from_millis(
-                                TRANSACTION_RETRY_DELAY_MS,
-                            ))
-                            .await;
+                            tokio::time::sleep(tokio::time::Duration::from_millis(retry_delay))
+                                .await;
                         }
                     }
                 }
@@ -783,12 +786,12 @@ impl AppState {
             )
         };
 
-        const CLAIM_AMOUNT: u64 = 1_000_000_000_000_000_000;
-        const AVG_GAS: u64 = 700_000;
+        let claim_amount = self.config.airdrop.claim_amount;
+        let avg_gas = self.config.airdrop.avg_gas_per_claim;
 
-        let total_tokens_distributed = successful_claims.saturating_mul(CLAIM_AMOUNT);
+        let total_tokens_distributed = successful_claims.saturating_mul(claim_amount);
 
-        let total_gas_used = successful_claims.saturating_mul(AVG_GAS);
+        let total_gas_used = successful_claims.saturating_mul(avg_gas);
 
         let avg_gas_price = self.get_average_gas_price().await;
 
