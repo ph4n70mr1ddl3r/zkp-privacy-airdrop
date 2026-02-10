@@ -18,6 +18,13 @@ pub async fn execute(
     format: String,
     config: &Config,
 ) -> Result<()> {
+    if private_key_opt.is_some() {
+        eprintln!(
+            "{}: Passing private key via --private-key is deprecated. Use --private-key-file or --private-key-stdin instead.",
+            "WARNING".yellow().bold()
+        );
+    }
+
     info!("Generating proof...");
 
     let private_key_wrapper =
@@ -92,6 +99,14 @@ pub async fn execute(
     pb.finish_with_message(
         "Proof generated! (placeholder proof - actual PLONK proof generation not yet implemented)",
     );
+
+    eprintln!("\n{}", "CRITICAL WARNING:".red().bold());
+    eprintln!(
+        "  This proof uses placeholder zero values and will {}!",
+        "FAIL".red().bold()
+    );
+    eprintln!("  Actual PLONK proof generation using arkworks is required before deployment.");
+    eprintln!("  See: cli/src/commands/generate_proof.rs:69-79\n");
 
     let output_path = output.unwrap_or_else(|| PathBuf::from("proof.json"));
 

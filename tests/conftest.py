@@ -7,15 +7,19 @@ import pytest
 @pytest.fixture
 def test_config():
     """Test configuration fixture"""
+    airdrop_contract = os.getenv("TEST_AIRDROP_CONTRACT")
+    if not airdrop_contract:
+        pytest.fail("TEST_AIRDROP_CONTRACT environment variable is required")
+
+    token_contract = os.getenv("TEST_TOKEN_CONTRACT")
+    if not token_contract:
+        pytest.fail("TEST_TOKEN_CONTRACT environment variable is required")
+
     return {
         "network": os.getenv("TEST_NETWORK", "optimism"),
         "chain_id": int(os.getenv("TEST_CHAIN_ID", "10")),
-        "airdrop_contract": os.getenv(
-            "TEST_AIRDROP_CONTRACT", "0x1234567890123456789012345678901234567890"
-        ),
-        "token_contract": os.getenv(
-            "TEST_TOKEN_CONTRACT", "0xabcd123456789012345678901234567890123456"
-        ),
+        "airdrop_contract": airdrop_contract,
+        "token_contract": token_contract,
     }
 
 

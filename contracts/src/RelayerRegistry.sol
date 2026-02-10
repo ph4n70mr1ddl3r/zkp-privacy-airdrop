@@ -188,15 +188,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
         _handleDonation(msg.sender, msg.value);
     }
 
-    /**
-     * @notice Deauthorize a relayer
-     * @param relayer Address of the relayer to deauthorize
-     * @dev Only callable by owner, relayer cannot withdraw remaining funds
-     */
-    function deauthorizeRelayer(address relayer) external onlyOwner validAddress(relayer) {
-        authorizedRelayers[relayer] = false;
-        emit RelayerDeauthorized(relayer);
-    }
+}
 
     /**
      * @notice Donate ETH to the default relayer

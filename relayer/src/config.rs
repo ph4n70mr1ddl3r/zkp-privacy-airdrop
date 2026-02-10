@@ -106,6 +106,14 @@ impl NetworkConfig {
             return Err(anyhow::anyhow!("RPC_URL must have a valid host"));
         }
 
+        let is_development = url.contains("localhost") || url.contains("127.0.0.1");
+        if !is_development && parsed.scheme() != "https" {
+            return Err(anyhow::anyhow!(
+                "RPC_URL must use HTTPS in production. Got: {}. If this is a local development endpoint, use localhost or 127.0.0.1",
+                url
+            ));
+        }
+
         if self.chain_id == 0 {
             return Err(anyhow::anyhow!("CHAIN_ID must be non-zero"));
         }
