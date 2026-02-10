@@ -49,7 +49,7 @@ fn main() -> Result<()> {
     pb.set_style(
         ProgressStyle::default_bar()
             .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
-            .map_err(|e| anyhow::anyhow!("Failed to set progress style: {}", e))?
+            .unwrap_or_else(|_| ProgressStyle::default_bar())
             .progress_chars("=>-"),
     );
 

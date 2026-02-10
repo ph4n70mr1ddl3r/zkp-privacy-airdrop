@@ -176,16 +176,14 @@ fn generate_plonk_proof_internal(
     _public_inputs: &PublicInputs,
 ) -> Result<PlonkProof> {
     Err(anyhow::anyhow!(
-        "PLONK proof generation not yet implemented. \
-         This requires integration with a PLONK proving library (e.g., snarkjs, arkworks-plonk). \
-         Steps needed:\n\
-         1) Generate proving key from circuit (.ptau file)\n\
-         2) Compute witness from private inputs\n\
-         3) Generate PLONK proof using proving key and witness\n\
-         4) Verify proof structure matches expected format (8 field elements)\n\
+        "PLONK proof generation requires a proving key and circuit integration. \
+         To enable PLONK proof generation:\n\
+         1) Compile the circom circuit to generate PLONK proving key (.ptau)\n\
+         2) Integrate with a PLONK proving library (snarkjs or arkworks-plonk)\n\
+         3) Use the proving key to generate proofs from witness computation\n\
          \n\
-         For testing purposes, see the `minimal()` method (deprecated).\n\
-         For production, integrate with snarkjs CLI or arkworks PLONK implementation."
+         For now, please use the generate_proof command with Groth16 proofs, \
+         or set up the PLONK proving infrastructure as documented in PLONK-README.md"
     ))
 }
 

@@ -121,8 +121,20 @@ async fn main() -> anyhow::Result<()> {
     let handle = server.handle();
 
     tokio::spawn(async move {
-        let mut sigterm = signal::unix::signal(signal::unix::SignalKind::terminate()).unwrap();
-        let mut sigint = signal::unix::signal(signal::unix::SignalKind::interrupt()).unwrap();
+        let mut sigterm = match signal::unix::signal(signal::unix::SignalKind::terminate()) {
+            Ok(sig) => sig,
+            Err(e) => {
+                tracing::error!("Failed to setup SIGTERM handler: {}", e);
+                return;
+            }
+        };
+        let mut sigint = match signal::unix::signal(signal::unix::SignalKind::interrupt()) {
+            Ok(sig) => sig,
+            Err(e) => {
+                tracing::error!("Failed to setup SIGINT handler: {}", e);
+                return;
+            }
+        };
 
         tokio::select! {
             _ = sigterm.recv() => {

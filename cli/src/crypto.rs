@@ -299,6 +299,13 @@ pub fn validate_address(address: &str) -> Result<Address> {
     Ok(addr)
 }
 
+pub fn normalize_address(address: &str) -> Result<Address> {
+    let addr: Address = address
+        .parse::<Address>()
+        .context("Invalid Ethereum address format")?;
+    Ok(addr)
+}
+
 /// Validates a nullifier string format.
 ///
 /// Checks that nullifier:

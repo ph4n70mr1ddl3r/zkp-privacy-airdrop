@@ -97,24 +97,15 @@ pub async fn execute(
 
     let now = Instant::now();
     let current_ms = now.elapsed().as_millis() as u64;
+    let window_ms = SUBMIT_RATE_LIMIT_WINDOW.as_millis() as u64;
 
     loop {
         let last_time_ms = LAST_SUBMIT_TIME.load(Ordering::SeqCst);
+        let elapsed_ms = current_ms.saturating_sub(last_time_ms);
 
-        if last_time_ms > 0
-            && current_ms.saturating_sub(last_time_ms)
-                >= SUBMIT_RATE_LIMIT_WINDOW.as_millis() as u64
-        {
+        if elapsed_ms >= window_ms || last_time_ms == 0 {
             if LAST_SUBMIT_TIME
                 .compare_exchange_weak(last_time_ms, current_ms, Ordering::SeqCst, Ordering::SeqCst)
-                .is_ok()
-            {
-                SUBMIT_COUNT.store(1, Ordering::SeqCst);
-                break;
-            }
-        } else if last_time_ms == 0 {
-            if LAST_SUBMIT_TIME
-                .compare_exchange_weak(0, current_ms, Ordering::SeqCst, Ordering::SeqCst)
                 .is_ok()
             {
                 SUBMIT_COUNT.store(1, Ordering::SeqCst);
@@ -125,8 +116,8 @@ pub async fn execute(
 
             if count >= MAX_SUBMITS_PER_WINDOW {
                 SUBMIT_COUNT.fetch_sub(1, Ordering::SeqCst);
-                let elapsed_ms = current_ms.saturating_sub(last_time_ms);
-                let wait_time = SUBMIT_RATE_LIMIT_WINDOW - Duration::from_millis(elapsed_ms);
+                let wait_time =
+                    SUBMIT_RATE_LIMIT_WINDOW.saturating_sub(Duration::from_millis(elapsed_ms));
                 println!(
                     "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
                     "Warning:".yellow(),

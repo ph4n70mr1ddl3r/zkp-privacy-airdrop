@@ -63,6 +63,10 @@ static SENSITIVE_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
             Regex::new(r"(?i)token\s*=\s*[a-z0-9\-._~+/]+=*").unwrap(),
             "token param",
         ),
+        (
+            Regex::new(r"(?i)[a-z0-9+/]{40,}={0,2}").unwrap(),
+            "base64 encoded data",
+        ),
     ]
 });
 

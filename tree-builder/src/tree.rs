@@ -8,10 +8,12 @@ use num_bigint::BigUint;
 use num_traits::Num;
 
 #[cfg(test)]
+#[allow(dead_code)]
 const FIELD_PRIME: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
 #[cfg(test)]
+#[allow(dead_code)]
 fn field_prime() -> BigUint {
     BigUint::from_str_radix(FIELD_PRIME, 10).expect("Invalid field prime constant")
 }
@@ -200,6 +202,7 @@ pub fn build_merkle_tree(addresses: &[[u8; 20]], height: u8) -> Result<MerkleTre
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 fn mod_field(bytes: &[u8; 32]) -> [u8; 32] {
     let value = BigUint::from_bytes_be(bytes);
     let reduced = &value % &field_prime();

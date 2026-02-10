@@ -287,7 +287,7 @@ impl Config {
 
                     let is_insecure = insecure_keys
                         .iter()
-                        .any(|insecure_key| normalized_key.as_bytes() == insecure_key.as_bytes());
+                        .any(|insecure_key| normalized_key == *insecure_key);
                     if is_insecure {
                         normalized_key.zeroize();
                         return Err(anyhow::anyhow!(
