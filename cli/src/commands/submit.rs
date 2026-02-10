@@ -181,7 +181,8 @@ pub async fn execute(
         if let Some(code) = &submit_response.code {
             match code.as_str() {
                 "RATE_LIMITED" => {
-                    if let Some(retry_after) = response.headers().get("Retry-After") {
+                    use reqwest::header::RETRY_AFTER;
+                    if let Some(retry_after) = response.headers().get(RETRY_AFTER) {
                         if let Ok(seconds_str) = retry_after.to_str() {
                             if let Ok(secs) = seconds_str.parse::<u64>() {
                                 if secs > MAX_RETRY_AFTER_SECONDS {

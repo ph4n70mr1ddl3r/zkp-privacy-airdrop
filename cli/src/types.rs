@@ -132,13 +132,3 @@ pub struct ResponseTime {
     pub p95: u64,
     pub p99: u64,
 }
-
-impl fmt::Display for ProofData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Proof Data:\n")?;
-        write!(f, "  Nullifier: {}\n", self.nullifier)?;
-        write!(f, "  Recipient: {}\n", self.recipient)?;
-        write!(f, "  Merkle Root: {}\n", self.merkle_root)?;
-        write!(f, "  Generated At: {}\n", self.generated_at)
-    }
-}

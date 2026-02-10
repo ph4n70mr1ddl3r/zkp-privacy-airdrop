@@ -7,8 +7,6 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 use zeroize::Zeroize;
 
-use crate::types::ProofData;
-
 /// Wrapper for private key bytes that zeroizes on drop
 #[derive(Clone)]
 pub struct PrivateKey(Vec<u8>);
