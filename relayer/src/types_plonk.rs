@@ -184,8 +184,6 @@ impl SubmitClaimRequest {
         }
     }
 }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubmitClaimResponse {

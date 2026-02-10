@@ -3,7 +3,7 @@ use ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use tracing::warn;
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::Zeroize;
 
 /// Wrapper for private key string that zeroizes on drop
 #[derive(Clone, Serialize, Deserialize)]
@@ -36,6 +36,12 @@ impl std::fmt::Debug for SecretKey {
 impl Drop for SecretKey {
     fn drop(&mut self) {
         self.0.zeroize();
+    }
+}
+
+impl Default for SecretKey {
+    fn default() -> Self {
+        SecretKey(String::new())
     }
 }
 
@@ -502,9 +508,6 @@ impl Config {
             return Err(anyhow::anyhow!(
                 "RELAYER_PORT must be >= 1024 (non-privileged port)"
             ));
-        }
-        if self.port > 65535 {
-            return Err(anyhow::anyhow!("RELAYER_PORT must be <= 65535"));
         }
 
         if self.database_url.trim().is_empty() {

@@ -61,7 +61,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
-        require(uint256(uint160(recipient)) == uint256(recipient), "Invalid address padding: address has malicious data");
+        require(address(uint160(recipient)) == recipient, "Invalid address padding: address has malicious data");
 
         uint256[3] memory instances = [
             uint256(merkleRoot),

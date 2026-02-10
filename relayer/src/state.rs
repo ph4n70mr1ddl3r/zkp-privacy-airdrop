@@ -130,7 +130,7 @@ impl AppState {
     }
 
     pub fn relayer_address(&self) -> Result<String, String> {
-        LocalWallet::from_str(&self.config.relayer.private_key)
+        LocalWallet::from_str(self.config.relayer.private_key.as_str())
             .map(|wallet| format!("{:#x}", wallet.address()))
             .map_err(|e| format!("Failed to parse private key: {}", e))
     }
@@ -390,10 +390,11 @@ impl AppState {
 
         let provider = Arc::new(provider);
 
-        let wallet = LocalWallet::from_str(&self.config.relayer.private_key).map_err(|e| {
-            self.increment_failed_claims();
-            format!("Failed to create wallet from private key: {}", e)
-        })?;
+        let wallet =
+            LocalWallet::from_str(self.config.relayer.private_key.as_str()).map_err(|e| {
+                self.increment_failed_claims();
+                format!("Failed to create wallet from private key: {}", e)
+            })?;
 
         let airdrop_address = Address::from_str(&self.config.network.contracts.airdrop_address)
             .map_err(|e| {
@@ -498,11 +499,13 @@ impl AppState {
                         e
                     })?;
 
-                if parsed_elements.len() != 8 {
+                let parsed_len = parsed_elements.len();
+
+                if parsed_len != 8 {
                     self.increment_failed_claims();
                     return Err(format!(
                         "Invalid PLONK proof length: expected 8 elements, got {} after parsing",
-                        parsed_elements.len()
+                        parsed_len
                     ));
                 }
 
@@ -511,7 +514,7 @@ impl AppState {
                         self.increment_failed_claims();
                         format!(
                             "Failed to convert proof to array: expected 8 elements, got {}",
-                            parsed_elements.len()
+                            parsed_len
                         )
                     })?;
 

@@ -42,10 +42,13 @@ impl PrivateKey {
     /// Try to convert to a fixed-size array
     pub fn try_into_array<const N: usize>(self) -> Result<[u8; N]> {
         let bytes = self.0;
-        std::mem::forget(self);
-        bytes
+        let mut zeroizing_key = PrivateKey(bytes);
+        let result = zeroizing_key
+            .0
             .try_into()
-            .map_err(|e| anyhow::anyhow!("Invalid array length: expected {}, got {}", N, e.len()))
+            .map_err(|e| anyhow::anyhow!("Invalid array length: expected {}, got {}", N, e.len()));
+        zeroizing_key.zeroize();
+        result
     }
 }
 
