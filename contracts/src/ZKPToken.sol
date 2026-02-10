@@ -15,15 +15,25 @@ contract ZKPToken is ERC20, Ownable {
     uint256 public immutable deployTimestamp;
     uint256 public mintCount;
     bool public mintingPaused;
-    uint8 private constant _decimals = 18;
+    uint8 private constant DECIMALS = 18;
 
-    event TokensMinted(address indexed to, uint256 amount, uint256 totalSupply, uint256 indexed mintId, uint256 timestamp);
+    event TokensMinted(
+        address indexed to,
+        uint256 amount,
+        uint256 totalSupply,
+        uint256 indexed mintId,
+        uint256 timestamp
+    );
     event TokensBurned(address indexed from, uint256 amount, uint256 totalSupply);
     event MintingPaused(address indexed account);
     event MintingUnpaused(address indexed account);
 
     constructor() ERC20("ZKP Token", "ZKP") Ownable(msg.sender) {
         deployTimestamp = block.timestamp;
+    }
+
+    function decimals() public pure override returns (uint8) {
+        return DECIMALS;
     }
 
     /**

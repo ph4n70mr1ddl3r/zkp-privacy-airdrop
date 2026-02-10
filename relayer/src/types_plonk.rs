@@ -1,6 +1,6 @@
 use ethers::contract::abigen;
 use num_bigint::BigUint;
-use num_traits::Num;
+use num_traits::{Num, Zero};
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
