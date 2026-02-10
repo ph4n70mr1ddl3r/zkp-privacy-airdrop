@@ -47,6 +47,8 @@ async function main() {
 
   const CLAIM_AMOUNT = ethers.parseUnits("1000", 18);
   const CLAIM_DEADLINE = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60; // 1 year from now
+  const MAX_WITHDRAWAL_PERCENT = 10; // 10% per period
+  const WITHDRAWAL_COOLDOWN = 24 * 60 * 60; // 24 hours
 
   console.log("\n5. Deploying PrivacyAirdropPLONK...");
   const PrivacyAirdropPLONK = await ethers.getContractFactory("PrivacyAirdropPLONK");
@@ -55,7 +57,9 @@ async function main() {
     MERKLE_ROOT,
     CLAIM_AMOUNT,
     CLAIM_DEADLINE,
-    verifierAddress
+    verifierAddress,
+    MAX_WITHDRAWAL_PERCENT,
+    WITHDRAWAL_COOLDOWN
   );
   await airdrop.waitForDeployment();
   const airdropAddress = await airdrop.getAddress();

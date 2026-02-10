@@ -2,11 +2,11 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("PrivacyAirdropPLONK", function () {
-  let token: any;
-  let verifier: any;
-  let airdrop: any;
-  let owner: any;
-  let user: any;
+  let token;
+  let verifier;
+  let airdrop;
+  let owner;
+  let user;
 
   const MERKLE_ROOT = ethers.keccak256(ethers.toUtf8Bytes("test"));
   const CLAIM_AMOUNT = ethers.parseUnits("1000", 18);
@@ -31,7 +31,9 @@ describe("PrivacyAirdropPLONK", function () {
       MERKLE_ROOT,
       CLAIM_AMOUNT,
       CLAIM_DEADLINE,
-      verifierAddress
+      verifierAddress,
+      10,
+      24 * 60 * 60
     );
     await airdrop.waitForDeployment();
     const airdropAddress = await airdrop.getAddress();

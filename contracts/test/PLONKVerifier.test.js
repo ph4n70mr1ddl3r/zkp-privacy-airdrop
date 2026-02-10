@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("PLONKVerifier", function () {
-  let verifier: any;
+  let verifier;
 
   beforeEach(async function () {
     const PlonkVerifierFactory = await ethers.getContractFactory("PlonkVerifier");
