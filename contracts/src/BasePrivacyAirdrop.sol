@@ -39,10 +39,10 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         uint256 _claimAmount,
         uint256 _claimDeadline
     ) Ownable(msg.sender) {
-        require(_token != address(0), "Invalid token address");
-        require(_merkleRoot != bytes32(0), "Invalid merkle root");
-        require(_claimAmount > 0, "Invalid claim amount");
-        require(_claimDeadline > block.timestamp, "Invalid deadline");
+        require(_token != address(0), "Invalid token address: cannot be zero address");
+        require(_merkleRoot != bytes32(0), "Invalid merkle root: cannot be zero");
+        require(_claimAmount > 0, "Invalid claim amount: must be greater than zero");
+        require(_claimDeadline > block.timestamp, "Invalid deadline: must be in the future");
         token = IERC20(_token);
         merkleRoot = _merkleRoot;
         claimAmount = _claimAmount;
@@ -55,10 +55,10 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @param nullifier Unique identifier for the claim
      */
     modifier validClaim(address recipient, bytes32 nullifier) {
-        require(!paused, "Contract is paused");
-        require(block.timestamp <= claimDeadline, "Claim period ended");
-        require(recipient != address(0), "Invalid recipient");
-        require(!nullifiers[nullifier], "Already claimed");
+        require(!paused, "Contract is paused: claims are temporarily suspended");
+        require(block.timestamp <= claimDeadline, "Claim period ended: deadline has passed");
+        require(recipient != address(0), "Invalid recipient: cannot be zero address");
+        require(!nullifiers[nullifier], "Already claimed: this nullifier has been used");
         _;
     }
 
@@ -111,6 +111,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         require(block.timestamp > claimDeadline, "Claim period not ended");
         require(recipient != address(0), "Invalid recipient");
         require(amount > 0, "Amount must be greater than zero");
+        require(amount <= token.balanceOf(address(this)), "Insufficient contract balance");
         _transferTokens(recipient, amount);
         emit EmergencyWithdraw(recipient, amount, block.timestamp);
     }

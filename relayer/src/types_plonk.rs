@@ -45,8 +45,13 @@ pub struct PlonkProof {
 
 /// Validates that a string represents a valid field element in BN254 scalar field
 fn is_valid_field_element(hex_str: &str) -> bool {
-    let hex = hex_str.trim_start_matches("0x");
-    if hex.is_empty() {
+    let trimmed = hex_str.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    let hex = trimmed.trim_start_matches("0x");
+    if hex.is_empty() || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
         return false;
     }
 
@@ -60,6 +65,9 @@ fn is_valid_field_element(hex_str: &str) -> bool {
     }
 
     let value = BigUint::from_bytes_be(&bytes);
+    if value.is_zero() {
+        return false;
+    }
     value < *get_field_modulus()
 }
 
@@ -95,8 +103,37 @@ impl Proof {
                 valid_a && valid_c && valid_b
             }
             Proof::Plonk(ref proof) => {
+                if proof.proof.is_empty() {
+                    return false;
+                }
                 if proof.proof.len() != MAX_PROOF_SIZE {
                     return false;
+                }
+
+                for (idx, element) in proof.proof.iter().enumerate() {
+                    if element.trim().is_empty() {
+                        tracing::warn!("PLONK proof element at index {} is empty", idx);
+                        return false;
+                    }
+                    if !element.starts_with("0x") && !element.starts_with("0X") {
+                        tracing::warn!("PLONK proof element at index {} missing 0x prefix", idx);
+                        return false;
+                    }
+                    if element.len() > MAX_ELEMENT_LENGTH {
+                        tracing::warn!(
+                            "PLONK proof element at index {} too long: {}",
+                            idx,
+                            element.len()
+                        );
+                        return false;
+                    }
+                    if !is_valid_field_element(element) {
+                        tracing::warn!(
+                            "PLONK proof element at index {} is invalid field element",
+                            idx
+                        );
+                        return false;
+                    }
                 }
 
                 let total_bytes: usize = proof.proof.iter().map(|s| s.len()).sum();
@@ -104,10 +141,7 @@ impl Proof {
                     return false;
                 }
 
-                let content_ok = proof.proof.iter().all(|s| {
-                    !s.is_empty() && s.len() <= MAX_ELEMENT_LENGTH && is_valid_field_element(s)
-                });
-                content_ok
+                true
             }
         }
     }
@@ -285,4 +319,5 @@ pub enum RateLimitType {
     SubmitClaim,
     GetMerklePath,
     CheckStatus,
+    HealthCheck,
 }

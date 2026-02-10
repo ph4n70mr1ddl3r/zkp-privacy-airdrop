@@ -171,7 +171,26 @@ fn is_valid_hex_bytes(input: &str, expected_len: usize, reject_zero: bool) -> bo
     false
 }
 
-pub async fn health(state: web::Data<AppState>) -> impl Responder {
+pub async fn health(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
+    let client_ip = req
+        .connection_info()
+        .map(|info| info.realip_remote_addr().map(|addr| addr.ip().to_string()))
+        .flatten()
+        .unwrap_or_else(|| "unknown".to_string());
+
+    if let Err(e) = state
+        .check_rate_limit(&client_ip, RateLimitType::HealthCheck)
+        .await
+    {
+        warn!("Health endpoint rate limit exceeded: {}", e);
+        return HttpResponse::TooManyRequests().json(ErrorResponse {
+            success: false,
+            error: "Too many health check requests. Please wait before trying again.".to_string(),
+            code: Some("RATE_LIMITED".to_string()),
+            retry_after: Some(10),
+        });
+    }
+
     let relayer_address = match state.relayer_address() {
         Ok(addr) => addr,
         Err(e) => {
@@ -240,11 +259,7 @@ pub async fn submit_claim(
         return response;
     }
 
-    info!(
-        "Received {} claim submission from nullifier: {}",
-        claim.proof.type_name(),
-        claim.nullifier
-    );
+    info!("Received {} claim submission", claim.proof.type_name());
 
     // Rate limiting check
     if let Err(e) = state
@@ -261,11 +276,7 @@ pub async fn submit_claim(
     }
 
     if !claim.proof.is_valid_structure() {
-        warn!(
-            "Invalid {} proof structure from nullifier: {}",
-            claim.proof.type_name(),
-            claim.nullifier
-        );
+        warn!("Invalid {} proof structure", claim.proof.type_name());
         let error_code = if claim.proof.type_name() == "Plonk" {
             "PLONK_FORMAT_ERROR"
         } else {
@@ -324,7 +335,7 @@ pub async fn submit_claim(
         }
         Err(e) => {
             if e.contains("already been used") {
-                warn!("Nullifier already claimed: {}", claim.nullifier);
+                warn!("Nullifier already claimed");
                 return HttpResponse::BadRequest().json(ErrorResponse {
                     success: false,
                     error: e,
@@ -332,7 +343,7 @@ pub async fn submit_claim(
                     retry_after: None,
                 });
             }
-            error!("Failed to submit claim: {} - Error: {}", claim.nullifier, e);
+            error!("Failed to submit claim - Error: {}", e);
             HttpResponse::InternalServerError().json(ErrorResponse {
                 success: false,
                 error: sanitize_error_message(&format!("Failed to submit claim: {}", e)),
@@ -351,7 +362,7 @@ pub async fn check_status(
     let nullifier = path.into_inner();
 
     if !is_valid_nullifier(&nullifier) {
-        warn!("Invalid nullifier format: {}", nullifier);
+        warn!("Invalid nullifier format");
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
             error: "Invalid nullifier format. Expected 66-character hex string starting with 0x."
@@ -361,7 +372,7 @@ pub async fn check_status(
         });
     }
 
-    info!("Checking status for nullifier: {}", nullifier);
+    info!("Checking status for claim");
 
     if let Err(e) = state
         .check_rate_limit(&nullifier, RateLimitType::CheckStatus)

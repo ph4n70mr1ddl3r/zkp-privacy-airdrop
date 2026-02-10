@@ -435,6 +435,14 @@ impl Config {
         if self.port == 0 {
             return Err(anyhow::anyhow!("RELAYER_PORT must be greater than 0"));
         }
+        if self.port < 1024 {
+            return Err(anyhow::anyhow!(
+                "RELAYER_PORT must be >= 1024 (non-privileged port)"
+            ));
+        }
+        if self.port > 65535 {
+            return Err(anyhow::anyhow!("RELAYER_PORT must be <= 65535"));
+        }
 
         if self.database_url.trim().is_empty() {
             return Err(anyhow::anyhow!("DATABASE_URL cannot be empty"));

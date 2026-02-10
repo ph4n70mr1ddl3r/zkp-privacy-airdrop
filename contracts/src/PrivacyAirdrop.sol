@@ -31,6 +31,7 @@ interface IVerifier {
  * Inherits from BasePrivacyAirdrop to share common functionality with PrivacyAirdropPLONK
  */
 contract PrivacyAirdrop is BasePrivacyAirdrop {
+    uint256 private constant GROTH16_GAS_ESTIMATE = 700_000;
     IVerifier public immutable verifier;
 
     struct Proof {
@@ -93,6 +94,6 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
      * @return Estimated gas in wei (conservative 700K with buffer for Groth16 verification)
      */
     function estimateClaimGas() external pure returns (uint256) {
-        return 700_000;
+        return GROTH16_GAS_ESTIMATE;
     }
 }

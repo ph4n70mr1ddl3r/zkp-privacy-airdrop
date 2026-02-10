@@ -14,6 +14,7 @@ import "./BasePrivacyAirdrop.sol";
  * before deploying to production. See PLONK-README.md for verification key generation steps.
  */
 contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
+    uint256 private constant PLONK_GAS_ESTIMATE = 1_300_000;
     IPLONKVerifier public immutable verifier;
 
     /**
@@ -80,7 +81,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
      * @return Estimated gas in wei (conservative 1.3M with buffer)
      */
     function estimateClaimGas() external pure returns (uint256) {
-        return 1_300_000;
+        return PLONK_GAS_ESTIMATE;
     }
 }
 

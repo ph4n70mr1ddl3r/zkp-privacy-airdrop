@@ -309,15 +309,16 @@ impl AppState {
 
         let limit = match limit_type {
             RateLimitType::SubmitClaim => self.config.rate_limit.claims_per_minute,
-            RateLimitType::GetMerklePath | RateLimitType::CheckStatus => {
-                self.config.rate_limit.requests_per_minute
-            }
+            RateLimitType::GetMerklePath
+            | RateLimitType::CheckStatus
+            | RateLimitType::HealthCheck => self.config.rate_limit.requests_per_minute,
         };
 
         let nullifier_prefix = match limit_type {
             RateLimitType::SubmitClaim => "submit_claim",
             RateLimitType::GetMerklePath => "get_merkle_path",
             RateLimitType::CheckStatus => "check_status",
+            RateLimitType::HealthCheck => "health_check",
         };
         let redis_key = format!("rate_limit:{}:{}", nullifier_prefix, key);
 
@@ -364,23 +365,6 @@ impl AppState {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub async fn is_nullifier_used(&self, nullifier: &str) -> Result<bool, String> {
-        use redis::AsyncCommands;
-
-        let key = format!("nullifier:{}", nullifier);
-        let mut redis = self.redis.lock().await;
-
-        redis
-            .exists::<_, i64>(&key)
-            .await
-            .map(|count| count > 0)
-            .map_err(|e| {
-                tracing::error!("Failed to check nullifier existence in Redis: {}", e);
-                format!("Redis error: {}", e)
-            })
-    }
-
     pub async fn submit_claim(&self, claim: &SubmitClaimRequest) -> Result<String, String> {
         use redis::AsyncCommands;
 
@@ -418,15 +402,12 @@ impl AppState {
 
         let nullifier_bytes = hex::decode(&claim.nullifier[2..]).map_err(|e| {
             self.increment_failed_claims();
-            format!("Invalid nullifier hex '{}': {}", claim.nullifier, e)
+            format!("Invalid nullifier hex: {}", e)
         })?;
 
         let nullifier_array: [u8; 32] = nullifier_bytes[..].try_into().map_err(|e| {
             self.increment_failed_claims();
-            format!(
-                "Invalid nullifier length for '{}': expected 32 bytes, got {}",
-                claim.nullifier, e
-            )
+            format!("Invalid nullifier length: expected 32 bytes, got {}", e)
         })?;
 
         let key = format!("nullifier:{}", claim.nullifier);
@@ -485,7 +466,7 @@ impl AppState {
                     ));
                 }
 
-                let proof_array: [ethers::types::U256; 8] = match proof
+                let parsed_elements: Vec<ethers::types::U256> = proof
                     .proof
                     .iter()
                     .enumerate()
@@ -495,21 +476,27 @@ impl AppState {
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()
-                {
-                    Ok(v) => v,
-                    Err(e) => {
+                    .map_err(|e| {
                         self.increment_failed_claims();
-                        return Err(e);
-                    }
-                }
-                .try_into()
-                .map_err(|_e| {
+                        e
+                    })?;
+
+                if parsed_elements.len() != 8 {
                     self.increment_failed_claims();
-                    format!(
-                        "Failed to convert proof to array: expected 8 elements, got {}",
-                        proof.proof.len()
-                    )
-                })?;
+                    return Err(format!(
+                        "Invalid PLONK proof length: expected 8 elements, got {} after parsing",
+                        parsed_elements.len()
+                    ));
+                }
+
+                let proof_array: [ethers::types::U256; 8] =
+                    parsed_elements.try_into().map_err(|_e| {
+                        self.increment_failed_claims();
+                        format!(
+                            "Failed to convert proof to array: expected 8 elements, got {}",
+                            parsed_elements.len()
+                        )
+                    })?;
 
                 let nonce = tokio::time::timeout(
                     std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
@@ -531,6 +518,27 @@ impl AppState {
                 let mut retry_count = 0;
 
                 loop {
+                    let current_nonce = if retry_count == 0 {
+                        nonce
+                    } else {
+                        tokio::time::timeout(
+                            std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
+                            provider.get_transaction_count(wallet_with_chain.address(), None),
+                        )
+                        .await
+                        .map_err(|_| {
+                            self.increment_failed_claims();
+                            format!(
+                                "Failed to get transaction nonce on retry: timeout after {} seconds",
+                                RPC_TIMEOUT_SECONDS
+                            )
+                        })?
+                        .map_err(|e| {
+                            self.increment_failed_claims();
+                            format!("Failed to get transaction nonce on retry: {}", e)
+                        })?
+                    };
+
                     let call = plonk_verifier.claim(
                         privacy_airdrop_plonk::privacy_airdrop_plonk::Plonkproof {
                             proof: proof_array,
@@ -557,16 +565,33 @@ impl AppState {
                     })?;
 
                     let base_gas_price_u128 = base_gas_price.as_u128();
+                    if base_gas_price_u128 == 0 {
+                        self.increment_failed_claims();
+                        return Err("Invalid gas price: base gas price is zero".to_string());
+                    }
                     let gas_randomization_factor =
                         (self.config.relayer.gas_price_randomization * 100.0) as u64;
+                    if gas_randomization_factor > 100 {
+                        self.increment_failed_claims();
+                        return Err("Invalid gas randomization factor: must be <= 1.0".to_string());
+                    }
                     let random_factor = rand::thread_rng().gen_range(0..=gas_randomization_factor);
+                    let adjustment_multiplier = 100u128 + random_factor as u128;
+                    if base_gas_price_u128 > u128::MAX / adjustment_multiplier {
+                        self.increment_failed_claims();
+                        return Err(format!(
+                            "Gas price calculation would overflow: base {} gwei, multiplier {}",
+                            base_gas_price_u128 / 1_000_000_000,
+                            adjustment_multiplier
+                        ));
+                    }
                     let adjusted_price = base_gas_price_u128
-                        .checked_mul(100 + random_factor as u128)
+                        .checked_mul(adjustment_multiplier)
                         .and_then(|v| v.checked_div(100))
-                        .unwrap_or_else(|| {
-                            tracing::warn!("Gas price calculation overflow, using base price");
-                            base_gas_price_u128
-                        });
+                        .ok_or_else(|| {
+                            self.increment_failed_claims();
+                            "Gas price calculation division failed".to_string()
+                        })?;
 
                     let mut gas_price = ethers::types::U256::from(adjusted_price);
 
@@ -591,7 +616,7 @@ impl AppState {
 
                     let builder = call
                         .from(wallet_with_chain.address())
-                        .nonce(nonce + retry_count as u64)
+                        .nonce(current_nonce)
                         .gas_price(gas_price);
 
                     let send_result = tokio::time::timeout(
