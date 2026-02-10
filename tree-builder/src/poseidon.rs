@@ -6,7 +6,7 @@ const FIELD_PRIME: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
 /// Nullifier salt constant - must match the value used in circuit
-#[allow(dead_code)]
+#[cfg(test)]
 const NULLIFIER_SALT: &str =
     "87953108768114088221452414019732140257409482096940319490691914651639977587459";
 
@@ -34,7 +34,7 @@ pub fn hash_two(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     mod_field(&result.into())
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn hash_domain(input: &[u8]) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(input);
@@ -43,7 +43,6 @@ pub fn hash_domain(input: &[u8]) -> [u8; 32] {
     mod_field(&result.into())
 }
 
-#[allow(dead_code)]
 fn mod_field(bytes: &[u8; 32]) -> [u8; 32] {
     let value = BigUint::from_bytes_be(bytes);
     let reduced = &value % &field_prime();

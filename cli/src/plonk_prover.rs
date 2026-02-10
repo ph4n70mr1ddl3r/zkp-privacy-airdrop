@@ -56,12 +56,12 @@ pub struct PlonkProofData {
 }
 
 impl PlonkProof {
+    #[cfg(test)]
     /// Create a minimal Plonk proof for testing
     ///
     /// # Warning
     /// This is a stub for testing only. Do not use in production as it creates
     /// an invalid proof that will fail verification.
-    #[deprecated(note = "Only for testing purposes")]
     pub fn minimal() -> Self {
         Self {
             a: [F::zero(), F::zero()],
@@ -70,6 +70,7 @@ impl PlonkProof {
         }
     }
 
+    #[cfg(test)]
     /// Flatten proof for serialization
     pub fn to_flat_array(&self) -> Vec<String> {
         let mut proof_vec = Vec::with_capacity(8);

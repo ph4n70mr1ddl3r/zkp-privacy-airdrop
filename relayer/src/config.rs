@@ -80,8 +80,7 @@ pub struct ContractsConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayerConfig {
-    #[serde(skip_serializing)]
-    #[serde(skip_deserializing)]
+    #[serde(skip)]
     pub private_key: String,
     pub min_balance_warning: String,
     pub min_balance_critical: String,

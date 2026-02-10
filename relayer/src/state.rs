@@ -75,24 +75,13 @@ struct BalanceCache {
     timestamp: std::time::Instant,
 }
 
+#[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
     pub db: PgPool,
     pub redis: Arc<Mutex<ConnectionManager>>,
     pub stats: Arc<RwLock<RelayerStats>>,
     balance_cache: Arc<RwLock<Option<BalanceCache>>>,
-}
-
-impl Clone for AppState {
-    fn clone(&self) -> Self {
-        Self {
-            config: Arc::clone(&self.config),
-            db: self.db.clone(),
-            redis: Arc::clone(&self.redis),
-            stats: Arc::clone(&self.stats),
-            balance_cache: Arc::clone(&self.balance_cache),
-        }
-    }
 }
 
 pub struct RelayerStats {
@@ -534,7 +523,7 @@ impl AppState {
                         provider.get_gas_price(),
                     )
                     .await
-                    .map_err(|_| {
+                    .map_err(|_e| {
                         self.increment_failed_claims();
                         format!(
                             "Failed to get gas price: timeout after {} seconds",

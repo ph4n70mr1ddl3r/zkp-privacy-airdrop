@@ -22,6 +22,7 @@ impl PlonkProof {
         self.proof.clone()
     }
 
+    #[cfg(test)]
     /// Create a minimal Plonk proof for testing
     pub fn minimal() -> Self {
         Self {
