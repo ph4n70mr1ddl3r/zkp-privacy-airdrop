@@ -20,14 +20,11 @@ pub async fn execute(
 ) -> Result<()> {
     info!("Generating proof...");
 
-    let private_key_bytes = read_private_key(private_key_opt, private_key_file, private_key_stdin)?;
-    let private_key: [u8; 32] = private_key_bytes.try_into().map_err(|e| {
-        anyhow::anyhow!(
-            "Invalid private key length: expected 32 bytes, got {} bytes",
-            e.len()
-        )
-    })?;
-    private_key_bytes.zeroize();
+    let private_key_wrapper =
+        read_private_key(private_key_opt, private_key_file, private_key_stdin)?;
+    let private_key: [u8; 32] = private_key_wrapper
+        .try_into_array()
+        .map_err(|e| anyhow::anyhow!("Invalid private key length: expected 32 bytes",))?;
 
     let address =
         derive_address(&private_key).context("Failed to derive address from private key")?;
@@ -38,7 +35,6 @@ pub async fn execute(
     let nullifier = generate_nullifier(&private_key).context("Failed to generate nullifier")?;
     let nullifier_hex = format!("0x{}", hex::encode(&nullifier.as_bytes()));
 
-    private_key.zeroize();
     tracing::debug!("Recipient: {}", recipient);
 
     let pb = ProgressBar::new(100);

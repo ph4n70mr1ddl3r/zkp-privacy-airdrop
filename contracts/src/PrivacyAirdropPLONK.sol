@@ -42,6 +42,10 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     ) BasePrivacyAirdrop(_token, _merkleRoot, _claimAmount, _claimDeadline) {
         require(_verifier != address(0), "Invalid verifier address");
         verifier = IPLONKVerifier(_verifier);
+
+        bytes32 zeroRoot = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        bytes32 onesRoot = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        require(_merkleRoot != zeroRoot && _merkleRoot != onesRoot, "Invalid merkle root: cannot be all zeros or all ones");
     }
 
 
@@ -57,6 +61,8 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
+        require(uint256(uint160(recipient)) == uint256(recipient), "Invalid address padding: address has malicious data");
+
         uint256[3] memory instances = [
             uint256(merkleRoot),
             uint256(uint160(recipient)),

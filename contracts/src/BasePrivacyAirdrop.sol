@@ -19,6 +19,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     uint256 public immutable claimAmount;
     uint256 public immutable claimDeadline;
     bool public paused;
+    uint256 public totalClaimed;
 
     event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
     event TokensTransferred(address indexed recipient, uint256 amount, uint256 timestamp);
@@ -98,6 +99,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
       */
     function _transferTokens(address recipient, uint256 amount) internal nonReentrant {
         token.safeTransfer(recipient, amount);
+        totalClaimed += amount;
         emit TokensTransferred(recipient, amount, block.timestamp);
     }
 
@@ -107,13 +109,18 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @param amount Amount of tokens to withdraw
      * @dev Only callable by owner and only after claim deadline has passed
      * @dev This is a safety mechanism to recover unclaimed tokens
+     * @dev Can only withdraw tokens that have not been claimed (balance - totalClaimed)
      */
     function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
         require(block.timestamp > claimDeadline, "Claim period not ended");
         require(recipient != address(0), "Invalid recipient");
         require(amount > 0, "Amount must be greater than zero");
-        require(amount <= token.balanceOf(address(this)), "Insufficient contract balance");
-        _transferTokens(recipient, amount);
+
+        uint256 contractBalance = token.balanceOf(address(this));
+        uint256 unclaimedAmount = contractBalance - totalClaimed;
+        require(amount <= unclaimedAmount, "Cannot withdraw claimed tokens");
+
+        token.safeTransfer(recipient, amount);
         emit EmergencyWithdraw(recipient, amount, block.timestamp);
     }
 }

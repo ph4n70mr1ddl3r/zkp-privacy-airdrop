@@ -5,8 +5,79 @@ use secp256k1::{PublicKey, SecretKey};
 use sha3::{Digest, Keccak256};
 use std::path::PathBuf;
 use std::sync::OnceLock;
+use zeroize::Zeroize;
 
 use crate::types::ProofData;
+
+/// Wrapper for private key bytes that zeroizes on drop
+#[derive(Clone)]
+pub struct PrivateKey(Vec<u8>);
+
+impl PrivateKey {
+    /// Create a new PrivateKey from Vec<u8>
+    pub fn new(bytes: Vec<u8>) -> Self {
+        PrivateKey(bytes)
+    }
+
+    /// Get the length of the private key
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the private key is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Get a reference to the underlying bytes
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Get a mutable reference to the underlying bytes
+    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+
+    /// Try to convert to a fixed-size array
+    pub fn try_into_array<const N: usize>(self) -> Result<[u8; N]> {
+        let bytes = self.0;
+        std::mem::forget(self);
+        bytes
+            .try_into()
+            .map_err(|e| anyhow::anyhow!("Invalid array length: expected {}, got {}", N, e.len()))
+    }
+}
+
+impl std::fmt::Debug for PrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("PrivateKey").field(&"[REDACTED]").finish()
+    }
+}
+
+impl Drop for PrivateKey {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+impl From<Vec<u8>> for PrivateKey {
+    fn from(bytes: Vec<u8>) -> Self {
+        PrivateKey(bytes)
+    }
+}
+
+impl AsRef<[u8]> for PrivateKey {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl AsMut<[u8]> for PrivateKey {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
 
 /// Standard Ethereum private key length in bytes
 const PRIVATE_KEY_LEN: usize = 32;
@@ -207,10 +278,10 @@ pub fn derive_address(private_key: &[u8; 32]) -> Result<Address> {
 /// * `private_key_stdin` - If true, read key from stdin
 ///
 /// # Returns
-/// The decoded private key as a byte vector
+/// The decoded private key wrapped in PrivateKey type
 ///
 /// # Security
-/// - Keys are zeroized from memory after use
+/// - Keys are zeroized from memory after use via Drop implementation
 /// - Supports both "0x" prefix and raw hex format
 /// - Validates hex encoding
 ///
@@ -223,7 +294,7 @@ pub fn read_private_key(
     private_key_opt: Option<String>,
     private_key_file: Option<PathBuf>,
     private_key_stdin: bool,
-) -> Result<Vec<u8>> {
+) -> Result<PrivateKey> {
     use std::io::{self, Read};
     use zeroize::Zeroize;
 
@@ -275,8 +346,7 @@ pub fn read_private_key(
 
     key_str.zeroize();
 
-    let key_bytes: Vec<u8> = key_bytes;
-    Ok(key_bytes)
+    Ok(PrivateKey::new(key_bytes))
 }
 
 /// Validates an Ethereum address.

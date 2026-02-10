@@ -80,7 +80,6 @@ pub enum Proof {
 }
 
 impl Proof {
-    /// Get proof type name
     #[must_use]
     pub fn type_name(&self) -> &str {
         match self {
@@ -89,7 +88,6 @@ impl Proof {
         }
     }
 
-    /// Validate proof structure
     #[must_use]
     pub fn is_valid_structure(&self) -> bool {
         match self {
@@ -146,7 +144,6 @@ impl Proof {
         }
     }
 
-    /// Estimate proof size in bytes for logging purposes
     #[must_use]
     pub fn estimated_size_bytes(&self) -> usize {
         match self {

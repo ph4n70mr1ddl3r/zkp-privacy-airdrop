@@ -89,7 +89,8 @@ fn main() -> Result<()> {
 
 fn verify_tree(tree: &tree::MerkleTree, addresses: &[[u8; 20]]) -> Result<()> {
     for (i, &address) in addresses.iter().enumerate() {
-        let leaf = poseidon::hash_address(address);
+        let leaf = poseidon::hash_address(address)
+            .map_err(|e| anyhow::anyhow!("Failed to hash address for leaf {}: {}", i, e))?;
         let path = tree
             .get_path(i)
             .map_err(|e| anyhow::anyhow!("Failed to get path for leaf {}: {}", i, e))?;

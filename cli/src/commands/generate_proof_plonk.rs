@@ -23,15 +23,11 @@ pub async fn execute(
 
     info!("Generating {} proof...", proof_system);
 
-    let private_key_bytes =
+    let private_key_wrapper =
         crate::crypto::read_private_key(private_key_opt, private_key_file, private_key_stdin)?;
-    let private_key: [u8; 32] = private_key_bytes.try_into().map_err(|e| {
-        anyhow::anyhow!(
-            "Invalid private key length: expected 32 bytes, got {} bytes",
-            e.len()
-        )
-    })?;
-    private_key_bytes.zeroize();
+    let private_key: [u8; 32] = private_key_wrapper
+        .try_into_array()
+        .map_err(|e| anyhow::anyhow!("Invalid private key length: expected 32 bytes",))?;
 
     let address = crate::crypto::derive_address(&private_key)
         .context("Failed to derive address from private key")?;
@@ -81,8 +77,6 @@ pub async fn execute(
             proof_system
         )
     };
-
-    private_key.zeroize();
 
     pb.finish_with_message("Proof generated!");
 

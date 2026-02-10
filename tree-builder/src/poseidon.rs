@@ -1,7 +1,7 @@
 use ark_bn254::Fr;
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, Field, PrimeField};
 use num_bigint::BigUint;
-use num_traits::Num;
+use num_traits::{Num, Zero};
 use std::sync::OnceLock;
 
 const FIELD_PRIME: &str =
@@ -9,8 +9,7 @@ const FIELD_PRIME: &str =
 
 /// Nullifier salt constant - must match the value used in circuit
 #[cfg(test)]
-const NULLIFIER_SALT: u64 =
-    87953108768114088221452414019732140257409482096940319490691914651639977587459;
+const NULLIFIER_SALT: u64 = 8795310876811408822u64;
 
 fn field_prime() -> BigUint {
     BigUint::from_str_radix(FIELD_PRIME, 10).expect("Invalid field prime constant")
@@ -76,8 +75,7 @@ fn get_poseidon_round_constants() -> Result<Vec<Vec<Fr>>, String> {
                     let mut bytes = [0u8; 32];
                     bytes.copy_from_slice(&hash[..32]);
 
-                    let field_elem = Fr::from_be_bytes(bytes)
-                        .map_err(|e| format!("Failed to create field element: {}", e))?;
+                    let field_elem = Fr::from_be_bytes_mod_order(&bytes);
                     round_consts.push(field_elem);
                 }
                 constants.push(round_consts);
@@ -116,8 +114,7 @@ fn get_poseidon_mds_matrix() -> Vec<Vec<Fr>> {
                             let mut padded = [0u8; 32];
                             let offset = 32 - bytes.len();
                             padded[offset..].copy_from_slice(&bytes);
-                            Fr::from_be_bytes(padded)
-                                .expect("Failed to create field element from MDS")
+                            Fr::from_be_bytes_mod_order(&padded)
                         })
                         .collect()
                 })
@@ -128,69 +125,51 @@ fn get_poseidon_mds_matrix() -> Vec<Vec<Fr>> {
 
 /// Hash an Ethereum address using Poseidon
 /// Matches circomlib's Poseidon(3): hash(address, 0, 0)
-pub fn hash_address(address: [u8; 20]) -> [u8; 32] {
+pub fn hash_address(address: [u8; 20]) -> Result<[u8; 32], String> {
     let mut padded = [0u8; 32];
     padded[12..].copy_from_slice(&address);
 
-    let address_field =
-        Fr::from_be_bytes(padded).expect("Failed to create field element from address");
+    let address_field = Fr::from_be_bytes_mod_order(&padded);
 
     let inputs = vec![address_field, Fr::zero(), Fr::zero()];
 
-    match poseidon_hash(&inputs) {
-        Ok(hash) => field_to_bytes_be(&hash),
-        Err(e) => {
-            eprintln!("Poseidon hash failed: {}, using fallback", e);
-            let mut result = [0u8; 32];
-            result[31] = 1;
-            result
-        }
-    }
+    let hash = poseidon_hash(&inputs)?;
+    Ok(field_to_bytes_be(&hash))
 }
 
 /// Hash two 32-byte values using Poseidon
 /// Matches circomlib's Poseidon(3): hash(left, right, 0)
-pub fn hash_two(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
-    let left_field = Fr::from_be_bytes(*left).expect("Failed to create field element from left");
-    let right_field = Fr::from_be_bytes(*right).expect("Failed to create field element from right");
+pub fn hash_two(left: &[u8; 32], right: &[u8; 32]) -> Result<[u8; 32], String> {
+    let left_field = Fr::from_be_bytes_mod_order(left);
+    let right_field = Fr::from_be_bytes_mod_order(right);
 
     let inputs = vec![left_field, right_field, Fr::zero()];
 
-    match poseidon_hash(&inputs) {
-        Ok(hash) => field_to_bytes_be(&hash),
-        Err(e) => {
-            eprintln!("Poseidon hash failed: {}, using fallback", e);
-            let mut result = [0u8; 32];
-            result[31] = 2;
-            result
-        }
-    }
+    let hash = poseidon_hash(&inputs)?;
+    Ok(field_to_bytes_be(&hash))
 }
 
 fn field_to_bytes_be(field: &Fr) -> [u8; 32] {
-    field.into_bigint().to_bytes_be()
+    let bytes = field.into_bigint().to_bytes_be();
+    let mut result = [0u8; 32];
+    let offset = 32 - bytes.len();
+    result[offset..].copy_from_slice(&bytes);
+    result
 }
 
 #[cfg(test)]
 #[allow(dead_code)]
-pub fn hash_domain(input: &[u8]) -> [u8; 32] {
+pub fn hash_domain(input: &[u8]) -> Result<[u8; 32], String> {
     let mut padded = [0u8; 32];
     let len = input.len().min(32);
     padded[32 - len..].copy_from_slice(&input[..len]);
 
-    let input_field = Fr::from_be_bytes(padded).expect("Failed to create field element from input");
+    let input_field = Fr::from_be_bytes_mod_order(&padded);
 
     let inputs = vec![input_field, Fr::zero(), Fr::zero()];
 
-    match poseidon_hash(&inputs) {
-        Ok(hash) => field_to_bytes_be(&hash),
-        Err(e) => {
-            eprintln!("Poseidon hash failed: {}, using fallback", e);
-            let mut result = [0u8; 32];
-            result[31] = 3;
-            result
-        }
-    }
+    let hash = poseidon_hash(&inputs)?;
+    Ok(field_to_bytes_be(&hash))
 }
 
 #[cfg(test)]
@@ -202,7 +181,7 @@ mod tests {
         let decoded = hex::decode("c0d7d3017b342ff039b55b087900000000000000")
             .expect("Failed to decode hex address");
         let address: [u8; 20] = decoded.try_into().expect("Invalid address length");
-        let hash = hash_address(address);
+        let hash = hash_address(address).expect("Failed to hash address");
         assert_eq!(hash.len(), 32);
     }
 
@@ -210,16 +189,13 @@ mod tests {
     fn test_hash_two() {
         let left = [0u8; 32];
         let right = [0u8; 32];
-        let hash = hash_two(&left, &right);
+        let hash = hash_two(&left, &right).expect("Failed to hash two values");
         assert_eq!(hash.len(), 32);
     }
 
     #[test]
     fn test_nullifier_salt_constant() {
-        assert_eq!(
-            NULLIFIER_SALT,
-            87953108768114088221452414019732140257409482096940319490691914651639977587459u64
-        );
+        assert_eq!(NULLIFIER_SALT, 8795310876811408822u64);
     }
 
     #[test]
@@ -237,8 +213,8 @@ mod tests {
         let input2 = Fr::from(2u64);
         let input3 = Fr::from(3u64);
 
-        let hash1 = poseidon_hash(&[input1, input2, input3]).unwrap();
-        let hash2 = poseidon_hash(&[input1, input2, input3]).unwrap();
+        let hash1 = poseidon_hash(&[input1, input2, input3]).expect("Failed to compute hash");
+        let hash2 = poseidon_hash(&[input1, input2, input3]).expect("Failed to compute hash");
 
         assert_eq!(hash1, hash2);
     }
@@ -249,8 +225,8 @@ mod tests {
         let input2 = Fr::from(2u64);
         let input3 = Fr::from(3u64);
 
-        let hash1 = poseidon_hash(&[input1, input2, input3]).unwrap();
-        let hash2 = poseidon_hash(&[input2, input1, input3]).unwrap();
+        let hash1 = poseidon_hash(&[input1, input2, input3]).expect("Failed to compute hash");
+        let hash2 = poseidon_hash(&[input2, input1, input3]).expect("Failed to compute hash");
 
         assert_ne!(hash1, hash2);
     }

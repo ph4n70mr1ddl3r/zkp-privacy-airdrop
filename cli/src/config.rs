@@ -121,9 +121,19 @@ impl Config {
 
         match self.network.as_str() {
             "optimism" => Ok(std::env::var("ZKP_OPTIMISM_RPC_URL")
-                .unwrap_or_else(|_| "https://optimism.drpc.org".to_string())),
+                .unwrap_or_else(|_| {
+                    tracing::warn!("Using default RPC URL 'https://optimism.drpc.org' for optimism. \
+                        These are public endpoints intended for development. \
+                        Configure ZKP_OPTIMISM_RPC_URL with a reliable RPC provider for production.");
+                    "https://optimism.drpc.org".to_string()
+                })),
             "optimism-sepolia" => Ok(std::env::var("ZKP_OPTIMISM_SEPOLIA_RPC_URL")
-                .unwrap_or_else(|_| "https://sepolia.drpc.org/ogrpc".to_string())),
+                .unwrap_or_else(|_| {
+                    tracing::warn!("Using default RPC URL 'https://sepolia.drpc.org/ogrpc' for optimism-sepolia. \
+                        These are public endpoints intended for development. \
+                        Configure ZKP_OPTIMISM_SEPOLIA_RPC_URL with a reliable RPC provider for production.");
+                    "https://sepolia.drpc.org/ogrpc".to_string()
+                })),
             _ => Err(anyhow::anyhow!("Unsupported network: {}", self.network)),
         }
     }

@@ -3,7 +3,53 @@ use ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use tracing::warn;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop};
+
+/// Wrapper for private key string that zeroizes on drop
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SecretKey(String);
+
+impl SecretKey {
+    pub fn new(key: String) -> Self {
+        SecretKey(key)
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn trim(&self) -> Self {
+        SecretKey(self.0.trim().to_lowercase())
+    }
+}
+
+impl std::fmt::Debug for SecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SecretKey").field(&"[REDACTED]").finish()
+    }
+}
+
+impl Drop for SecretKey {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+impl From<String> for SecretKey {
+    fn from(key: String) -> Self {
+        SecretKey(key)
+    }
+}
+
+impl AsRef<str> for SecretKey {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -81,7 +127,7 @@ pub struct ContractsConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayerConfig {
     #[serde(skip)]
-    pub private_key: String,
+    pub private_key: SecretKey,
     pub min_balance_warning: String,
     pub min_balance_critical: String,
     pub gas_multiplier: f64,
@@ -277,7 +323,7 @@ impl Config {
                     key.zeroize();
 
                     let insecure_keys = [
-                        "0x0000000000000000000000000000000000000000000000000000000000000000000",
+                        "0x0000000000000000000000000000000000000000000000000000000000000000",
                         "0000000000000000000000000000000000000000000000000000000000000000000",
                         "your_private_key_here",
                         "example_private_key",
@@ -328,7 +374,7 @@ impl Config {
                         );
                     }
 
-                    normalized_key
+                    SecretKey::new(normalized_key)
                 },
                 min_balance_warning: std::env::var("RELAYER_MIN_BALANCE_WARNING")
                     .unwrap_or_else(|_| "1000000000000000000".to_string()), // 1 ETH
@@ -441,7 +487,7 @@ impl Config {
     }
 
     pub fn validate(&self) -> Result<()> {
-        if self.relayer.private_key.trim().is_empty() {
+        if self.relayer.private_key.is_empty() {
             return Err(anyhow::anyhow!("RELAYER_PRIVATE_KEY cannot be empty"));
         }
 

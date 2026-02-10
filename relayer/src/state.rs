@@ -42,6 +42,7 @@ static RATE_LIMIT_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
 });
 
 /// Pre-compiled Lua script for nullifier check-and-set (atomic)
+/// Validates recipient matches if nullifier already exists to prevent proof reuse attacks
 static NULLIFIER_CHECK_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
     Script::new(
         r#"
@@ -57,7 +58,14 @@ static NULLIFIER_CHECK_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
             redis.call("EXPIRE", key, 31536000) -- 1 year expiry
             return 1 -- Success
         else
-            return 0 -- Already exists
+            -- Validate recipient matches to prevent proof reuse across different addresses
+            if existing == recipient then
+                return 0 -- Already exists with same recipient (valid duplicate)
+            else
+                -- Different recipient trying to reuse the same nullifier
+                redis.call("SET", key, "BLOCKED:"..existing)
+                return -1 -- Nullifier already used by different recipient
+            end
         end
     "#,
     )
@@ -414,7 +422,7 @@ impl AppState {
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
-        let result: u32 = NULLIFIER_CHECK_SCRIPT
+        let result: i32 = NULLIFIER_CHECK_SCRIPT
             .key(&key)
             .arg(&claim.recipient)
             .invoke_async(&mut *redis)
@@ -423,6 +431,14 @@ impl AppState {
                 self.increment_failed_claims();
                 format!("Redis error during nullifier check: {}", e)
             })?;
+
+        if result == -1 {
+            self.increment_failed_claims();
+            return Err(
+                "Security violation: This nullifier has already been used by a different address. Proof reuse detected."
+                    .to_string(),
+            );
+        }
 
         if result != 1 {
             self.increment_failed_claims();

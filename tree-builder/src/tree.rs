@@ -79,6 +79,7 @@ impl MerkleTree {
                 .map(|pair| {
                     if pair.len() == 2 {
                         super::poseidon::hash_two(&pair[0], &pair[1])
+                            .expect("Failed to hash pair during tree build")
                     } else {
                         pair[0]
                     }
@@ -141,9 +142,11 @@ impl MerkleTree {
 
         for (sibling, &go_right) in path.siblings.iter().zip(path.indices.iter()) {
             if go_right {
-                current = super::poseidon::hash_two(&current, sibling);
+                current = super::poseidon::hash_two(&current, sibling)
+                    .expect("Failed to hash during path verification");
             } else {
-                current = super::poseidon::hash_two(sibling, &current);
+                current = super::poseidon::hash_two(sibling, &current)
+                    .expect("Failed to hash during path verification");
             }
         }
 
@@ -188,7 +191,8 @@ pub fn build_merkle_tree(addresses: &[[u8; 20]], height: u8) -> Result<MerkleTre
     pb.set_message("Hashing addresses...");
 
     for address in addresses {
-        let leaf = super::poseidon::hash_address(*address);
+        let leaf = super::poseidon::hash_address(*address)
+            .map_err(|e| format!("Failed to hash address: {}", e))?;
         tree.insert(leaf)
             .map_err(|e| format!("Failed to insert leaf: {}", e))?;
         pb.inc(1);
