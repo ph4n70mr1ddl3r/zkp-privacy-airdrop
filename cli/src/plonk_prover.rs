@@ -55,6 +55,34 @@ pub struct PlonkProofData {
     pub generated_at: String,
 }
 
+impl From<PlonkProofData> for crate::types_plonk::ProofData {
+    fn from(data: PlonkProofData) -> Self {
+        Self {
+            proof: crate::types_plonk::Proof::Plonk(crate::types_plonk::PlonkProof {
+                proof: vec![
+                    data.proof.a[0].to_string(),
+                    data.proof.a[1].to_string(),
+                    data.proof.b[0][0].to_string(),
+                    data.proof.b[0][1].to_string(),
+                    data.proof.b[1][0].to_string(),
+                    data.proof.b[1][1].to_string(),
+                    data.proof.c[0].to_string(),
+                    data.proof.c[1].to_string(),
+                ],
+            }),
+            public_signals: [
+                format!("{:?}", data.public_inputs.merkle_root[0]),
+                format!("{:?}", data.public_inputs.recipient[0]),
+                format!("0x{}", hex::encode(data.nullifier)),
+            ],
+            nullifier: format!("0x{}", hex::encode(data.nullifier)),
+            recipient: format!("{:?}", data.recipient),
+            merkle_root: format!("0x{}", hex::encode(data.merkle_root)),
+            generated_at: data.generated_at,
+        }
+    }
+}
+
 impl PlonkProof {
     #[cfg(test)]
     /// Create a minimal Plonk proof for testing

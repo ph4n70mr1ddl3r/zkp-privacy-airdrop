@@ -1,9 +1,23 @@
 use ethers::contract::abigen;
+use num_bigint::BigUint;
+use num_traits::Num;
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
 
 const MAX_PROOF_SIZE: usize = 8;
 const MAX_ELEMENT_LENGTH: usize = 78;
 const MAX_PROOF_BYTES: usize = MAX_PROOF_SIZE * MAX_ELEMENT_LENGTH;
+
+const BN254_FIELD_MODULUS: &str =
+    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
+
+static FIELD_MODULUS: OnceLock<BigUint> = OnceLock::new();
+
+fn get_field_modulus() -> &'static BigUint {
+    FIELD_MODULUS.get_or_init(|| {
+        BigUint::from_str_radix(BN254_FIELD_MODULUS, 10).expect("Invalid field modulus constant")
+    })
+}
 
 abigen!(
     IPLONKVerifier,
@@ -36,7 +50,17 @@ fn is_valid_field_element(hex_str: &str) -> bool {
         return false;
     }
 
-    hex::decode(hex).is_ok()
+    let bytes = match hex::decode(hex) {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+
+    if bytes.len() != 32 {
+        return false;
+    }
+
+    let value = BigUint::from_bytes_be(&bytes);
+    value < *get_field_modulus()
 }
 
 /// Union type for different proof systems
@@ -90,7 +114,6 @@ impl Proof {
 
     /// Estimate proof size in bytes for logging purposes
     #[must_use]
-    #[allow(dead_code)]
     pub fn estimated_size_bytes(&self) -> usize {
         match self {
             Proof::Groth16(ref proof) => {
@@ -119,18 +142,19 @@ pub struct SubmitClaimRequest {
 impl SubmitClaimRequest {
     /// Create a minimal PLONK request for testing
     #[must_use]
-    #[allow(dead_code)]
     pub fn plonk_minimal() -> Self {
         Self {
             proof: Proof::Plonk(PlonkProof {
                 proof: vec!["0".to_string(); 8],
             }),
             recipient: "0x1234567890123456789012345678901234567890".to_string(),
-            nullifier: "0x0000000000000000000000000000000000000000000000000000000000000000"
+            nullifier: "0x0000000000000000000000000000000000000000000000000000000000"
                 .to_string(),
-            merkle_root: "0x0000000000000000000000000000000000000000000000000000000000000000"
+            merkle_root: "0x0000000000000000000000000000000000000000000000000000000000"
                 .to_string(),
         }
+    }
+}
     }
 }
 

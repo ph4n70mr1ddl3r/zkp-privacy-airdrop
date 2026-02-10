@@ -94,7 +94,6 @@ pub fn write_tree(tree: &crate::tree::MerkleTree, output: &Path) -> Result<()> {
     Ok(())
 }
 
-#[allow(dead_code)]
 pub fn read_tree(path: &Path) -> Result<crate::tree::MerkleTree> {
     let file = File::open(path).context("Failed to open tree file")?;
 

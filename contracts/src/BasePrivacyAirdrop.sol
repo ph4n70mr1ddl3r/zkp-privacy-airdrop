@@ -90,11 +90,12 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     }
 
     /**
-     * @notice Internal function to transfer tokens safely
-     * @param recipient Address to receive tokens
-     * @param amount Amount of tokens to transfer
-     */
-    function _transferTokens(address recipient, uint256 amount) internal {
+      * @notice Internal function to transfer tokens safely
+      * @param recipient Address to receive tokens
+      * @param amount Amount of tokens to transfer
+      * @dev Uses SafeERC20 to prevent token transfer failures
+      */
+    function _transferTokens(address recipient, uint256 amount) internal nonReentrant {
         token.safeTransfer(recipient, amount);
         emit TokensTransferred(recipient, amount, block.timestamp);
     }
@@ -104,6 +105,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @param recipient Address to receive the withdrawn tokens
      * @param amount Amount of tokens to withdraw
      * @dev Only callable by owner and only after claim deadline has passed
+     * @dev This is a safety mechanism to recover unclaimed tokens
      */
     function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
         require(block.timestamp > claimDeadline, "Claim period not ended");

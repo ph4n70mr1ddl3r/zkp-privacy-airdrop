@@ -337,13 +337,32 @@ impl AppState {
             .map_err(|e| e.to_string())?;
 
         if !result.0 {
-            return Err(format!("Rate limit exceeded: {}/min", limit));
+            let exponential_backoff_key = format!("{}:backoff", redis_key);
+            let backoff_count: Option<u64> =
+                redis.get(&exponential_backoff_key).await.ok().flatten();
+
+            let current_count = result.1;
+            let base_wait_seconds = 60u64;
+            let multiplier = backoff_count.unwrap_or(0).min(5);
+            let wait_seconds = base_wait_seconds * (1 << multiplier);
+
+            let new_backoff_count = backoff_count.map(|c| c + 1).unwrap_or(1);
+            let _: Result<(), _> = redis
+                .set_ex(&exponential_backoff_key, new_backoff_count, 300)
+                .await;
+
+            return Err(format!(
+                "Rate limit exceeded: {}/min. Please wait {} seconds before retrying.",
+                limit, wait_seconds
+            ));
         }
+
+        let exponential_backoff_key = format!("{}:backoff", redis_key);
+        let _: Result<(), _> = redis.del(&exponential_backoff_key).await;
 
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub async fn is_nullifier_used(&self, nullifier: &str) -> Result<bool, String> {
         use redis::AsyncCommands;
 

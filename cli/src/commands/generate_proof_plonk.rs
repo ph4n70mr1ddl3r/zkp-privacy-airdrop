@@ -72,7 +72,7 @@ pub async fn execute(
     pb.set_message("Deriving public key...");
     pb.set_position(10);
 
-    let proof_data = if use_plonk {
+    let plonk_proof_data = if use_plonk {
         generate_plonk_proof(&private_key, &recipient, &merkle_tree)
             .context("Failed to generate PLONK proof")?
     } else {
@@ -85,6 +85,8 @@ pub async fn execute(
     private_key.zeroize();
 
     pb.finish_with_message("Proof generated!");
+
+    let proof_data: crate::types_plonk::ProofData = plonk_proof_data.into();
 
     let output_path = output.unwrap_or_else(|| PathBuf::from("proof.json"));
     let json =

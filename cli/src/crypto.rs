@@ -4,11 +4,27 @@ use ethers::types::Address;
 use secp256k1::{PublicKey, SecretKey};
 use sha3::{Digest, Keccak256};
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use crate::types::ProofData;
 
 /// Standard Ethereum private key length in bytes
 const PRIVATE_KEY_LEN: usize = 32;
+
+/// BN254 scalar field modulus
+const BN254_SCALAR_FIELD_MODULUS: &str =
+    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
+
+fn get_bn254_field_modulus() -> num_bigint::BigUint {
+    use num_traits::Num;
+    static FIELD_MODULUS: OnceLock<num_bigint::BigUint> = OnceLock::new();
+    FIELD_MODULUS
+        .get_or_init(|| {
+            num_bigint::BigUint::from_str_radix(BN254_SCALAR_FIELD_MODULUS, 10)
+                .expect("Invalid modulus constant")
+        })
+        .clone()
+}
 
 /// Generates a nullifier from a private key using Poseidon hash.
 ///
@@ -263,6 +279,8 @@ pub fn read_private_key(
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
 
+    key_str.zeroize();
+
     let key_bytes: Vec<u8> = key_bytes;
     Ok(key_bytes)
 }
@@ -384,19 +402,13 @@ pub fn keccak_hash_field(input: &[u8; 32]) -> Result<String> {
     Ok(field_element_to_decimal(&hash_array))
 }
 
-const BN254_SCALAR_FIELD_MODULUS: &str =
-    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
-
 fn field_element_to_decimal(bytes: &[u8; 32]) -> String {
     use num_bigint::BigUint;
-    use num_traits::{Num, Zero};
+    use num_traits::Zero;
 
     let big_int = BigUint::from_bytes_be(bytes);
 
-    let modulus =
-        BigUint::from_str_radix(BN254_SCALAR_FIELD_MODULUS, 10).expect("Invalid modulus constant");
-
-    let reduced = big_int % modulus;
+    let reduced = big_int % get_bn254_field_modulus();
     reduced.to_str_radix(10)
 }
 

@@ -149,27 +149,6 @@ fn is_valid_hex_string(input: &str, expected_len: usize) -> bool {
         && hex::decode(&input[2..]).is_ok()
 }
 
-#[allow(dead_code)]
-fn is_valid_field_element(hex_str: &str) -> bool {
-    if !hex_str.starts_with("0x") && !hex_str.starts_with("0X") {
-        return false;
-    }
-
-    let hex_value = match hex::decode(&hex_str[2..]) {
-        Ok(bytes) => bytes,
-        Err(_) => return false,
-    };
-
-    if hex_value.len() != 32 {
-        return false;
-    }
-
-    let value = BigUint::from_bytes_be(&hex_value);
-    let field_modulus = get_field_modulus();
-
-    value < *field_modulus
-}
-
 pub fn is_valid_address(address: &str) -> bool {
     if !is_valid_hex_string(address, 42) {
         return false;
