@@ -65,9 +65,8 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
         require(totalSupply() < MAX_SUPPLY, "MAX_SUPPLY already reached");
         require(totalSupply() + amount <= MAX_SUPPLY, "Minting would exceed MAX_SUPPLY");
 
-        mintCount++;
-
         _mint(to, amount);
+        mintCount++;
         emit TokensMinted(to, amount, totalSupply(), mintCount, block.timestamp);
 
         if (totalSupply() == MAX_SUPPLY) {

@@ -129,6 +129,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @dev This is a safety mechanism to recover unclaimed tokens
      * @dev Can only withdraw tokens that have not been claimed (balance - totalClaimed)
      * @dev Implements withdrawal limits: max maxWithdrawalPercent of remaining tokens per withdrawalCooldown period
+     * @dev Uses nonReentrant modifier to prevent reentrancy attacks
      */
     function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
         require(block.timestamp > CLAIM_DEADLINE, "Claim period not ended");
@@ -141,20 +142,19 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         uint256 unclaimedAmount = contractBalance - claimed;
         require(amount <= unclaimedAmount, "Cannot withdraw claimed tokens");
 
-        uint256 maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
-
         uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
 
         if (timeSinceLastWithdrawal >= WITHDRAWAL_COOLDOWN) {
             totalWithdrawn = 0;
-            lastWithdrawalTime = block.timestamp;
         }
 
+        uint256 maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
         require(amount + totalWithdrawn <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
 
-        TOKEN.safeTransfer(recipient, amount);
         totalWithdrawn += amount;
         lastWithdrawalTime = block.timestamp;
+
+        TOKEN.safeTransfer(recipient, amount);
         emit EmergencyWithdraw(recipient, amount, block.timestamp);
     }
 }

@@ -109,10 +109,19 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     /**
      * @notice Deauthorize a relayer
      * @param relayer Address of relayer to deauthorize
-     * @dev Only callable by owner, relayer cannot withdraw remaining funds
+     * @dev Only callable by owner, transfers remaining balance to owner
      */
     function deauthorizeRelayer(address relayer) external onlyOwner validAddress(relayer) {
+        require(authorizedRelayers[relayer], "Relayer not authorized");
         authorizedRelayers[relayer] = false;
+
+        uint256 balance = relayerBalances[relayer];
+        if (balance > 0) {
+            relayerBalances[relayer] = 0;
+            relayerBalances[owner()] += balance;
+            emit FundsWithdrawn(relayer, balance);
+        }
+
         emit RelayerDeauthorized(relayer);
     }
 
