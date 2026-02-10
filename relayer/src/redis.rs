@@ -9,7 +9,18 @@ const MAX_RETRY_DELAY_MS: u64 = 30000;
 const JITTER_FACTOR: f64 = 0.2;
 
 pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
-    let client = Client::open(redis_url)?;
+    let client = Client::open(redis_url).map_err(|e| {
+        anyhow::anyhow!(
+            "Invalid Redis URL: '{}'. Error: {}. \
+             Please ensure REDIS_URL is a valid Redis connection string. \
+             Examples:\n\
+             - redis://localhost:6379\n\
+             - redis://user:password@localhost:6379\n\
+             - redis://localhost:6379/0",
+            redis_url,
+            e
+        )
+    })?;
 
     let mut last_error = None;
     for attempt in 1..=MAX_RETRIES {
@@ -38,12 +49,20 @@ pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
     }
 
     Err(anyhow::anyhow!(
-        "Failed to connect to Redis after {} attempts: {}",
+        "Failed to connect to Redis after {} attempts. Last error: {}. \
+         Please ensure:\n\
+         1. Redis server is running\n\
+         2. REDIS_URL environment variable is set correctly\n\
+         3. Redis is accessible from this host\n\
+         4. No firewall is blocking the connection\n\
+         \n\
+         Check Redis status with: redis-cli -u {} ping",
         MAX_RETRIES,
         last_error
             .as_ref()
             .map(|e| e.to_string())
-            .unwrap_or_else(|| "Unknown error".to_string())
+            .unwrap_or_else(|| "Unknown error".to_string()),
+        redis_url
     ))
 }
 

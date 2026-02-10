@@ -72,41 +72,14 @@ pub async fn execute(
     let merkle_root = tree.root.clone();
     let merkle_root_hex = format!("0x{}", hex::encode(&merkle_root));
 
-    let proof_data = ProofData {
-        proof: Proof::Plonk(crate::types_plonk::PlonkProof {
-            proof: vec![
-                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
-                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
-                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
-                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
-                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
-                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
-                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
-                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
-            ],
-        }),
-        public_signals: [
-            merkle_root_hex.clone(),
-            recipient.clone(),
-            nullifier_hex.clone(),
-        ],
-        nullifier: nullifier_hex,
-        recipient: recipient.clone(),
-        merkle_root: merkle_root_hex,
-        generated_at: chrono::Utc::now().to_rfc3339(),
-    };
-
-    pb.finish_with_message(
-        "Proof generated! (placeholder proof - actual PLONK proof generation not yet implemented)",
-    );
-
-    eprintln!("\n{}", "CRITICAL WARNING:".red().bold());
-    eprintln!(
-        "  This proof uses placeholder zero values and will {}!",
-        "FAIL".red().bold()
-    );
-    eprintln!("  Actual PLONK proof generation using arkworks is required before deployment.");
-    eprintln!("  See: cli/src/commands/generate_proof.rs:69-79\n");
+    return Err(anyhow::anyhow!(
+        "PLONK proof generation is not yet implemented. \
+         Please use the Groth16 proof system or set up PLONK proving infrastructure as documented in PLONK-README.md.\n\n\
+         To enable PLONK proof generation:\n\
+         1) Compile the circom circuit to generate PLONK proving key (.ptau)\n\
+         2) Integrate with a PLONK proving library (snarkjs or arkworks-plonk)\n\
+         3) Use the proving key to generate proofs from witness computation"
+    ));
 
     let output_path = output.unwrap_or_else(|| PathBuf::from("proof.json"));
 

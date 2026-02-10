@@ -8,36 +8,29 @@ use std::sync::OnceLock;
 use zeroize::Zeroize;
 
 /// Wrapper for private key bytes that zeroizes on drop
-#[derive(Clone)]
 pub struct PrivateKey(Vec<u8>);
 
 impl PrivateKey {
-    /// Create a new PrivateKey from Vec<u8>
     pub fn new(bytes: Vec<u8>) -> Self {
         PrivateKey(bytes)
     }
 
-    /// Get the length of the private key
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
-    /// Check if the private key is empty
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    /// Get a reference to the underlying bytes
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 
-    /// Get a mutable reference to the underlying bytes
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
         &mut self.0
     }
 
-    /// Try to convert to a fixed-size array
     pub fn try_into_array<const N: usize>(self) -> Result<[u8; N]> {
         let bytes = self.0;
         let mut zeroizing_key = PrivateKey(bytes);

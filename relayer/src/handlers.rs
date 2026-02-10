@@ -109,11 +109,12 @@ fn validate_claim_input(
 }
 
 fn sanitize_nullifier(nullifier: &str) -> String {
-    if nullifier.len() > 16 {
+    let chars: Vec<char> = nullifier.chars().collect();
+    if chars.len() > 16 {
         format!(
             "{}...{}",
-            &nullifier[..10],
-            &nullifier[nullifier.len() - 6..]
+            &chars[..10].iter().collect::<String>(),
+            &chars[chars.len() - 6..].iter().collect::<String>()
         )
     } else {
         "***".to_string()
@@ -144,12 +145,6 @@ fn is_valid_hex_string(input: &str, expected_len: usize) -> bool {
 }
 
 pub fn is_valid_address(address: &str) -> bool {
-    if !is_valid_hex_string(address, 42) {
-        return false;
-    }
-    if hex::decode(&address[2..]).is_err() {
-        return false;
-    }
     Address::from_str(address).is_ok()
 }
 

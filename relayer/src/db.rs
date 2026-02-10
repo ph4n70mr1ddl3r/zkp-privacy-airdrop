@@ -25,7 +25,13 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool> {
         .map_err(|e| {
             anyhow::anyhow!(
                 "Failed to create database pool: {}. \
-                 Ensure PostgreSQL is running and the connection string is correct.",
+                 Please ensure:\n\
+                 1. PostgreSQL is running\n\
+                 2. DATABASE_URL environment variable is set correctly\n\
+                 3. Database exists and is accessible\n\
+                 4. User has proper permissions\n\
+                 \n\
+                 Example DATABASE_URL: postgresql://user:password@localhost/dbname",
                 e
             )
         })?;
@@ -36,7 +42,16 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool> {
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to run database migrations: {}", e))?;
+        .map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to run database migrations: {}. \
+                 Please ensure:\n\
+                 1. Migration files exist in ./migrations directory\n\
+                 2. Database has proper permissions\n\
+                 3. Migrations directory is accessible",
+                e
+            )
+        })?;
 
     info!("Database migrations completed successfully");
 

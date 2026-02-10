@@ -6,7 +6,7 @@ use tracing::warn;
 use zeroize::Zeroize;
 
 /// Wrapper for private key string that zeroizes on drop
-#[derive(Clone, Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct SecretKey(String);
 
 impl SecretKey {
