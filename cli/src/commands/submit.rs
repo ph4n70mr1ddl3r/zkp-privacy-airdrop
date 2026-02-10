@@ -15,7 +15,6 @@ const HTTP_TIMEOUT_SECONDS: u64 = 30;
 const MAX_RETRY_AFTER_SECONDS: u64 = 86400;
 const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
 const SUBMIT_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
-const MAX_SUBMITS_PER_WINDOW: u32 = 10;
 
 static LAST_SUBMIT_TIME: AtomicU64 = AtomicU64::new(0);
 static SUBMIT_COUNT: AtomicU32 = AtomicU32::new(0);
@@ -131,7 +130,7 @@ pub async fn execute(
         } else {
             let mut count = SUBMIT_COUNT.load(Ordering::Acquire);
             loop {
-                if count >= MAX_SUBMITS_PER_WINDOW {
+                if count >= config.max_submits_per_window {
                     let wait_time =
                         SUBMIT_RATE_LIMIT_WINDOW.saturating_sub(Duration::from_millis(elapsed_ms));
                     println!(

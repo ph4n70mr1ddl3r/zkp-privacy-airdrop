@@ -15,6 +15,7 @@ pub struct Config {
     pub merkle_tree_source: Option<String>,
     pub rpc_url: Option<String>,
     pub chain_id: u64,
+    pub max_submits_per_window: u32,
 }
 
 impl Default for Config {
@@ -42,6 +43,10 @@ impl Default for Config {
                         10
                     }
                 }),
+            max_submits_per_window: std::env::var("ZKP_MAX_SUBMITS_PER_WINDOW")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(10),
         }
     }
 }

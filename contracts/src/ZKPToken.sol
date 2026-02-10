@@ -28,11 +28,23 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
     event TokensBurned(address indexed from, uint256 amount, uint256 totalSupply);
     event MintingPaused(address indexed account);
     event MintingUnpaused(address indexed account);
+    event MaxSupplyReached(uint256 finalSupply);
 
+    /**
+     * @notice Initialize the ZKP Token contract
+     * @dev Sets up the token with "ZKP Token" name and "ZKP" symbol
+     *      Records deployment timestamp and sets msg.sender as the initial owner
+     *      Owner can mint tokens, pause minting, and burn tokens (anyone can burn their own)
+     */
     constructor() ERC20("ZKP Token", "ZKP") Ownable(msg.sender) {
         deployTimestamp = block.timestamp;
     }
 
+    /**
+     * @notice Returns the number of decimals used to get token representation
+     * @dev Standard ERC20 decimals function returning 18 for ZKP tokens
+     * @return Number of decimals (18)
+     */
     function decimals() public pure override returns (uint8) {
         return DECIMALS;
     }
@@ -57,6 +69,10 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
 
         _mint(to, amount);
         emit TokensMinted(to, amount, totalSupply(), mintCount, block.timestamp);
+
+        if (totalSupply() == MAX_SUPPLY) {
+            emit MaxSupplyReached(totalSupply());
+        }
     }
 
     /**

@@ -373,7 +373,8 @@ impl Config {
                     }
 
                     let entropy_score = calculate_entropy_score(decoded_slice);
-                    if entropy_score < 200 {
+                    const MIN_ENTROPY_SCORE: u32 = 450;
+                    if entropy_score < MIN_ENTROPY_SCORE {
                         normalized_key.zeroize();
                         return Err(anyhow::anyhow!(
                             "Private key has insufficient entropy score ({}), may be weak. \
