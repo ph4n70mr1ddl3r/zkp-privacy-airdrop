@@ -57,9 +57,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
-        require(nullifier != bytes32(0), "Invalid nullifier: cannot be zero");
-        require(recipient != address(0), "Invalid recipient: cannot be zero address");
-
         uint256[3] memory instances = [
             uint256(merkleRoot),
             uint256(uint160(recipient)),

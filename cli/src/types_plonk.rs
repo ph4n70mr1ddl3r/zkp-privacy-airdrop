@@ -18,8 +18,8 @@ pub struct PlonkProof {
 
 impl PlonkProof {
     /// Convert Plonk proof to flat array for API transmission
-    pub fn to_flat_array(&self) -> Vec<String> {
-        self.proof.clone()
+    pub fn to_flat_array(&self) -> &[String] {
+        &self.proof
     }
 
     #[cfg(test)]

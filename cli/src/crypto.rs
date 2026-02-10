@@ -15,6 +15,10 @@ const PRIVATE_KEY_LEN: usize = 32;
 const BN254_SCALAR_FIELD_MODULUS: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
+/// Salt used for nullifier generation to prevent precomputation attacks
+const NULLIFIER_SALT: u64 =
+    87953108768114088221452414019732140257409482096940319490691914651639977587459u64;
+
 fn get_bn254_field_modulus() -> num_bigint::BigUint {
     use num_traits::Num;
     static FIELD_MODULUS: OnceLock<num_bigint::BigUint> = OnceLock::new();
@@ -47,9 +51,6 @@ fn get_bn254_field_modulus() -> num_bigint::BigUint {
 /// Matches circuit nullifier generation: Poseidon(private_key, NULLIFIER_SALT, 0)
 /// This ensures consistency across CLI, circuit, and specification.
 pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
-    const NULLIFIER_SALT: u64 =
-        87953108768114088221452414019732140257409482096940319490691914651639977587459u64;
-
     let private_key_field = field_element_from_bytes(private_key)?;
 
     let poseidon_input = vec![
@@ -84,19 +85,17 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
         ));
     }
 
-    let state = inputs.clone();
-
     let round_keys = poseidon_round_constants()?;
     let mds_matrix = poseidon_mds_matrix();
 
-    let mut state = state;
+    let mut state = [inputs[0], inputs[1], inputs[2]];
 
     for round in 0..64 {
         for i in 0..3 {
             state[i] = state[i].pow([5u64]);
         }
 
-        let mut new_state = vec![ark_bn254::Fr::zero(); 3];
+        let mut new_state = [ark_bn254::Fr::zero(); 3];
         for i in 0..3 {
             for j in 0..3 {
                 new_state[i] += mds_matrix[i][j] * state[j];
@@ -112,9 +111,6 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
 fn poseidon_round_constants() -> Result<Vec<Vec<ark_bn254::Fr>>> {
     use ark_ff::PrimeField;
     use sha3::{Digest, Keccak256};
-
-    const NULLIFIER_SALT: u64 =
-        87953108768114088221452414019732140257409482096940319490691914651639977587459u64;
 
     let mut constants = Vec::new();
     let seed = poseidon_constants_seed()?;
@@ -161,8 +157,6 @@ fn poseidon_mds_matrix() -> [[ark_bn254::Fr; 3]; 3] {
 /// to ensure consistency between circuit and CLI implementations
 fn poseidon_constants_seed() -> Result<[u8; 32]> {
     use sha3::{Digest, Keccak256};
-    const NULLIFIER_SALT: u64 =
-        87953108768114088221452414019732140257409482096940319490691914651639977587459u64;
 
     let mut hasher = Keccak256::new();
     hasher.update(b"POSEIDON_CONSTANTS_SEED");
