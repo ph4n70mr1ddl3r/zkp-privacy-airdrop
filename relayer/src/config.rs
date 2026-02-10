@@ -371,11 +371,12 @@ impl Config {
 
                     let entropy_score = calculate_entropy_score(decoded_slice);
                     if entropy_score < 200 {
-                        tracing::warn!(
-                            "Private key has low entropy score ({}), may be weak. \
-                             Consider using a more secure random key.",
+                        normalized_key.zeroize();
+                        return Err(anyhow::anyhow!(
+                            "Private key has insufficient entropy score ({}), may be weak. \
+                             Please use a securely generated random private key.",
                             entropy_score
-                        );
+                        ));
                     }
 
                     SecretKey::new(normalized_key)

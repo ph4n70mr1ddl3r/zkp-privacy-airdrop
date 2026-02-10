@@ -135,9 +135,9 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
         require(relayerBalances[msg.sender] >= amount, "Insufficient balance");
         require(amount > 0, "Amount must be greater than zero");
         relayerBalances[msg.sender] -= amount;
+        emit FundsWithdrawn(msg.sender, amount);
         (bool success, ) = payable(msg.sender).call{value: amount}("");
         require(success, "Transfer failed");
-        emit FundsWithdrawn(msg.sender, amount);
     }
 
     /**

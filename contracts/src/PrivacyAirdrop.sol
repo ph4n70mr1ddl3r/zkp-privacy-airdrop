@@ -74,17 +74,21 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
         Proof calldata proof,
         bytes32 nullifier,
         address recipient
-    ) external nonReentrant validClaim(recipient, nullifier) {
-
-        uint[3] memory publicSignals = [
-            uint256(merkleRoot),
-            uint256(uint160(recipient)),
-            uint256(nullifier)
-        ];
-
-        require(verifier.verifyProof(proof.a, proof.b, proof.c, publicSignals), "Invalid proof");
+    ) external nonReentrant {
+        require(!paused, "Contract is paused");
+        require(block.timestamp <= claimDeadline, "Claim period ended");
+        require(recipient != address(0), "Invalid recipient");
+        require(nullifier != bytes32(0), "Invalid nullifier");
+        require(!nullifiers[nullifier], "Already claimed");
 
         nullifiers[nullifier] = true;
+
+        uint[3] memory publicSignals;
+        publicSignals[0] = uint256(merkleRoot);
+        publicSignals[1] = uint160(recipient);
+        publicSignals[2] = uint256(nullifier);
+
+        require(verifier.verifyProof(proof.a, proof.b, proof.c, publicSignals), "Invalid proof");
 
         _transferTokens(recipient, claimAmount);
 

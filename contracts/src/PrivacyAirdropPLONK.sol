@@ -59,20 +59,26 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         PLONKProof calldata proof,
         bytes32 nullifier,
         address recipient
-    ) external nonReentrant validClaim(recipient, nullifier) {
+    ) external nonReentrant {
+        require(!paused, "Contract is paused");
+        require(block.timestamp <= claimDeadline, "Claim period ended");
+        require(recipient != address(0), "Invalid recipient");
+        require(nullifier != bytes32(0), "Invalid nullifier");
+        require(!nullifiers[nullifier], "Already claimed");
 
-        uint256[3] memory instances = [
-            uint256(merkleRoot),
-            uint256(uint160(recipient)),
-            uint256(nullifier)
-        ];
+        nullifiers[nullifier] = true;
+
+        require(proof.proof.length == 8, "Invalid proof: expected 8 elements");
+
+        uint256[3] memory instances;
+        instances[0] = uint256(merkleRoot);
+        instances[1] = uint160(recipient);
+        instances[2] = uint256(nullifier);
 
         require(
             verifier.verifyProof(proof.proof, instances),
             "Invalid proof"
         );
-
-        nullifiers[nullifier] = true;
 
         _transferTokens(recipient, claimAmount);
 

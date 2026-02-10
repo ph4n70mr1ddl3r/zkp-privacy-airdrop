@@ -365,6 +365,17 @@ pub fn read_private_key(
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
 
+    let entropy_score = calculate_entropy_score(&key_bytes);
+    if entropy_score < 200 {
+        key_str.zeroize();
+        key_bytes.zeroize();
+        anyhow::bail!(
+            "Private key has insufficient entropy score ({}), may be weak. \
+             Please use a securely generated random private key.",
+            entropy_score
+        );
+    }
+
     key_str.zeroize();
 
     Ok(PrivateKey::new(key_bytes))
@@ -502,4 +513,27 @@ pub fn address_to_field(address: &Address) -> Result<String> {
     let mut padded = [0u8; 32];
     padded[12..].copy_from_slice(address_bytes);
     Ok(field_element_to_decimal(&padded))
+}
+
+fn calculate_entropy_score(bytes: &[u8]) -> u32 {
+    if bytes.is_empty() {
+        return 0;
+    }
+
+    let mut freq = [0u32; 256];
+    for &byte in bytes {
+        freq[byte as usize] += 1;
+    }
+
+    let len = bytes.len() as f64;
+    let mut entropy = 0.0f64;
+
+    for &count in &freq {
+        if count > 0 {
+            let p = count as f64 / len;
+            entropy -= p * p.log2();
+        }
+    }
+
+    (entropy * 10.0) as u32
 }
