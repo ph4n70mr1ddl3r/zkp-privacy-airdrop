@@ -187,6 +187,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     receive() external payable {
         _handleDonation(msg.sender, msg.value);
     }
+}
 
 }
 

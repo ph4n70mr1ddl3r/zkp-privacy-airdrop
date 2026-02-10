@@ -43,13 +43,21 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         address _verifier,
         uint256 _maxWithdrawalPercent,
         uint256 _withdrawalCooldown
-    ) BasePrivacyAirdrop(_token, _merkleRoot, _claimAmount, _claimDeadline, _maxWithdrawalPercent, _withdrawalCooldown) {
+    ) BasePrivacyAirdrop(
+        _token,
+        _merkleRoot,
+        _claimAmount,
+        _claimDeadline,
+        _maxWithdrawalPercent,
+        _withdrawalCooldown
+    ) {
         require(_verifier != address(0), "Invalid verifier address");
         verifier = IPLONKVerifier(_verifier);
 
-        bytes32 zeroRoot = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        bytes32 onesRoot = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-        require(_merkleRoot != zeroRoot && _merkleRoot != onesRoot, "Invalid merkle root: cannot be all zeros or all ones");
+        bytes32 zeroRoot = bytes32(0);
+        bytes32 onesRoot = bytes32(type(uint256).max);
+        require(_merkleRoot != zeroRoot && _merkleRoot != onesRoot,
+            "Invalid merkle root: cannot be all zeros or all ones");
     }
 
 

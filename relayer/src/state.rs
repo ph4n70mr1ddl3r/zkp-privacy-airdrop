@@ -716,15 +716,21 @@ impl AppState {
             let tx_key = format!("{}:tx_hash", key);
             let timestamp_key = format!("{}:timestamp", key);
 
-            redis.set(&tx_key, tx_hash.to_string()).await.map_err(|e| {
-                tracing::error!("Failed to store tx_hash in Redis: {}", e);
-                anyhow::anyhow!("Internal storage error: failed to record transaction")
-            })?;
+            redis
+                .set::<_, _, ()>(&tx_key, tx_hash.to_string())
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to store tx_hash in Redis: {}", e);
+                    format!("Internal storage error: failed to record transaction")
+                })?;
 
-            redis.set(&timestamp_key, &timestamp).await.map_err(|e| {
-                tracing::error!("Failed to store timestamp in Redis: {}", e);
-                anyhow::anyhow!("Internal storage error: failed to record transaction")
-            })?;
+            redis
+                .set::<_, _, ()>(&timestamp_key, &timestamp)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to store timestamp in Redis: {}", e);
+                    format!("Internal storage error: failed to record transaction")
+                })?;
 
             let mut stats = self.stats.write();
             stats.total_claims += 1;
