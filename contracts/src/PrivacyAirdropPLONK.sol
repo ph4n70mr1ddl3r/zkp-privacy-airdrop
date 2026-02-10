@@ -73,7 +73,11 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
-        require(proof.proof.length == 8, "Invalid proof: expected 8 elements");
+        require(proof.proof.length == 8, "Invalid PLONK proof: expected 8 elements");
+
+        for (uint256 i = 0; i < 8; i++) {
+            require(proof.proof[i] != 0, "Invalid PLONK proof: element at index is zero");
+        }
 
         uint256[3] memory instances;
         instances[0] = uint256(merkleRoot);
@@ -82,7 +86,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         require(
             verifier.verifyProof(proof.proof, instances),
-            "Invalid proof"
+            "PLONK proof verification failed"
         );
 
         nullifiers[nullifier] = true;

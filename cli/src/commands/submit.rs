@@ -16,8 +16,15 @@ const MAX_RETRY_AFTER_SECONDS: u64 = 86400;
 const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
 const SUBMIT_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
 
-static LAST_SUBMIT_TIME: AtomicU64 = AtomicU64::new(0);
-static SUBMIT_COUNT: AtomicU32 = AtomicU32::new(0);
+struct RateLimitState {
+    window_start: AtomicU64,
+    count: AtomicU32,
+}
+
+static RATE_LIMIT_STATE: RateLimitState = RateLimitState {
+    window_start: AtomicU64::new(0),
+    count: AtomicU32::new(0),
+};
 
 pub async fn execute(
     proof_path: PathBuf,
@@ -102,53 +109,38 @@ pub async fn execute(
     );
 
     let now = Instant::now();
-    let current_ms = now.elapsed().as_millis() as u64;
-    let window_ms = SUBMIT_RATE_LIMIT_WINDOW.as_millis() as u64;
+    let current_secs = now.elapsed().as_secs();
+    let window_secs = SUBMIT_RATE_LIMIT_WINDOW.as_secs();
 
     loop {
-        let last_time_ms = LAST_SUBMIT_TIME.load(Ordering::Acquire);
-        let elapsed_ms = if last_time_ms == 0 {
-            window_ms
-        } else {
-            current_ms.saturating_sub(last_time_ms)
-        };
+        let window_start = RATE_LIMIT_STATE.window_start.load(Ordering::Acquire);
 
-        if elapsed_ms >= window_ms {
+        if window_start == 0 || current_secs.saturating_sub(window_start) >= window_secs {
             let mut new_count = 1u32;
-            match LAST_SUBMIT_TIME.compare_exchange(
-                last_time_ms,
-                current_ms,
+            match RATE_LIMIT_STATE.window_start.compare_exchange(
+                window_start,
+                current_secs,
                 Ordering::AcqRel,
                 Ordering::Acquire,
             ) {
                 Ok(_) => {
-                    SUBMIT_COUNT.store(new_count, Ordering::Release);
+                    RATE_LIMIT_STATE.count.store(new_count, Ordering::Release);
                     break;
                 }
                 Err(_) => continue,
             }
         } else {
-            let mut count = SUBMIT_COUNT.load(Ordering::Acquire);
-            loop {
-                if count >= config.max_submits_per_window {
-                    let wait_time =
-                        SUBMIT_RATE_LIMIT_WINDOW.saturating_sub(Duration::from_millis(elapsed_ms));
-                    println!(
-                        "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
-                        "Warning:".yellow(),
-                        wait_time.as_secs()
-                    );
-                    return Err(anyhow::anyhow!("Rate limit exceeded"));
-                }
-                match SUBMIT_COUNT.compare_exchange_weak(
-                    count,
-                    count + 1,
-                    Ordering::AcqRel,
-                    Ordering::Acquire,
-                ) {
-                    Ok(_) => break,
-                    Err(new_count) => count = new_count,
-                }
+            let count = RATE_LIMIT_STATE.count.fetch_add(1, Ordering::AcqRel);
+            if count >= config.max_submits_per_window {
+                let elapsed = current_secs.saturating_sub(window_start);
+                let wait_time =
+                    SUBMIT_RATE_LIMIT_WINDOW.saturating_sub(Duration::from_secs(elapsed));
+                println!(
+                    "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
+                    "Warning:".yellow(),
+                    wait_time.as_secs()
+                );
+                return Err(anyhow::anyhow!("Rate limit exceeded"));
             }
             break;
         }
@@ -346,41 +338,10 @@ fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {
                 }
             }
         }
-        Proof::Groth16(groth16_proof) => {
-            if groth16_proof.a.is_empty() || groth16_proof.a.len() != 2 {
-                return Err(anyhow::anyhow!(
-                    "Invalid Groth16 proof: a field must have 2 elements, found {}",
-                    groth16_proof.a.len()
-                ));
-            }
-            if groth16_proof.b.is_empty()
-                || groth16_proof.b.len() != 2
-                || groth16_proof.b[0].len() != 2
-                || groth16_proof.b[1].len() != 2
-            {
-                return Err(anyhow::anyhow!(
-                    "Invalid Groth16 proof: b field must be 2x2 array"
-                ));
-            }
-            if groth16_proof.c.is_empty() || groth16_proof.c.len() != 2 {
-                return Err(anyhow::anyhow!(
-                    "Invalid Groth16 proof: c field must have 2 elements, found {}",
-                    groth16_proof.c.len()
-                ));
-            }
-
-            for element in groth16_proof.a.iter().chain(groth16_proof.c.iter()) {
-                if element.is_empty() {
-                    return Err(anyhow::anyhow!(
-                        "Invalid Groth16 proof: found empty element in proof fields"
-                    ));
-                }
-                if !element.starts_with("0x") {
-                    return Err(anyhow::anyhow!(
-                        "Invalid Groth16 proof: proof elements must be hex strings starting with 0x"
-                    ));
-                }
-            }
+        Proof::Groth16(_) => {
+            return Err(anyhow::anyhow!(
+                "Groth16 proofs are no longer supported. Please use PLONK proofs."
+            ));
         }
     }
 

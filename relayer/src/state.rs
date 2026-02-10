@@ -414,15 +414,35 @@ impl AppState {
             format!("Invalid recipient address '{}': {}", claim.recipient, e)
         })?;
 
-        let nullifier_bytes = hex::decode(&claim.nullifier[2..]).map_err(|e| {
+        let nullifier_str = claim.nullifier.trim();
+        if nullifier_str.len() != 66 {
             self.increment_failed_claims();
-            format!("Invalid nullifier hex: {}", e)
+            return Err(format!(
+                "Invalid nullifier length: expected 66 characters, got {}",
+                nullifier_str.len()
+            ));
+        }
+
+        if !nullifier_str.starts_with("0x") && !nullifier_str.starts_with("0X") {
+            self.increment_failed_claims();
+            return Err("Invalid nullifier format: must start with 0x".to_string());
+        }
+
+        let nullifier_bytes = hex::decode(&nullifier_str[2..]).map_err(|e| {
+            self.increment_failed_claims();
+            format!("Invalid nullifier hex encoding: {}", e)
         })?;
 
         let nullifier_array: [u8; 32] = nullifier_bytes[..].try_into().map_err(|e| {
             self.increment_failed_claims();
             format!("Invalid nullifier length: expected 32 bytes, got {}", e)
         })?;
+
+        let zero_nullifier = [0u8; 32];
+        if nullifier_array == zero_nullifier {
+            self.increment_failed_claims();
+            return Err("Invalid nullifier: cannot be all zeros".to_string());
+        }
 
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
@@ -440,7 +460,7 @@ impl AppState {
         if result == -1 {
             self.increment_failed_claims();
             return Err(
-                "Security violation: This nullifier has already been used by a different address. Proof reuse detected."
+                "Security violation: This nullifier has already been used by a different address. Proof reuse detected and blocked."
                     .to_string(),
             );
         }

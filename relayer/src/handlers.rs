@@ -58,7 +58,10 @@ fn validate_claim_input(
     expected_merkle_root: &str,
 ) -> Result<(), HttpResponse> {
     if !is_valid_nullifier(&claim.nullifier) {
-        warn!("Invalid nullifier format: {}", claim.nullifier);
+        warn!(
+            "Invalid nullifier format: {}",
+            sanitize_nullifier(&claim.nullifier)
+        );
         return Err(HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
             error: "Invalid nullifier format. Expected 66-character hex string starting with 0x."
@@ -103,6 +106,18 @@ fn validate_claim_input(
     }
 
     Ok(())
+}
+
+fn sanitize_nullifier(nullifier: &str) -> String {
+    if nullifier.len() > 16 {
+        format!(
+            "{}...{}",
+            &nullifier[..10],
+            &nullifier[nullifier.len() - 6..]
+        )
+    } else {
+        "***".to_string()
+    }
 }
 
 fn sanitize_error_message(error: &str) -> String {

@@ -516,7 +516,7 @@ pub fn address_to_field(address: &Address) -> Result<String> {
     Ok(field_element_to_decimal(&padded))
 }
 
-fn calculate_entropy_score(bytes: &[u8]) -> u32 {
+pub fn calculate_entropy_score(bytes: &[u8]) -> u32 {
     if bytes.is_empty() {
         return 0;
     }

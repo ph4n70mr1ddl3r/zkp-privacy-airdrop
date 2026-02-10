@@ -578,7 +578,7 @@ impl Config {
 
 /// Calculate entropy score for a byte array
 /// Higher values indicate higher entropy (more random)
-fn calculate_entropy_score(bytes: &[u8]) -> u32 {
+pub fn calculate_entropy_score(bytes: &[u8]) -> u32 {
     if bytes.is_empty() {
         return 0;
     }
