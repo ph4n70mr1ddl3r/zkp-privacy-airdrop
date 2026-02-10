@@ -447,7 +447,7 @@ impl Config {
                 },
                 max_gas_price: {
                     let max_gas_price_str = std::env::var("RELAYER_MAX_GAS_PRICE")
-                        .unwrap_or_else(|_| "100000000000".to_string()); // 100 gwei
+                        .unwrap_or_else(|_| "50000000000".to_string()); // 50 gwei
                     let max_gas_price: u128 = max_gas_price_str.parse().map_err(|_| {
                         anyhow::anyhow!(
                             "Invalid RELAYER_MAX_GAS_PRICE '{}': must be a valid positive integer",

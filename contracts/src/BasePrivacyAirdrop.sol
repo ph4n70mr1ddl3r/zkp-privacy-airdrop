@@ -146,7 +146,8 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
 
         if (timeSinceLastWithdrawal >= WITHDRAWAL_COOLDOWN) {
-            require(totalWithdrawn == 0, "Cannot reset withdrawal counter with pending withdrawals");
+            totalWithdrawn = 0;
+            lastWithdrawalTime = block.timestamp;
         }
 
         require(amount + totalWithdrawn <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");

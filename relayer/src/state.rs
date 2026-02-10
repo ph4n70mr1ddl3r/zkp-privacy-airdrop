@@ -130,9 +130,9 @@ impl AppState {
     }
 
     pub fn relayer_address(&self) -> Result<String, String> {
-        LocalWallet::from_str(self.config.relayer.private_key.as_str())
-            .map(|wallet| format!("{:#x}", wallet.address()))
-            .map_err(|e| format!("Failed to parse private key: {}", e))
+        let wallet = LocalWallet::from_str(self.config.relayer.private_key.as_str())
+            .map_err(|e| format!("Failed to parse private key: {}", e))?;
+        Ok(format!("{:#x}", wallet.address()))
     }
 
     pub async fn get_relayer_balance(&self) -> u128 {

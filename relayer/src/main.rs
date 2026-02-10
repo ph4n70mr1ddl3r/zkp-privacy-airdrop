@@ -64,6 +64,9 @@ async fn main() -> anyhow::Result<()> {
                 actix_cors::Cors::default()
                     .allowed_origin_fn(move |origin, _req_head| {
                         if let Ok(origin_str) = origin.to_str() {
+                            if origin_str.contains('\0') || origin_str.len() > 2048 {
+                                return false;
+                            }
                             allowed_origins
                                 .iter()
                                 .filter(|allowed| *allowed != "*")

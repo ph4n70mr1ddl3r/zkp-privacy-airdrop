@@ -355,8 +355,20 @@ pub fn read_private_key(
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
 
-    const MIN_ENTROPY_SCORE: u32 = 450;
+    const MIN_ENTROPY_SCORE: u32 = 750;
     let entropy_score = calculate_entropy_score(&key_bytes);
+
+    use num_bigint::BigUint;
+    use num_traits::{Num, One};
+    let max_key = BigUint::from_str_radix(BN254_SCALAR_FIELD_MODULUS, 10)
+        .map_err(|e| anyhow::anyhow!("Failed to parse field modulus: {}", e))?;
+    let key_biguint = BigUint::from_bytes_be(&key_bytes);
+    if key_biguint >= max_key {
+        key_str.zeroize();
+        key_bytes.zeroize();
+        anyhow::bail!("Private key exceeds field modulus");
+    }
+
     if entropy_score < MIN_ENTROPY_SCORE {
         key_str.zeroize();
         key_bytes.zeroize();
@@ -395,7 +407,8 @@ pub fn validate_address(address: &str) -> Result<Address> {
     let expected = format!("{:#x}", addr);
     if !address.eq_ignore_ascii_case(&expected) {
         tracing::warn!(
-            "Address checksum mismatch: provided={}, expected={}",
+            "Address checksum mismatch: provided={}, expected={}. \
+             The address has been normalized to proper EIP-55 checksum format.",
             address,
             expected
         );
