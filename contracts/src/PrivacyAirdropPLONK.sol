@@ -81,6 +81,10 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         instances[1] = uint160(recipient);
         instances[2] = uint256(nullifier);
 
+        require(instances[0] == uint256(MERKLE_ROOT), "Invalid merkle root in proof");
+        require(instances[1] == uint160(recipient), "Recipient mismatch in proof");
+        require(instances[2] == uint256(nullifier), "Nullifier mismatch in proof");
+
         require(
             VERIFIER.verifyProof(proof.proof, instances),
             "PLONK proof verification failed"

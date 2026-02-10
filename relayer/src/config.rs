@@ -133,11 +133,11 @@ pub struct ContractsConfig {
 pub struct RelayerConfig {
     #[serde(skip)]
     pub private_key: SecretKey,
-    pub min_balance_warning: String,
-    pub min_balance_critical: String,
+    pub min_balance_warning: u128,
+    pub min_balance_critical: u128,
     pub gas_multiplier: f64,
     pub gas_price_randomization: f64,
-    pub max_gas_price: String,
+    pub max_gas_price: u128,
 }
 
 const MAX_GAS_RANDOMIZATION: f64 = 0.20; // 20%
@@ -393,10 +393,26 @@ impl Config {
 
                     SecretKey::new(normalized_key)
                 },
-                min_balance_warning: std::env::var("RELAYER_MIN_BALANCE_WARNING")
-                    .unwrap_or_else(|_| "1000000000000000000".to_string()), // 1 ETH
-                min_balance_critical: std::env::var("RELAYER_MIN_BALANCE_CRITICAL")
-                    .unwrap_or_else(|_| "500000000000000000".to_string()), // 0.5 ETH
+                min_balance_warning: {
+                    let min_balance_warning_str = std::env::var("RELAYER_MIN_BALANCE_WARNING")
+                        .unwrap_or_else(|_| "1000000000000000000".to_string()); // 1 ETH
+                    min_balance_warning_str.parse().map_err(|_| {
+                        anyhow::anyhow!(
+                            "Invalid RELAYER_MIN_BALANCE_WARNING '{}': must be a valid positive integer",
+                            min_balance_warning_str
+                        )
+                    })?
+                },
+                min_balance_critical: {
+                    let min_balance_critical_str = std::env::var("RELAYER_MIN_BALANCE_CRITICAL")
+                        .unwrap_or_else(|_| "500000000000000000".to_string()); // 0.5 ETH
+                    min_balance_critical_str.parse().map_err(|_| {
+                        anyhow::anyhow!(
+                            "Invalid RELAYER_MIN_BALANCE_CRITICAL '{}': must be a valid positive integer",
+                            min_balance_critical_str
+                        )
+                    })?
+                },
                 gas_multiplier: {
                     let multiplier: f64 = std::env::var("RELAYER_GAS_MULTIPLIER")
                         .unwrap_or_else(|_| "1.1".to_string())
@@ -458,7 +474,7 @@ impl Config {
                         );
                     }
 
-                    max_gas_price.to_string()
+                    max_gas_price
                 },
             },
             rate_limit: RateLimitConfig {

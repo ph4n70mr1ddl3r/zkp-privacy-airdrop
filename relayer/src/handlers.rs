@@ -347,11 +347,38 @@ pub async fn submit_claim(
                     retry_after: None,
                 });
             }
+            if e.contains("insufficient funds") || e.contains("exceeds balance") {
+                warn!("Insufficient relayer funds");
+                return HttpResponse::ServiceUnavailable().json(ErrorResponse {
+                    success: false,
+                    error: "Insufficient relayer funds".to_string(),
+                    code: Some("INSUFFICIENT_FUNDS".to_string()),
+                    retry_after: Some(300),
+                });
+            }
+            if e.contains("nonce too low") || e.contains("replacement transaction underpriced") {
+                warn!("Transaction nonce issue: {}", e);
+                return HttpResponse::InternalServerError().json(ErrorResponse {
+                    success: false,
+                    error: "Transaction nonce conflict, please retry".to_string(),
+                    code: Some("NONCE_ERROR".to_string()),
+                    retry_after: Some(10),
+                });
+            }
+            if e.contains("gas price") || e.contains("gas required exceeds allowance") {
+                warn!("Gas price or limit error: {}", e);
+                return HttpResponse::InternalServerError().json(ErrorResponse {
+                    success: false,
+                    error: "Transaction gas parameters failed".to_string(),
+                    code: Some("GAS_ERROR".to_string()),
+                    retry_after: Some(30),
+                });
+            }
             error!("Failed to submit claim - Error: {}", e);
             HttpResponse::InternalServerError().json(ErrorResponse {
                 success: false,
                 error: sanitize_error_message(&format!("Failed to submit claim: {}", e)),
-                code: Some("INTERNAL_ERROR".to_string()),
+                code: Some("SUBMIT_FAILED".to_string()),
                 retry_after: Some(60),
             })
         }

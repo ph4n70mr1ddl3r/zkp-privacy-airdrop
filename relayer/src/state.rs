@@ -208,20 +208,7 @@ impl AppState {
 
     pub async fn has_sufficient_balance(&self) -> bool {
         let balance = self.get_relayer_balance().await;
-        let min_critical: u128 = self
-            .config
-            .relayer
-            .min_balance_critical
-            .parse()
-            .unwrap_or_else(|e| {
-                tracing::warn!(
-                    "Failed to parse min_balance_critical '{}', using default: {}",
-                    self.config.relayer.min_balance_critical,
-                    e
-                );
-                500_000_000_000_000_000_u128
-            });
-        balance > min_critical
+        balance > self.config.relayer.min_balance_critical
     }
 
     pub async fn is_healthy(&self) -> bool {
@@ -234,7 +221,12 @@ impl AppState {
     }
 
     pub async fn check_db_connection(&self) -> bool {
-        sqlx::query("SELECT 1").fetch_one(&self.db).await.is_ok()
+        tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            sqlx::query("SELECT 1").fetch_one(&self.db),
+        )
+        .await
+        .is_ok()
     }
 
     pub async fn check_redis_connection(&self) -> bool {
@@ -460,20 +452,15 @@ impl AppState {
                 format!("Redis error during nullifier check: {}", e)
             })?;
 
-        if result == -1 {
-            self.increment_failed_claims();
-            return Err(
-                "Security violation: This nullifier has already been used by a different address. Proof reuse detected and blocked."
-                    .to_string(),
-            );
-        }
-
         if result != 1 {
             self.increment_failed_claims();
-            return Err(
+            return Err(if result == -1 {
+                "Security violation: This nullifier has already been used by a different address. Proof reuse detected and blocked."
+                    .to_string()
+            } else {
                 "This nullifier has already been used. Each qualified account can only claim once."
-                    .to_string(),
-            );
+                    .to_string()
+            });
         }
 
         drop(redis);
@@ -637,19 +624,17 @@ impl AppState {
                     let adjustment_multiplier = 100u64 + random_factor;
 
                     let adjusted_price = base_gas_price_u128
-                        .saturating_mul(adjustment_multiplier as u128)
-                        .saturating_div(100);
+                        .checked_mul(adjustment_multiplier as u128)
+                        .and_then(|v| v.checked_div(100))
+                        .ok_or_else(|| "Gas price calculation overflow".to_string())?;
 
                     if adjusted_price == 0 {
                         self.increment_failed_claims();
                         return Err("Gas price calculation resulted in zero value".to_string());
                     }
 
-                    let max_gas_price: ethers::types::U256 =
-                        self.config.relayer.max_gas_price.parse().map_err(|e| {
-                            self.increment_failed_claims();
-                            format!("Failed to parse max_gas_price: {}", e)
-                        })?;
+                    let max_gas_price =
+                        ethers::types::U256::from(self.config.relayer.max_gas_price);
 
                     let mut gas_price = ethers::types::U256::from(adjusted_price);
 
