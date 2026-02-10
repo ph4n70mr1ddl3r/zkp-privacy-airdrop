@@ -20,6 +20,8 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     uint256 public immutable claimDeadline;
     bool public paused;
     uint256 public totalClaimed;
+    uint256 public totalWithdrawn;
+    uint256 public lastWithdrawalTime;
 
     event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
     event TokensTransferred(address indexed recipient, uint256 amount, uint256 timestamp);
@@ -110,6 +112,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @dev Only callable by owner and only after claim deadline has passed
      * @dev This is a safety mechanism to recover unclaimed tokens
      * @dev Can only withdraw tokens that have not been claimed (balance - totalClaimed)
+     * @dev Implements withdrawal limits: max 10% of remaining tokens per 24 hour period
      */
     function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
         require(block.timestamp > claimDeadline, "Claim period not ended");
@@ -122,7 +125,23 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         uint256 unclaimedAmount = contractBalance - claimed;
         require(amount <= unclaimedAmount, "Cannot withdraw claimed tokens");
 
+        uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
+        uint256 withdrawalCooldown = 24 hours;
+
+        if (timeSinceLastWithdrawal < withdrawalCooldown) {
+            uint256 maxWithdrawalThisPeriod = (unclaimedAmount * 10) / 100;
+            uint256 remainingAllowance = maxWithdrawalThisPeriod - totalWithdrawn;
+            require(amount <= remainingAllowance, "Withdrawal amount exceeds per-period limit");
+        } else {
+            totalWithdrawn = 0;
+        }
+
+        require(amount + totalWithdrawn <= unclaimedAmount, "Insufficient unclaimed tokens");
+        require(amount <= (unclaimedAmount * 10) / 100, "Cannot withdraw more than 10% of remaining tokens");
+
         token.safeTransfer(recipient, amount);
+        totalWithdrawn += amount;
+        lastWithdrawalTime = block.timestamp;
         emit EmergencyWithdraw(recipient, amount, block.timestamp);
     }
 }

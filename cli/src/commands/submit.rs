@@ -66,9 +66,9 @@ pub async fn execute(
 
     validate_merkle_root(&proof_data.merkle_root).context("Invalid merkle_root in proof file")?;
 
-    println!("{} {}", "Relayer:".cyan(), relayer_url);
+    println!("{} {}", "Relayer:".cyan(), sanitize_output(&relayer_url));
     println!("{} {}", "Proof:".cyan(), proof_path.display());
-    println!("{} {}", "Recipient:".cyan(), recipient);
+    println!("{} {}", "Recipient:".cyan(), sanitize_output(&recipient));
     println!("{} {}", "Proof Type:".cyan(), proof_data.proof.type_name());
     println!(
         "{} {} bytes",
@@ -77,6 +77,13 @@ pub async fn execute(
     );
 
     let proof_type = proof_data.proof.type_name();
+
+    fn sanitize_output(input: &str) -> String {
+        input
+            .chars()
+            .filter(|c| c.is_alphanumeric() || c.is_ascii_punctuation() || c.is_whitespace())
+            .collect::<String>()
+    }
 
     let request = SubmitClaimRequest {
         proof: proof_data.proof,

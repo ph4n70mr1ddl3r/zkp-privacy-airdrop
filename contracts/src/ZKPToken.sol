@@ -81,7 +81,7 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
      * @param amount Amount of tokens to burn
      * @dev Reduces total supply
      */
-    function burn(uint256 amount) external {
+    function burn(uint256 amount) external nonReentrant {
         require(amount > 0, "Amount must be greater than 0");
         require(balanceOf(msg.sender) >= amount, "Insufficient balance");
 

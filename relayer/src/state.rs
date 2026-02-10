@@ -535,6 +535,7 @@ impl AppState {
                 })?;
 
                 let mut retry_count = 0;
+                let mut current_nonce = nonce;
                 let total_start_time = std::time::Instant::now();
 
                 loop {
@@ -551,10 +552,8 @@ impl AppState {
                         TRANSACTION_RETRY_DELAY_MS * 8,
                     );
 
-                    let current_nonce = if retry_count == 0 {
-                        nonce
-                    } else {
-                        tokio::time::timeout(
+                    if retry_count > 0 {
+                        current_nonce = tokio::time::timeout(
                             std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
                             provider.get_transaction_count(wallet_with_chain.address(), None),
                         )
@@ -569,8 +568,8 @@ impl AppState {
                         .map_err(|e| {
                             self.increment_failed_claims();
                             format!("Failed to get transaction nonce on retry: {}", e)
-                        })?
-                    };
+                        })?;
+                    }
 
                     let call = plonk_verifier.claim(
                         privacy_airdrop_plonk::privacy_airdrop_plonk::Plonkproof {
@@ -602,13 +601,12 @@ impl AppState {
                         self.increment_failed_claims();
                         return Err("Invalid gas price: base gas price is zero".to_string());
                     }
-                    let gas_randomization_factor =
-                        (self.config.relayer.gas_price_randomization * 100.0) as u64;
-                    if gas_randomization_factor > 100 {
-                        self.increment_failed_claims();
-                        return Err("Invalid gas randomization factor: must be <= 1.0".to_string());
-                    }
-                    let random_factor = rand::thread_rng().gen_range(0..=gas_randomization_factor);
+
+                    const MAX_GAS_RANDOMIZATION_PERCENT: u64 = 20; // Max 20% randomization
+                    let gas_randomization_percent = ((self.config.relayer.gas_price_randomization
+                        * 100.0) as u64)
+                        .min(MAX_GAS_RANDOMIZATION_PERCENT);
+                    let random_factor = rand::thread_rng().gen_range(0..=gas_randomization_percent);
                     let adjustment_multiplier = 100u128 + random_factor as u128;
 
                     let adjusted_price = base_gas_price_u128
@@ -619,17 +617,13 @@ impl AppState {
                             "Gas price calculation division failed".to_string()
                         })?;
 
-                    let mut gas_price = ethers::types::U256::from(adjusted_price);
+                    let max_gas_price: ethers::types::U256 =
+                        self.config.relayer.max_gas_price.parse().map_err(|e| {
+                            self.increment_failed_claims();
+                            format!("Failed to parse max_gas_price: {}", e)
+                        })?;
 
-                    let max_gas_price: ethers::types::U256 = self
-                        .config
-                        .relayer
-                        .max_gas_price
-                        .parse()
-                        .unwrap_or_else(|_| {
-                            tracing::warn!("Failed to parse max_gas_price, using default 100 gwei");
-                            ethers::types::U256::from(100_000_000_000u128)
-                        });
+                    let mut gas_price = ethers::types::U256::from(adjusted_price);
 
                     if gas_price > max_gas_price {
                         tracing::warn!(
@@ -638,6 +632,14 @@ impl AppState {
                             max_gas_price.as_u128() / 1_000_000_000
                         );
                         gas_price = max_gas_price;
+                    }
+
+                    if gas_price.as_u128() < 1_000_000_000 {
+                        tracing::warn!(
+                            "Final gas price {} wei is less than 1 gwei, using 1 gwei minimum",
+                            gas_price.as_u128()
+                        );
+                        gas_price = ethers::types::U256::from(1_000_000_000u128);
                     }
 
                     let builder = call

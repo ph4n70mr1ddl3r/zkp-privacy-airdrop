@@ -66,8 +66,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         require(nullifier != bytes32(0), "Invalid nullifier");
         require(!nullifiers[nullifier], "Already claimed");
 
-        nullifiers[nullifier] = true;
-
         require(proof.proof.length == 8, "Invalid proof: expected 8 elements");
 
         uint256[3] memory instances;
@@ -79,6 +77,8 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             verifier.verifyProof(proof.proof, instances),
             "Invalid proof"
         );
+
+        nullifiers[nullifier] = true;
 
         _transferTokens(recipient, claimAmount);
 

@@ -38,6 +38,14 @@ static SENSITIVE_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
             Regex::new(r"(?i)pk[_=][a-z0-9]{64}").unwrap(),
             "private key indicator",
         ),
+        (
+            Regex::new(r"(?i)(jwt|bearer)[\s:=]+[a-z0-9\-._~+/]+\.[a-z0-9\-._~+/]+\.[a-z0-9\-._~+/]+").unwrap(),
+            "JWT token",
+        ),
+        (
+            Regex::new(r"(?i)base64[:\s]*[a-z0-9+/]{40,}={0,2}").unwrap(),
+            "base64 encoded secret",
+        ),
     ]
 });
 

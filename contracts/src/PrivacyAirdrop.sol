@@ -81,14 +81,14 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
         require(nullifier != bytes32(0), "Invalid nullifier");
         require(!nullifiers[nullifier], "Already claimed");
 
-        nullifiers[nullifier] = true;
-
         uint[3] memory publicSignals;
         publicSignals[0] = uint256(merkleRoot);
         publicSignals[1] = uint160(recipient);
         publicSignals[2] = uint256(nullifier);
 
         require(verifier.verifyProof(proof.a, proof.b, proof.c, publicSignals), "Invalid proof");
+
+        nullifiers[nullifier] = true;
 
         _transferTokens(recipient, claimAmount);
 

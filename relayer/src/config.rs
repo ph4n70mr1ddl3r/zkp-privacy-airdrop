@@ -132,6 +132,9 @@ pub struct RelayerConfig {
     pub max_gas_price: String,
 }
 
+const MAX_GAS_RANDOMIZATION: f64 = 0.20; // 20%
+const MIN_GAS_RANDOMIZATION: f64 = 0.0;
+
 impl ContractsConfig {
     pub fn validate(&self) -> Result<()> {
         let zero_address = Address::zero();
@@ -402,27 +405,50 @@ impl Config {
                     }
                     multiplier
                 },
-                gas_price_randomization: std::env::var("RELAYER_GAS_RANDOMIZATION")
-                    .unwrap_or_else(|_| "0.05".to_string())
-                    .parse()
-                    .unwrap_or(0.05),
+                gas_price_randomization: {
+                    let randomization: f64 = std::env::var("RELAYER_GAS_RANDOMIZATION")
+                        .unwrap_or_else(|_| "0.05".to_string())
+                        .parse()
+                        .unwrap_or(0.05);
+                    if !(MIN_GAS_RANDOMIZATION..=MAX_GAS_RANDOMIZATION).contains(&randomization) {
+                        return Err(anyhow::anyhow!(
+                            "RELAYER_GAS_RANDOMIZATION must be between {} and {}, got {}",
+                            MIN_GAS_RANDOMIZATION,
+                            MAX_GAS_RANDOMIZATION,
+                            randomization
+                        ));
+                    }
+                    randomization
+                },
                 max_gas_price: {
                     let max_gas_price_str = std::env::var("RELAYER_MAX_GAS_PRICE")
                         .unwrap_or_else(|_| "100000000000".to_string()); // 100 gwei
-                    let max_gas_price: u128 = max_gas_price_str.parse().unwrap_or_else(|_| {
+                    let max_gas_price: u128 = max_gas_price_str.parse().map_err(|_| {
+                        anyhow::anyhow!(
+                            "Invalid RELAYER_MAX_GAS_PRICE '{}': must be a valid positive integer",
+                            max_gas_price_str
+                        )
+                    })?;
+
+                    const MAX_SAFE_GAS_PRICE: u128 = 200_000_000_000; // 200 gwei
+                    if max_gas_price > MAX_SAFE_GAS_PRICE {
+                        return Err(anyhow::anyhow!(
+                            "RELAYER_MAX_GAS_PRICE '{}' ({} gwei) exceeds safe maximum of {} gwei. \
+                             High gas prices can lead to massive financial loss or DoS attacks. \
+                             Please use a reasonable maximum (recommended: 50-100 gwei).",
+                            max_gas_price_str,
+                            max_gas_price / 1_000_000_000,
+                            MAX_SAFE_GAS_PRICE / 1_000_000_000
+                        ));
+                    }
+
+                    if max_gas_price < 1_000_000_000 {
                         warn!(
-                            "Invalid RELAYER_MAX_GAS_PRICE '{}', using default 100 gwei",
+                            "RELAYER_MAX_GAS_PRICE '{}' (<1 gwei) may be too low for network congestion",
                             max_gas_price_str
                         );
-                        100_000_000_000u128
-                    });
-                    if max_gas_price > 1_000_000_000_000u128 {
-                        warn!(
-                            "RELAYER_MAX_GAS_PRICE '{}' is dangerously high (>1000 gwei). \
-                             Consider lowering to prevent extremely high gas costs.",
-                            max_gas_price
-                        );
                     }
+
                     max_gas_price.to_string()
                 },
             },
