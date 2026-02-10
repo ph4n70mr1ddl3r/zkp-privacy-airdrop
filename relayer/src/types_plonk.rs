@@ -143,23 +143,6 @@ impl Proof {
             }
         }
     }
-
-    #[must_use]
-    pub fn estimated_size_bytes(&self) -> usize {
-        match self {
-            Proof::Groth16(ref proof) => {
-                proof.a.iter().map(|s| s.len()).sum::<usize>()
-                    + proof
-                        .b
-                        .iter()
-                        .flat_map(|row| row.iter())
-                        .map(|s| s.len())
-                        .sum::<usize>()
-                    + proof.c.iter().map(|s| s.len()).sum::<usize>()
-            }
-            Proof::Plonk(ref proof) => proof.proof.iter().map(|s| s.len()).sum(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,20 +151,6 @@ pub struct SubmitClaimRequest {
     pub recipient: String,
     pub nullifier: String,
     pub merkle_root: String,
-}
-
-impl SubmitClaimRequest {
-    #[must_use]
-    pub fn plonk_minimal() -> Self {
-        Self {
-            proof: Proof::Plonk(PlonkProof {
-                proof: vec!["0".to_string(); 8],
-            }),
-            recipient: "0x1234567890123456789012345678901234567890".to_string(),
-            nullifier: "0x0000000000000000000000000000000000000000000000000000000".to_string(),
-            merkle_root: "0x0000000000000000000000000000000000000000000000000000000".to_string(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

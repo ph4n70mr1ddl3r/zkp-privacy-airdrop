@@ -46,15 +46,15 @@ describe("PrivacyAirdropPLONK", function () {
   });
 
   it("Should have correct merkle root", async function () {
-    expect(await airdrop.merkleRoot()).to.equal(MERKLE_ROOT);
+    expect(await airdrop.MERKLE_ROOT()).to.equal(MERKLE_ROOT);
   });
 
   it("Should have correct claim amount", async function () {
-    expect(await airdrop.claimAmount()).to.equal(CLAIM_AMOUNT);
+    expect(await airdrop.CLAIM_AMOUNT()).to.equal(CLAIM_AMOUNT);
   });
 
   it("Should have correct claim deadline", async function () {
-    expect(await airdrop.claimDeadline()).to.equal(CLAIM_DEADLINE);
+    expect(await airdrop.CLAIM_DEADLINE()).to.equal(CLAIM_DEADLINE);
   });
 
   it("Should allow owner to pause", async function () {

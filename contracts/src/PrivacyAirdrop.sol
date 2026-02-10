@@ -68,11 +68,6 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
     ) {
         require(_verifier != address(0), "Invalid verifier address");
         VERIFIER = IVerifier(_verifier);
-
-        bytes32 zeroRoot = bytes32(0);
-        bytes32 onesRoot = bytes32(type(uint256).max);
-        require(_merkleRoot != zeroRoot && _merkleRoot != onesRoot,
-            "Invalid merkle root: cannot be all zeros or all ones");
     }
 
     /**

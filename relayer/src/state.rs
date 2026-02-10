@@ -187,7 +187,10 @@ impl AppState {
                 0
             }
             Err(_) => {
-                tracing::warn!("RPC query timed out after 10 seconds, using fallback");
+                tracing::warn!(
+                    "RPC query timed out after {} seconds, using fallback",
+                    RPC_TIMEOUT_SECONDS
+                );
                 0
             }
         };
@@ -626,7 +629,7 @@ impl AppState {
                         return Err("Invalid gas price: base gas price is zero".to_string());
                     }
 
-                    const MAX_GAS_RANDOMIZATION_PERCENT: u64 = 20; // Max 20% randomization
+                    const MAX_GAS_RANDOMIZATION_PERCENT: u64 = 20;
                     let gas_randomization_percent = ((self.config.relayer.gas_price_randomization
                         * 100.0) as u64)
                         .min(MAX_GAS_RANDOMIZATION_PERCENT);
@@ -634,12 +637,13 @@ impl AppState {
                     let adjustment_multiplier = 100u64 + random_factor;
 
                     let adjusted_price = base_gas_price_u128
-                        .checked_mul(adjustment_multiplier as u128)
-                        .and_then(|v| v.checked_div(100))
-                        .ok_or_else(|| {
-                            self.increment_failed_claims();
-                            "Gas price calculation overflow".to_string()
-                        })?;
+                        .saturating_mul(adjustment_multiplier as u128)
+                        .saturating_div(100);
+
+                    if adjusted_price == 0 {
+                        self.increment_failed_claims();
+                        return Err("Gas price calculation resulted in zero value".to_string());
+                    }
 
                     let max_gas_price: ethers::types::U256 =
                         self.config.relayer.max_gas_price.parse().map_err(|e| {

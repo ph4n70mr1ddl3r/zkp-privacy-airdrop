@@ -51,7 +51,10 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         uint256 _withdrawalCooldown
     ) Ownable(msg.sender) {
         require(_token != address(0), "Invalid token address: cannot be zero address");
-        require(_merkleRoot != bytes32(0), "Invalid merkle root: cannot be zero");
+        bytes32 zeroRoot = bytes32(0);
+        bytes32 onesRoot = bytes32(type(uint256).max);
+        require(_merkleRoot != zeroRoot && _merkleRoot != onesRoot,
+            "Invalid merkle root: cannot be all zeros or all ones");
         require(_claimAmount > 0, "Invalid claim amount: must be greater than zero");
         require(_claimDeadline > block.timestamp, "Invalid deadline: must be in the future");
         require(_claimDeadline < block.timestamp + MAX_CLAIM_DEADLINE, "Deadline too far in future");
@@ -142,12 +145,11 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
 
         uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
 
-        require(amount + totalWithdrawn <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
-        require(amount <= maxWithdrawalThisPeriod, "Cannot withdraw more than max percentage of remaining tokens");
-
         if (timeSinceLastWithdrawal >= WITHDRAWAL_COOLDOWN) {
             require(totalWithdrawn == 0, "Cannot reset withdrawal counter with pending withdrawals");
         }
+
+        require(amount + totalWithdrawn <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
 
         TOKEN.safeTransfer(recipient, amount);
         totalWithdrawn += amount;
