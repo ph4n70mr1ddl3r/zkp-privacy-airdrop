@@ -741,7 +741,7 @@ impl AppState {
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to store tx_hash in Redis: {}", e);
-                    format!("Internal storage error: failed to record transaction")
+                    "Internal storage error: failed to record transaction".to_string()
                 })?;
 
             redis
@@ -749,7 +749,7 @@ impl AppState {
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to store timestamp in Redis: {}", e);
-                    format!("Internal storage error: failed to record transaction")
+                    "Internal storage error: failed to record transaction".to_string()
                 })?;
 
             let mut stats = self.stats.write();

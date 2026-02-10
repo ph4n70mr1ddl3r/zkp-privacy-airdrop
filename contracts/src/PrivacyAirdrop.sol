@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./BasePrivacyAirdrop.sol";
+import {BasePrivacyAirdrop} from "./BasePrivacyAirdrop.sol";
 
 /**
  * @title IVerifier
@@ -32,7 +32,7 @@ interface IVerifier {
  */
 contract PrivacyAirdrop is BasePrivacyAirdrop {
     uint256 private constant GROTH16_GAS_ESTIMATE = 700_000;
-    IVerifier public immutable verifier;
+    IVerifier public immutable VERIFIER;
 
     struct Proof {
         uint[2] a;
@@ -67,7 +67,7 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
         _withdrawalCooldown
     ) {
         require(_verifier != address(0), "Invalid verifier address");
-        verifier = IVerifier(_verifier);
+        VERIFIER = IVerifier(_verifier);
 
         bytes32 zeroRoot = bytes32(0);
         bytes32 onesRoot = bytes32(type(uint256).max);
@@ -88,17 +88,17 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
         uint[3] memory publicSignals;
-        publicSignals[0] = uint256(merkleRoot);
+        publicSignals[0] = uint256(MERKLE_ROOT);
         publicSignals[1] = uint160(recipient);
         publicSignals[2] = uint256(nullifier);
 
-        require(verifier.verifyProof(proof.a, proof.b, proof.c, publicSignals), "Invalid proof");
+        require(VERIFIER.verifyProof(proof.a, proof.b, proof.c, publicSignals), "Invalid proof");
 
         nullifiers[nullifier] = true;
 
         emit Claimed(nullifier, recipient, block.timestamp);
 
-        _transferTokens(recipient, claimAmount);
+        _transferTokens(recipient, CLAIM_AMOUNT);
     }
 
     /**

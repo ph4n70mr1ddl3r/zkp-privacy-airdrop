@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./BasePrivacyAirdrop.sol";
+import {BasePrivacyAirdrop} from "./BasePrivacyAirdrop.sol";
 
 /**
  * @title PrivacyAirdropPLONK
@@ -15,7 +15,7 @@ import "./BasePrivacyAirdrop.sol";
  */
 contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     uint256 private constant PLONK_GAS_ESTIMATE = 1_300_000;
-    IPLONKVerifier public immutable verifier;
+    IPLONKVerifier public immutable VERIFIER;
 
     /**
      * @notice PLONK proof structure
@@ -52,7 +52,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         _withdrawalCooldown
     ) {
         require(_verifier != address(0), "Invalid verifier address");
-        verifier = IPLONKVerifier(_verifier);
+        VERIFIER = IPLONKVerifier(_verifier);
 
         bytes32 zeroRoot = bytes32(0);
         bytes32 onesRoot = bytes32(type(uint256).max);
@@ -80,12 +80,12 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         }
 
         uint256[3] memory instances;
-        instances[0] = uint256(merkleRoot);
+        instances[0] = uint256(MERKLE_ROOT);
         instances[1] = uint160(recipient);
         instances[2] = uint256(nullifier);
 
         require(
-            verifier.verifyProof(proof.proof, instances),
+            VERIFIER.verifyProof(proof.proof, instances),
             "PLONK proof verification failed"
         );
 
@@ -93,7 +93,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         emit Claimed(nullifier, recipient, block.timestamp);
 
-        _transferTokens(recipient, claimAmount);
+        _transferTokens(recipient, CLAIM_AMOUNT);
     }
 
     /**

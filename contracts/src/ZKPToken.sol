@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title ZKPToken
@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  */
 contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
     uint256 public constant MAX_SUPPLY = 65_249_064_000 * 10**18;
-    uint256 public immutable deployTimestamp;
+    uint256 public immutable DEPLOY_TIMESTAMP;
     uint256 public mintCount;
     bool public mintingPaused;
     uint8 private constant DECIMALS = 18;
@@ -37,7 +37,7 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
      *      Owner can mint tokens, pause minting, and burn tokens (anyone can burn their own)
      */
     constructor() ERC20("ZKP Token", "ZKP") Ownable(msg.sender) {
-        deployTimestamp = block.timestamp;
+        DEPLOY_TIMESTAMP = block.timestamp;
     }
 
     /**
