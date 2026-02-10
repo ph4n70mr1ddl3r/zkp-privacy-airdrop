@@ -69,13 +69,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
-        require(proof.proof.length == 8, "Invalid PLONK proof: expected 8 elements");
-
-        for (uint256 i = 0; i < 8; i++) {
-            require(proof.proof[i] != 0, "Invalid PLONK proof: element at index is zero");
-            require(proof.proof[i] != 1, "Invalid PLONK proof: element at index is one (weak)");
-            require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element exceeds field modulus");
-        }
+        _validatePLONKProof(proof);
 
         uint256[3] memory instances;
         instances[0] = uint256(MERKLE_ROOT);
@@ -94,13 +88,37 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         _transferTokens(recipient, CLAIM_AMOUNT);
     }
 
+    function _validatePLONKProof(PLONKProof calldata proof) private pure {
+        require(proof.proof.length == 8, "Invalid PLONK proof: expected 8 elements");
+
+        for (uint256 i = 0; i < 8; i++) {
+            require(proof.proof[i] != 0, "Invalid PLONK proof: element at index is zero");
+            require(proof.proof[i] != 1, "Invalid PLONK proof: element at index is one (weak)");
+            require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element exceeds field modulus");
+        }
+    }
+
     /**
-     * @notice Estimate gas required for a PLONK claim transaction
-     * @dev PLONK verification requires more gas than Groth16 (~900K vs ~300K)
-     * @return Estimated gas in wei (conservative 1.3M with buffer)
-     */
+      * @notice Estimate gas required for a PLONK claim transaction
+      * @dev PLONK verification requires more gas than Groth16 (~900K vs ~300K)
+      * @return Estimated gas in wei (conservative 1.3M with buffer)
+      */
     function estimateClaimGas() external pure returns (uint256) {
         return PLONK_GAS_ESTIMATE;
+    }
+
+    /**
+     * @dev Internal function to validate PLONK proof structure and values
+     * @param proof The PLONK proof to validate
+     */
+    function _validatePLONKProof(PLONKProof calldata proof) private pure {
+        require(proof.proof.length == 8, "Invalid PLONK proof: expected 8 elements");
+
+        for (uint256 i = 0; i < 8; i++) {
+            require(proof.proof[i] != 0, "Invalid PLONK proof: element at index is zero");
+            require(proof.proof[i] != 1, "Invalid PLONK proof: element at index is one (weak)");
+            require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element exceeds field modulus");
+        }
     }
 }
 

@@ -586,9 +586,7 @@ impl AppState {
                     }
 
                     let call = plonk_verifier.claim(
-                        privacy_airdrop_plonk::privacy_airdrop_plonk::Plonkproof {
-                            proof: proof_array,
-                        },
+                        privacy_airdrop_plonk::Plonkproof { proof: proof_array },
                         nullifier_array,
                         recipient,
                     );
@@ -626,7 +624,10 @@ impl AppState {
                     let adjusted_price = base_gas_price_u128
                         .checked_mul(adjustment_multiplier as u128)
                         .and_then(|v| v.checked_div(100))
-                        .ok_or_else(|| "Gas price calculation overflow".to_string())?;
+                        .ok_or_else(|| {
+                            "Gas price calculation overflow: multiplication or division failed"
+                                .to_string()
+                        })?;
 
                     if adjusted_price == 0 {
                         self.increment_failed_claims();

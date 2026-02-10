@@ -82,7 +82,7 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
-        uint[3] memory publicSignals;
+        uint256[3] memory publicSignals;
         publicSignals[0] = uint256(MERKLE_ROOT);
         publicSignals[1] = uint160(recipient);
         publicSignals[2] = uint256(nullifier);
@@ -106,4 +106,25 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
     function estimateClaimGas() external pure returns (uint256) {
         return GROTH16_GAS_ESTIMATE;
     }
+}
+
+/**
+ * @title IVerifier
+ * @notice Interface for Groth16 proof verification
+ */
+interface IVerifier {
+    /**
+     * @notice Verify a Groth16 zero-knowledge proof
+     * @param _pA First proof value (2 elements)
+     * @param _pB Second proof value (2x2 matrix)
+     * @param _pC Third proof value (2 elements)
+     * @param _pubSignals Public signals (3 elements: merkle_root, recipient, nullifier)
+     * @return True if proof is valid
+     */
+    function verifyProof(
+        uint[2] calldata _pA,
+        uint[2][2] calldata _pB,
+        uint[2] calldata _pC,
+        uint[3] calldata _pubSignals
+    ) external view returns (bool);
 }

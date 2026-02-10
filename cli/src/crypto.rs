@@ -72,6 +72,7 @@ impl AsMut<[u8]> for PrivateKey {
 
 /// Standard Ethereum private key length in bytes
 const PRIVATE_KEY_LEN: usize = 32;
+const POSEIDON_ROUNDS: usize = 64;
 
 /// BN254 scalar field modulus
 const BN254_SCALAR_FIELD_MODULUS: &str =
@@ -170,7 +171,7 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
 
     let mut state = [inputs[0], inputs[1], inputs[2]];
 
-    for round in 0..64 {
+    for round in 0..POSEIDON_ROUNDS {
         for i in 0..3 {
             state[i] = state[i].pow([5u64]);
         }
@@ -192,9 +193,9 @@ fn poseidon_round_constants() -> Result<Vec<Vec<ark_bn254::Fr>>> {
     use ark_ff::PrimeField;
 
     let round_constants_bytes = poseidon_constants_seed()?;
-    let mut constants = Vec::with_capacity(64);
+    let mut constants = Vec::with_capacity(POSEIDON_ROUNDS);
 
-    for round in 0..64 {
+    for round in 0..POSEIDON_ROUNDS {
         let mut round_keys = Vec::with_capacity(3);
         for i in 0..3 {
             let offset = ((round * 3 + i) * 32) % round_constants_bytes.len();
@@ -383,6 +384,8 @@ pub fn read_private_key(
 
     Ok(PrivateKey::new(key_bytes))
 }
+
+pub use calculate_entropy_score;
 
 /// Validates an Ethereum address.
 ///
