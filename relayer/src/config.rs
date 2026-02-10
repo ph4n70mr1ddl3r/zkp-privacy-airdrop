@@ -90,12 +90,6 @@ pub struct RelayerConfig {
     pub max_gas_price: String,
 }
 
-impl Drop for RelayerConfig {
-    fn drop(&mut self) {
-        self.private_key.zeroize();
-    }
-}
-
 impl ContractsConfig {
     pub fn validate(&self) -> Result<()> {
         let zero_address = Address::zero();

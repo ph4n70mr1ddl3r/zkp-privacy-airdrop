@@ -19,7 +19,7 @@ tracing-actix-web = "0.7"
 redis = { version = "0.26", features = ["tokio-comp", "connection-manager"] }
 sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls", "chrono"] }
 chrono = { version = "0.4", features = ["serde"] }
-ethers = "2.0"
+ethers = { version = "2.0", features = ["abigen"] }
 hex = "0.4"
 futures-util = "0.3"
 dotenv = "0.15"

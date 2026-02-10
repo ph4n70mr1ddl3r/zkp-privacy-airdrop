@@ -70,7 +70,7 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
 
     let state = inputs.clone();
 
-    let round_keys = poseidon_round_constants();
+    let round_keys = poseidon_round_constants()?;
     let mds_matrix = poseidon_mds_matrix();
 
     let mut state = state;
@@ -93,7 +93,7 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
     Ok(state[0])
 }
 
-fn poseidon_round_constants() -> Vec<Vec<ark_bn254::Fr>> {
+fn poseidon_round_constants() -> Result<Vec<Vec<ark_bn254::Fr>>> {
     use ark_ff::PrimeField;
     use sha3::{Digest, Keccak256};
 
@@ -101,7 +101,7 @@ fn poseidon_round_constants() -> Vec<Vec<ark_bn254::Fr>> {
         87953108768114088221452414019732140257409482096940319490691914651639977587459u64;
 
     let mut constants = Vec::new();
-    let seed = poseidon_constants_seed();
+    let seed = poseidon_constants_seed()?;
 
     for round in 0..64 {
         let mut round_keys = Vec::new();
@@ -117,7 +117,7 @@ fn poseidon_round_constants() -> Vec<Vec<ark_bn254::Fr>> {
         }
         constants.push(round_keys);
     }
-    constants
+    Ok(constants)
 }
 
 fn poseidon_mds_matrix() -> [[ark_bn254::Fr; 3]; 3] {
@@ -143,7 +143,7 @@ fn poseidon_mds_matrix() -> [[ark_bn254::Fr; 3]; 3] {
 
 /// Computes a deterministic seed for Poseidon round constants based on the nullifier salt
 /// to ensure consistency between circuit and CLI implementations
-fn poseidon_constants_seed() -> [u8; 32] {
+fn poseidon_constants_seed() -> Result<[u8; 32]> {
     use sha3::{Digest, Keccak256};
     const NULLIFIER_SALT: u64 =
         87953108768114088221452414019732140257409482096940319490691914651639977587459u64;

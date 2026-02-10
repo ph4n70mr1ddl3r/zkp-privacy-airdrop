@@ -1,10 +1,8 @@
 use crate::config::Config;
 use crate::types_plonk::*;
-use ethers::abi::Abi;
-use ethers::contract::Contract;
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
-use ethers::types::{Address, H256, U256};
+use ethers::types::Address;
 use parking_lot::RwLock;
 use rand::Rng;
 use redis::aio::ConnectionManager;
@@ -15,16 +13,9 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
 
-mod plonk_verifier {
-    use ethers::contract::*;
-    use ethers::core::types::*;
-    abigen!(
-        IPLONKVerifier,
-        "./contracts/src/PrivacyAirdropPLONK.sol:IPLONKVerifier"
-    );
+mod privacy_airdrop_plonk {
+    ethers::contract::abigen!(PrivacyAirdropPLONK, "./PrivacyAirdropPLONK.json");
 }
-
-use plonk_verifier::IPLONKVerifier;
 
 const RPC_TIMEOUT_SECONDS: u64 = 10;
 
@@ -530,7 +521,13 @@ impl AppState {
                 let mut retry_count = 0;
 
                 loop {
-                    let call = plonk_verifier.claim(proof_array, nullifier_array, recipient);
+                    let call = plonk_verifier.claim(
+                        privacy_airdrop_plonk::privacy_airdrop_plonk::Plonkproof {
+                            proof: proof_array,
+                        },
+                        nullifier_array,
+                        recipient,
+                    );
 
                     let base_gas_price = tokio::time::timeout(
                         std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
