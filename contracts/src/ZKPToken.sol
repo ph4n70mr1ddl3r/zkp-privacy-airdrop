@@ -48,6 +48,7 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
     function mint(address to, uint256 amount) external onlyOwner nonReentrant {
         require(!mintingPaused, "Minting is paused");
         require(to != address(0), "Invalid recipient address");
+        require(to != address(this), "Cannot mint to contract address");
         require(amount > 0, "Amount must be greater than 0");
         require(totalSupply() < MAX_SUPPLY, "MAX_SUPPLY already reached");
         require(totalSupply() + amount <= MAX_SUPPLY, "Minting would exceed MAX_SUPPLY");

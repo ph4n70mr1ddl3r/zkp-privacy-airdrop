@@ -47,14 +47,18 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
      * @param _claimAmount Number of tokens each eligible address can claim
      * @param _claimDeadline Unix timestamp after which claims are no longer accepted
      * @param _verifier Address of the Groth16 verifier contract
+     * @param _maxWithdrawalPercent Maximum percentage of unclaimed tokens that can be withdrawn per period (default 10)
+     * @param _withdrawalCooldown Time in seconds between withdrawal periods (default 24 hours)
      */
     constructor(
         address _token,
         bytes32 _merkleRoot,
         uint256 _claimAmount,
         uint256 _claimDeadline,
-        address _verifier
-    ) BasePrivacyAirdrop(_token, _merkleRoot, _claimAmount, _claimDeadline) {
+        address _verifier,
+        uint256 _maxWithdrawalPercent,
+        uint256 _withdrawalCooldown
+    ) BasePrivacyAirdrop(_token, _merkleRoot, _claimAmount, _claimDeadline, _maxWithdrawalPercent, _withdrawalCooldown) {
         require(_verifier != address(0), "Invalid verifier address");
         verifier = IVerifier(_verifier);
 
@@ -90,9 +94,9 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
 
         nullifiers[nullifier] = true;
 
-        _transferTokens(recipient, claimAmount);
-
         emit Claimed(nullifier, recipient, block.timestamp);
+
+        _transferTokens(recipient, claimAmount);
     }
 
     /**

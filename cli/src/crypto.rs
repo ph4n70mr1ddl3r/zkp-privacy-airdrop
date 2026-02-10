@@ -366,7 +366,7 @@ pub fn read_private_key(
     }
 
     let entropy_score = calculate_entropy_score(&key_bytes);
-    if entropy_score < 200 {
+    if entropy_score < 450 {
         key_str.zeroize();
         key_bytes.zeroize();
         anyhow::bail!(

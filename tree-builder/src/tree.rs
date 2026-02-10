@@ -123,7 +123,11 @@ impl MerkleTree {
                 if idx > 0 && idx - 1 < level.len() {
                     siblings.push(level[idx - 1]);
                 } else {
-                    siblings.push([0u8; 32]);
+                    return Err(format!(
+                        "Invalid sibling index: {} - 1 out of bounds for level length {}",
+                        idx,
+                        level.len()
+                    ));
                 }
             } else if idx + 1 < level.len() {
                 siblings.push(level[idx + 1]);

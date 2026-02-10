@@ -134,10 +134,14 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     function withdraw(uint256 amount) external onlyAuthorized nonReentrant {
         require(relayerBalances[msg.sender] >= amount, "Insufficient balance");
         require(amount > 0, "Amount must be greater than zero");
-        relayerBalances[msg.sender] -= amount;
+        uint256 balance = relayerBalances[msg.sender];
+        relayerBalances[msg.sender] = 0;
         emit FundsWithdrawn(msg.sender, amount);
         (bool success, ) = payable(msg.sender).call{value: amount}("");
-        require(success, "Transfer failed");
+        if (!success) {
+            relayerBalances[msg.sender] = balance;
+            revert("Transfer failed");
+        }
     }
 
     /**

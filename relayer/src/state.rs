@@ -607,14 +607,14 @@ impl AppState {
                         * 100.0) as u64)
                         .min(MAX_GAS_RANDOMIZATION_PERCENT);
                     let random_factor = rand::thread_rng().gen_range(0..=gas_randomization_percent);
-                    let adjustment_multiplier = 100u128 + random_factor as u128;
+                    let adjustment_multiplier = 100u64 + random_factor;
 
                     let adjusted_price = base_gas_price_u128
-                        .saturating_mul(adjustment_multiplier)
-                        .checked_div(100)
+                        .checked_mul(adjustment_multiplier as u128)
+                        .and_then(|v| v.checked_div(100))
                         .ok_or_else(|| {
                             self.increment_failed_claims();
-                            "Gas price calculation division failed".to_string()
+                            "Gas price calculation overflow".to_string()
                         })?;
 
                     let max_gas_price: ethers::types::U256 =

@@ -32,19 +32,24 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
      * @param _claimAmount Number of tokens each eligible address can claim
      * @param _claimDeadline Unix timestamp after which claims are no longer accepted
      * @param _verifier Address of the PLONK verifier contract
+     * @param _maxWithdrawalPercent Maximum percentage of unclaimed tokens that can be withdrawn per period (default 10)
+     * @param _withdrawalCooldown Time in seconds between withdrawal periods (default 24 hours)
      */
     constructor(
         address _token,
         bytes32 _merkleRoot,
         uint256 _claimAmount,
         uint256 _claimDeadline,
-        address _verifier
-    ) BasePrivacyAirdrop(_token, _merkleRoot, _claimAmount, _claimDeadline) {
+        address _verifier,
+        uint256 _maxWithdrawalPercent,
+        uint256 _withdrawalCooldown
+    ) BasePrivacyAirdrop(_token, _merkleRoot, _claimAmount, _claimDeadline, _maxWithdrawalPercent, _withdrawalCooldown) {
         require(_verifier != address(0), "Invalid verifier address");
         verifier = IPLONKVerifier(_verifier);
 
         bytes32 zeroRoot = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        require(_merkleRoot != zeroRoot, "Invalid merkle root: cannot be all zeros");
+        bytes32 onesRoot = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        require(_merkleRoot != zeroRoot && _merkleRoot != onesRoot, "Invalid merkle root: cannot be all zeros or all ones");
     }
 
 
@@ -80,9 +85,9 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         nullifiers[nullifier] = true;
 
-        _transferTokens(recipient, claimAmount);
-
         emit Claimed(nullifier, recipient, block.timestamp);
+
+        _transferTokens(recipient, claimAmount);
     }
 
     /**

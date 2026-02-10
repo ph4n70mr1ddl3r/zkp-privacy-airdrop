@@ -22,6 +22,8 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     uint256 public totalClaimed;
     uint256 public totalWithdrawn;
     uint256 public lastWithdrawalTime;
+    uint256 public immutable maxWithdrawalPercent;
+    uint256 public immutable withdrawalCooldown;
 
     event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
     event TokensTransferred(address indexed recipient, uint256 amount, uint256 timestamp);
@@ -35,21 +37,29 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @param _merkleRoot Root of the Merkle tree containing eligible addresses
      * @param _claimAmount Number of tokens each eligible address can claim
      * @param _claimDeadline Unix timestamp after which claims are no longer accepted
+     * @param _maxWithdrawalPercent Maximum percentage of unclaimed tokens that can be withdrawn per period (default 10)
+     * @param _withdrawalCooldown Time in seconds between withdrawal periods (default 24 hours)
      */
     constructor(
         address _token,
         bytes32 _merkleRoot,
         uint256 _claimAmount,
-        uint256 _claimDeadline
+        uint256 _claimDeadline,
+        uint256 _maxWithdrawalPercent,
+        uint256 _withdrawalCooldown
     ) Ownable(msg.sender) {
         require(_token != address(0), "Invalid token address: cannot be zero address");
         require(_merkleRoot != bytes32(0), "Invalid merkle root: cannot be zero");
         require(_claimAmount > 0, "Invalid claim amount: must be greater than zero");
         require(_claimDeadline > block.timestamp, "Invalid deadline: must be in the future");
+        require(_maxWithdrawalPercent > 0 && _maxWithdrawalPercent <= 100, "Invalid withdrawal percentage");
+        require(_withdrawalCooldown > 0, "Invalid withdrawal cooldown");
         token = IERC20(_token);
         merkleRoot = _merkleRoot;
         claimAmount = _claimAmount;
         claimDeadline = _claimDeadline;
+        maxWithdrawalPercent = _maxWithdrawalPercent;
+        withdrawalCooldown = _withdrawalCooldown;
     }
 
     /**
@@ -112,7 +122,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @dev Only callable by owner and only after claim deadline has passed
      * @dev This is a safety mechanism to recover unclaimed tokens
      * @dev Can only withdraw tokens that have not been claimed (balance - totalClaimed)
-     * @dev Implements withdrawal limits: max 10% of remaining tokens per 24 hour period
+     * @dev Implements withdrawal limits: max maxWithdrawalPercent of remaining tokens per withdrawalCooldown period
      */
     function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
         require(block.timestamp > claimDeadline, "Claim period not ended");
@@ -126,18 +136,15 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         require(amount <= unclaimedAmount, "Cannot withdraw claimed tokens");
 
         uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
-        uint256 withdrawalCooldown = 24 hours;
 
-        if (timeSinceLastWithdrawal < withdrawalCooldown) {
-            uint256 maxWithdrawalThisPeriod = (unclaimedAmount * 10) / 100;
-            uint256 remainingAllowance = maxWithdrawalThisPeriod - totalWithdrawn;
-            require(amount <= remainingAllowance, "Withdrawal amount exceeds per-period limit");
-        } else {
+        uint256 maxWithdrawalThisPeriod = (unclaimedAmount * maxWithdrawalPercent) / 100;
+
+        if (timeSinceLastWithdrawal >= withdrawalCooldown) {
             totalWithdrawn = 0;
         }
 
-        require(amount + totalWithdrawn <= unclaimedAmount, "Insufficient unclaimed tokens");
-        require(amount <= (unclaimedAmount * 10) / 100, "Cannot withdraw more than 10% of remaining tokens");
+        require(amount + totalWithdrawn <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
+        require(amount <= maxWithdrawalThisPeriod, "Cannot withdraw more than max percentage of remaining tokens");
 
         token.safeTransfer(recipient, amount);
         totalWithdrawn += amount;
