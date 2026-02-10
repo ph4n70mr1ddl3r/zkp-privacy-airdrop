@@ -201,19 +201,18 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
 
 fn poseidon_round_constants() -> Result<Vec<Vec<ark_bn254::Fr>>> {
     use ark_ff::PrimeField;
-    use sha3::{Digest, Keccak256};
 
-    let mut constants = Vec::new();
-    let seed = poseidon_constants_seed()?;
+    let round_constants_bytes = poseidon_constants_seed()?;
+    let mut constants = Vec::with_capacity(64);
 
     for round in 0..64 {
-        let mut round_keys = Vec::new();
+        let mut round_keys = Vec::with_capacity(3);
         for i in 0..3 {
-            let mut hasher = Keccak256::new();
-            hasher.update(&seed);
-            hasher.update(&round.to_le_bytes());
-            hasher.update(&i.to_le_bytes());
-            let hash = hasher.finalize();
+            let offset = ((round * 3 + i) * 32) % round_constants_bytes.len();
+            let mut hash = [0u8; 32];
+            for j in 0..32 {
+                hash[j] = round_constants_bytes[(offset + j) % round_constants_bytes.len()];
+            }
 
             let fr = ark_bn254::Fr::from_be_bytes_mod_order(&hash, true);
             round_keys.push(fr);

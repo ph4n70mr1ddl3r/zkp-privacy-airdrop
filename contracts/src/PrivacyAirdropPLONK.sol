@@ -44,8 +44,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         verifier = IPLONKVerifier(_verifier);
 
         bytes32 zeroRoot = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        bytes32 onesRoot = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-        require(_merkleRoot != zeroRoot && _merkleRoot != onesRoot, "Invalid merkle root: cannot be all zeros or all ones");
+        require(_merkleRoot != zeroRoot, "Invalid merkle root: cannot be all zeros");
     }
 
 

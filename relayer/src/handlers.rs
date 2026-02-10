@@ -6,44 +6,37 @@ use std::str::FromStr;
 use tracing::{error, info, warn};
 
 /// Compiled regex patterns for sensitive data filtering (pre-compiled for performance)
+/// Patterns are more specific to avoid false positives with legitimate hashes (tx_hash, merkle_root)
 static SENSITIVE_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
     vec![
         (
-            Regex::new(r"(?i)(private[-_]?key|priv[-_]?key)").unwrap(),
+            Regex::new(r"(?i)(private[-_]?key|priv[-_]?key)[\s:=]+[0-9a-f]{64}").unwrap(),
             "private key",
         ),
         (
-            Regex::new(r"(?i)0x[0-9a-f]{32,}").unwrap(),
-            "hex credential",
+            Regex::new(r"(?i)secret[_-]?key[\s:=]+[a-z0-9\-._~+/]{20,}").unwrap(),
+            "secret key",
         ),
-        (Regex::new(r"(?i)(mnemonic|seed)").unwrap(), "seed/mnemonic"),
+        (Regex::new(r"(?i)(mnemonic|seed)[\s:=]+[a-z]{12,}").unwrap(), "seed/mnemonic"),
         (
-            Regex::new(r"(?i)(api[-_]?key|access[-_]?key|secret[-_]?key)").unwrap(),
-            "API/secret key",
-        ),
-        (
-            Regex::new(r"(?i)(access[-_]?token|refresh[-_]?token|auth[-_]?token|session)").unwrap(),
-            "token",
+            Regex::new(r"(?i)api[_-]?key[\s:=]+[a-z0-9\-._~+/]{16,}").unwrap(),
+            "API key",
         ),
         (
-            Regex::new(r"(?i)(password|passwd|pwd)").unwrap(),
+            Regex::new(r"(?i)(access[_-]?token|refresh[_-]?token|auth[_-]?token)[\s:=]+[a-z0-9\-._~+/]{20,}").unwrap(),
+            "auth token",
+        ),
+        (
+            Regex::new(r"(?i)(password|passwd|pwd)[\s:=]+\S+").unwrap(),
             "password",
         ),
         (
-            Regex::new(r"(?i)(authorization|bearer)").unwrap(),
+            Regex::new(r"(?i)authorization[\s:]+bearer\s+[a-z0-9\-._~+/]{20,}").unwrap(),
             "auth header",
         ),
         (
-            Regex::new(r"(?i)0x[0-9a-f]{64,}").unwrap(),
-            "private key or hash",
-        ),
-        (
-            Regex::new(r"(?i)(pk|key|token)\s*=\s*[a-z0-9\-._~+/]+").unwrap(),
-            "credential param",
-        ),
-        (
-            Regex::new(r"(?i)[a-z0-9+/]{40,}={0,2}").unwrap(),
-            "base64 encoded data",
+            Regex::new(r"(?i)pk[_=][a-z0-9]{64}").unwrap(),
+            "private key indicator",
         ),
     ]
 });

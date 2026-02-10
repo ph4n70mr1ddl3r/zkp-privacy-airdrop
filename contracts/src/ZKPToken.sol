@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title ZKPToken
@@ -10,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev Standard ERC20 with minting and burning capabilities, with a maximum supply cap
  * Maximum supply: 65,249,064,000 tokens (18 decimals)
  */
-contract ZKPToken is ERC20, Ownable {
+contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
     uint256 public constant MAX_SUPPLY = 65_249_064_000 * 10**18;
     uint256 public immutable deployTimestamp;
     uint256 public mintCount;
@@ -44,7 +45,7 @@ contract ZKPToken is ERC20, Ownable {
      * @param amount Amount of tokens to mint
      * @dev Only callable by owner, enforces MAX_SUPPLY cap
      */
-    function mint(address to, uint256 amount) external onlyOwner {
+    function mint(address to, uint256 amount) external onlyOwner nonReentrant {
         require(!mintingPaused, "Minting is paused");
         require(to != address(0), "Invalid recipient address");
         require(amount > 0, "Amount must be greater than 0");
