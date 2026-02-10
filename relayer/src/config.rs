@@ -6,7 +6,7 @@ use tracing::warn;
 use zeroize::Zeroize;
 
 /// Wrapper for private key string that zeroizes on drop
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct SecretKey(String);
 
 impl SecretKey {
@@ -503,7 +503,7 @@ impl Config {
             },
             cors: CorsConfig {
                 allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
-                    .unwrap_or_else(|_| "https://zkp-airdrop.io,https://localhost:3000".to_string())
+                    .unwrap_or_else(|_| "https://zkp-airdrop.io".to_string())
                     .split(',')
                     .map(|s| s.trim().to_string())
                     .collect(),

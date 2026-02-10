@@ -87,7 +87,10 @@ pub async fn execute(
     fn sanitize_output(input: &str) -> String {
         input
             .chars()
-            .filter(|c| c.is_alphanumeric() || c.is_ascii_punctuation() || c.is_whitespace())
+            .filter(|c| {
+                c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || *c == '.' || *c == ':'
+            })
+            .take(50)
             .collect::<String>()
     }
 

@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title BasePrivacyAirdrop
@@ -14,6 +15,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     bytes32 public immutable MERKLE_ROOT;
+    uint256 private constant MAX_CLAIM_DEADLINE = 5 * 365 days;
     mapping(bytes32 => bool) public nullifiers;
     IERC20 public immutable TOKEN;
     uint256 public immutable CLAIM_AMOUNT;
@@ -52,6 +54,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         require(_merkleRoot != bytes32(0), "Invalid merkle root: cannot be zero");
         require(_claimAmount > 0, "Invalid claim amount: must be greater than zero");
         require(_claimDeadline > block.timestamp, "Invalid deadline: must be in the future");
+        require(_claimDeadline < block.timestamp + MAX_CLAIM_DEADLINE, "Deadline too far in future");
         require(_maxWithdrawalPercent > 0 && _maxWithdrawalPercent <= 100, "Invalid withdrawal percentage");
         require(_withdrawalCooldown > 0, "Invalid withdrawal cooldown");
         TOKEN = IERC20(_token);
@@ -135,16 +138,16 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         uint256 unclaimedAmount = contractBalance - claimed;
         require(amount <= unclaimedAmount, "Cannot withdraw claimed tokens");
 
-        uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
-
         uint256 maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
 
-        if (timeSinceLastWithdrawal >= WITHDRAWAL_COOLDOWN) {
-            totalWithdrawn = 0;
-        }
+        uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
 
         require(amount + totalWithdrawn <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
         require(amount <= maxWithdrawalThisPeriod, "Cannot withdraw more than max percentage of remaining tokens");
+
+        if (timeSinceLastWithdrawal >= WITHDRAWAL_COOLDOWN) {
+            require(totalWithdrawn == 0, "Cannot reset withdrawal counter with pending withdrawals");
+        }
 
         TOKEN.safeTransfer(recipient, amount);
         totalWithdrawn += amount;

@@ -2,7 +2,7 @@ use ethers::types::{Address, H256};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Groth16 proof structure (deprecated, kept for compatibility)
+#[deprecated(note = "Groth16 is deprecated, use PLONK instead. See PLONK-README.md for migration.")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Proof {
     pub a: [String; 2],
@@ -11,13 +11,17 @@ pub struct Proof {
 }
 
 impl Proof {
-    /// Get proof type name
+    #[deprecated(
+        note = "Groth16 is deprecated, use PLONK instead. See PLONK-README.md for migration."
+    )]
     #[must_use]
     pub fn type_name(&self) -> &str {
         "Groth16"
     }
 
-    /// Estimate proof size in bytes for logging purposes
+    #[deprecated(
+        note = "Groth16 is deprecated, use PLONK instead. See PLONK-README.md for migration."
+    )]
     #[must_use]
     pub fn estimated_size_bytes(&self) -> usize {
         self.a.iter().map(|s| s.len()).sum::<usize>()

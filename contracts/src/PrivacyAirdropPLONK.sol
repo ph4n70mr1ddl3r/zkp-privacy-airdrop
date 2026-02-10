@@ -16,6 +16,7 @@ import {BasePrivacyAirdrop} from "./BasePrivacyAirdrop.sol";
 contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     uint256 private constant PLONK_GAS_ESTIMATE = 1_300_000;
     IPLONKVerifier public immutable VERIFIER;
+    uint256 private constant BN254_FIELD_PRIME = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     /**
      * @notice PLONK proof structure
@@ -77,6 +78,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         for (uint256 i = 0; i < 8; i++) {
             require(proof.proof[i] != 0, "Invalid PLONK proof: element at index is zero");
+            require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element exceeds field modulus");
         }
 
         uint256[3] memory instances;

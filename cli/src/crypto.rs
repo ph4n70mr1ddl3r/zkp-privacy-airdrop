@@ -31,15 +31,12 @@ impl PrivateKey {
         &mut self.0
     }
 
-    pub fn try_into_array<const N: usize>(self) -> Result<[u8; N]> {
+    pub fn try_into_array<const N: usize>(mut self) -> Result<[u8; N]> {
         let bytes = self.0;
-        let mut zeroizing_key = PrivateKey(bytes);
-        let result = zeroizing_key
-            .0
+        self.0.zeroize();
+        bytes
             .try_into()
-            .map_err(|e| anyhow::anyhow!("Invalid array length: expected {}, got {}", N, e.len()));
-        zeroizing_key.zeroize();
-        result
+            .map_err(|e| anyhow::anyhow!("Invalid array length: expected {}, got {}", N, e.len()))
     }
 }
 
@@ -85,15 +82,13 @@ const BN254_SCALAR_FIELD_MODULUS: &str =
 const NULLIFIER_SALT_STR: &str =
     "87953108768114088221452414019732140257409482096940319490691914651639977587459";
 
-fn get_bn254_field_modulus() -> num_bigint::BigUint {
+fn get_bn254_field_modulus() -> &'static num_bigint::BigUint {
     use num_traits::Num;
     static FIELD_MODULUS: OnceLock<num_bigint::BigUint> = OnceLock::new();
-    FIELD_MODULUS
-        .get_or_init(|| {
-            num_bigint::BigUint::from_str_radix(BN254_SCALAR_FIELD_MODULUS, 10)
-                .expect("Invalid modulus constant")
-        })
-        .clone()
+    FIELD_MODULUS.get_or_init(|| {
+        num_bigint::BigUint::from_str_radix(BN254_SCALAR_FIELD_MODULUS, 10)
+            .expect("Invalid modulus constant")
+    })
 }
 
 fn get_nullifier_salt() -> ark_bn254::Fr {
@@ -494,7 +489,6 @@ pub fn keccak_hash_field(input: &[u8; 32]) -> Result<String> {
 
 fn field_element_to_decimal(bytes: &[u8; 32]) -> String {
     use num_bigint::BigUint;
-    use num_traits::Zero;
 
     let big_int = BigUint::from_bytes_be(bytes);
 
