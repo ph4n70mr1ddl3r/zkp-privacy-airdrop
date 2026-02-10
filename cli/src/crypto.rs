@@ -90,8 +90,9 @@ const BN254_SCALAR_FIELD_MODULUS: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
 /// Salt used for nullifier generation to prevent precomputation attacks
-const NULLIFIER_SALT: u64 =
-    87953108768114088221452414019732140257409482096940319490691914651639977587459u64;
+/// Matches circuit value at circuits/src/merkle_membership.circom:61-63
+const NULLIFIER_SALT_STR: &str =
+    "87953108768114088221452414019732140257409482096940319490691914651639977587459";
 
 fn get_bn254_field_modulus() -> num_bigint::BigUint {
     use num_traits::Num;
@@ -100,6 +101,24 @@ fn get_bn254_field_modulus() -> num_bigint::BigUint {
         .get_or_init(|| {
             num_bigint::BigUint::from_str_radix(BN254_SCALAR_FIELD_MODULUS, 10)
                 .expect("Invalid modulus constant")
+        })
+        .clone()
+}
+
+fn get_nullifier_salt() -> ark_bn254::Fr {
+    use ark_ff::PrimeField;
+    use num_traits::Num;
+    static NULLIFIER_SALT: OnceLock<ark_bn254::Fr> = OnceLock::new();
+    NULLIFIER_SALT
+        .get_or_init(|| {
+            let salt_biguint = num_bigint::BigUint::from_str_radix(NULLIFIER_SALT_STR, 10)
+                .expect("Invalid nullifier salt constant");
+            let salt_bytes = salt_biguint.to_bytes_be();
+            let mut salt_array = [0u8; 32];
+            let offset = 32 - salt_bytes.len();
+            salt_array[offset..].copy_from_slice(&salt_bytes);
+            ark_bn254::Fr::from_be_bytes(salt_array)
+                .expect("Failed to convert nullifier salt to field element")
         })
         .clone()
 }
@@ -129,7 +148,7 @@ pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
 
     let poseidon_input = vec![
         private_key_field.clone(),
-        ark_bn254::Fr::from(NULLIFIER_SALT),
+        get_nullifier_salt(),
         ark_bn254::Fr::from(0u64),
     ];
 

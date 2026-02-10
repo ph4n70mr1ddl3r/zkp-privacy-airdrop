@@ -48,6 +48,7 @@ contract ZKPToken is ERC20, Ownable {
         require(!mintingPaused, "Minting is paused");
         require(to != address(0), "Invalid recipient address");
         require(amount > 0, "Amount must be greater than 0");
+        require(totalSupply() < MAX_SUPPLY, "MAX_SUPPLY already reached");
         require(totalSupply() + amount <= MAX_SUPPLY, "Minting would exceed MAX_SUPPLY");
 
         mintCount++;

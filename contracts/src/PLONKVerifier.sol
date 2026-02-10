@@ -50,7 +50,7 @@ contract PlonkVerifier {
     uint256 private constant S1X = 8846778305305596948559301216331196654040689983867376011920717808925945338624;
     uint256 private constant S1Y = 19614641841672176996355775426266661060199906829319932266135077342455287493304;
     uint256 private constant S2X = 19621646559221276274983745838630547751044631528458831783128564655932629702301;
-    uint256 private constant S2Y = 139477400390282770360547491799915078904328988655560126241971769194345412733496;
+    uint256 private constant S2Y = 13947740039028277036054749179991507890432898865556012624197169194345412733496;
     uint256 private constant S3X = 16823670097669721981541772266204422267648377777626897203946300545813836456286;
     uint256 private constant S3Y = 20252101391878141720667760238312419116797327184727912871675882697803380926092;
     uint256 private constant K1 = 2;
@@ -141,37 +141,37 @@ contract PlonkVerifier {
             // See https://vitalik.ca/general/2018/07/21/starks_part_3.html in section where explain fields operations
             //////
             function inverseArray(pVals, n) {
-    
+
                 let pAux := mload(0x40)     // Point to the next free position
                 let pIn := pVals
                 let lastPIn := add(pVals, mul(n, 32))  // Read n elements
                 let acc := mload(pIn)       // Read the first element
                 pIn := add(pIn, 32)         // Point to the second element
                 let inv
-    
-                
-                for { } lt(pIn, lastPIn) { 
-                    pAux := add(pAux, 32) 
+
+
+                for { } lt(pIn, lastPIn) {
+                    pAux := add(pAux, 32)
                     pIn := add(pIn, 32)
-                } 
+                }
                 {
                     mstore(pAux, acc)
-                    acc := mulmod(acc, mload(pIn), q)
+                    acc := mulmod(acc, mload(pIn), Q)
                 }
-                acc := inverse(acc, q)
-                
+                acc := inverse(acc, Q)
+
                 // At this point pAux pint to the next free position we subtract 1 to point to the last used
                 pAux := sub(pAux, 32)
                 // pIn points to the n+1 element, we subtract to point to n
                 pIn := sub(pIn, 32)
-                lastPIn := pVals  // We don't process the first element 
-                for { } gt(pIn, lastPIn) { 
-                    pAux := sub(pAux, 32) 
+                lastPIn := pVals  // We don't process the first element
+                for { } gt(pIn, lastPIn) {
+                    pAux := sub(pAux, 32)
                     pIn := sub(pIn, 32)
-                } 
+                }
                 {
-                    inv := mulmod(acc, mload(pAux), q)
-                    acc := mulmod(acc, mload(pIn), q)
+                    inv := mulmod(acc, mload(pAux), Q)
+                    acc := mulmod(acc, mload(pIn), Q)
                     mstore(pIn, inv)
                 }
                 // pIn points to first element, we just set it.
@@ -179,7 +179,7 @@ contract PlonkVerifier {
             }
             
             function checkField(v) {
-                if iszero(lt(v, q)) {
+                if iszero(lt(v, Q)) {
                     mstore(0, 0)
                     return(0,0x20)
                 }
@@ -189,10 +189,10 @@ contract PlonkVerifier {
                 let x := calldataload(p)
                 let y := calldataload(add(p, 32))
 
-                // Check that the point is on the curve
+                // Check that point is on curve
                 // y^2 = x^3 + 3
-                let x3_3 := addmod(mulmod(x, mulmod(x, x, qf), qf), 3, qf)
-                let y2 := mulmod(y, y, qf)
+                let x3_3 := addmod(mulmod(x, mulmod(x, x, QF), QF), 3, QF)
+                let y2 := mulmod(y, y, QF)
 
                 if iszero(eq(x3_3, y2)) {
                     mstore(0, 0)
@@ -743,31 +743,7 @@ contract PlonkVerifier {
 
                 g1_mulSetC(add(pMem, P_E), G1X, G1Y, s)
             }
-            
-            function calculateF(pMem) {
-                let p := add(pMem, pF)
 
-                g1_set(p, add(pMem, pD))
-                g1_mulAccC(p, calldataload(pA), calldataload(add(pA, 32)), mload(add(pMem, pV1)))
-                g1_mulAccC(p, calldataload(pB), calldataload(add(pB, 32)), mload(add(pMem, pV2)))
-                g1_mulAccC(p, calldataload(pC), calldataload(add(pC, 32)), mload(add(pMem, pV3)))
-                g1_mulAccC(p, S1x, S1y, mload(add(pMem, pV4)))
-                g1_mulAccC(p, S2x, S2y, mload(add(pMem, pV5)))
-            }
-            
-            function calculateE(pMem) {
-                let s := mod(sub(q, mload(add(pMem, pEval_r0))), q)
-
-                s := addmod(s, mulmod(calldataload(pEval_a),  mload(add(pMem, pV1)), q), q)
-                s := addmod(s, mulmod(calldataload(pEval_b),  mload(add(pMem, pV2)), q), q)
-                s := addmod(s, mulmod(calldataload(pEval_c),  mload(add(pMem, pV3)), q), q)
-                s := addmod(s, mulmod(calldataload(pEval_s1), mload(add(pMem, pV4)), q), q)
-                s := addmod(s, mulmod(calldataload(pEval_s2), mload(add(pMem, pV5)), q), q)
-                s := addmod(s, mulmod(calldataload(pEval_zw), mload(add(pMem, pU)),  q), q)
-
-                g1_mulSetC(add(pMem, pE), G1x, G1y, s)
-            }
-            
             function checkPairing(pMem) -> isOk {
                 let mIn := mload(0x40)
                 mstore(0x40, add(mIn, 576))

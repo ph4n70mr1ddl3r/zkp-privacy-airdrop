@@ -117,7 +117,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         require(amount > 0, "Amount must be greater than zero");
 
         uint256 contractBalance = token.balanceOf(address(this));
-        uint256 unclaimedAmount = contractBalance - totalClaimed;
+        uint256 unclaimedAmount = contractBalance >= totalClaimed ? contractBalance - totalClaimed : 0;
         require(amount <= unclaimedAmount, "Cannot withdraw claimed tokens");
 
         token.safeTransfer(recipient, amount);

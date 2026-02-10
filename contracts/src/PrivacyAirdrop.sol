@@ -75,7 +75,6 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
-        require(address(uint160(recipient)) == recipient, "Invalid address padding: address has malicious data");
 
         uint[3] memory publicSignals = [
             uint256(merkleRoot),
