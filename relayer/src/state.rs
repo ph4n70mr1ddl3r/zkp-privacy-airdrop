@@ -305,6 +305,8 @@ impl AppState {
         key: &str,
         limit_type: RateLimitType,
     ) -> Result<(), String> {
+        use redis::AsyncCommands;
+
         let limit = match limit_type {
             RateLimitType::SubmitClaim => self.config.rate_limit.claims_per_minute,
             RateLimitType::GetMerklePath | RateLimitType::CheckStatus => {
@@ -341,7 +343,6 @@ impl AppState {
             let backoff_count: Option<u64> =
                 redis.get(&exponential_backoff_key).await.ok().flatten();
 
-            let current_count = result.1;
             let base_wait_seconds = 60u64;
             let multiplier = backoff_count.unwrap_or(0).min(5);
             let wait_seconds = base_wait_seconds * (1 << multiplier);
@@ -363,6 +364,7 @@ impl AppState {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn is_nullifier_used(&self, nullifier: &str) -> Result<bool, String> {
         use redis::AsyncCommands;
 

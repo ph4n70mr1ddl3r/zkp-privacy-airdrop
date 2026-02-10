@@ -112,18 +112,27 @@ pub async fn execute(
                 break;
             }
         } else {
-            let count = SUBMIT_COUNT.fetch_add(1, Ordering::SeqCst);
-
-            if count >= MAX_SUBMITS_PER_WINDOW {
-                SUBMIT_COUNT.fetch_sub(1, Ordering::SeqCst);
-                let wait_time =
-                    SUBMIT_RATE_LIMIT_WINDOW.saturating_sub(Duration::from_millis(elapsed_ms));
-                println!(
-                    "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
-                    "Warning:".yellow(),
-                    wait_time.as_secs()
-                );
-                return Err(anyhow::anyhow!("Rate limit exceeded"));
+            let mut count = SUBMIT_COUNT.load(Ordering::SeqCst);
+            loop {
+                if count >= MAX_SUBMITS_PER_WINDOW {
+                    let wait_time =
+                        SUBMIT_RATE_LIMIT_WINDOW.saturating_sub(Duration::from_millis(elapsed_ms));
+                    println!(
+                        "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
+                        "Warning:".yellow(),
+                        wait_time.as_secs()
+                    );
+                    return Err(anyhow::anyhow!("Rate limit exceeded"));
+                }
+                match SUBMIT_COUNT.compare_exchange_weak(
+                    count,
+                    count + 1,
+                    Ordering::SeqCst,
+                    Ordering::SeqCst,
+                ) {
+                    Ok(_) => break,
+                    Err(new_count) => count = new_count,
+                }
             }
             break;
         }

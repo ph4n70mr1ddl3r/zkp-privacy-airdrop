@@ -1,24 +1,9 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use ethers::types::Address;
-use num_bigint::BigUint;
-use num_traits::Num;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::str::FromStr;
-use std::sync::OnceLock;
 use tracing::{error, info, warn};
-
-/// BN254 scalar field modulus
-const BN254_FIELD_MODULUS: &str =
-    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
-
-static FIELD_MODULUS: OnceLock<BigUint> = OnceLock::new();
-
-fn get_field_modulus() -> &'static BigUint {
-    FIELD_MODULUS.get_or_init(|| {
-        BigUint::from_str_radix(BN254_FIELD_MODULUS, 10).expect("Invalid field modulus constant")
-    })
-}
 
 /// Compiled regex patterns for sensitive data filtering (pre-compiled for performance)
 static SENSITIVE_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
@@ -160,7 +145,7 @@ pub fn is_valid_address(address: &str) -> bool {
 }
 
 pub fn is_valid_nullifier(nullifier: &str) -> bool {
-    is_valid_hex_bytes(nullifier, 66, false)
+    is_valid_hex_bytes(nullifier, 66, true)
 }
 
 pub fn is_valid_merkle_root(merkle_root: &str) -> bool {

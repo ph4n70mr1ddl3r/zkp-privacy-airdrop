@@ -47,13 +47,11 @@ pub fn hash_domain(input: &[u8]) -> [u8; 32] {
 fn mod_field(bytes: &[u8; 32]) -> [u8; 32] {
     let value = BigUint::from_bytes_be(bytes);
     let reduced = &value % &field_prime();
-    let mut result = vec![0u8; 32];
-    let bytes = reduced.to_bytes_be();
-    let offset = 32 - bytes.len();
-    result[offset..].copy_from_slice(&bytes);
+    let mut result = [0u8; 32];
+    let reduced_bytes = reduced.to_bytes_be();
+    let offset = 32 - reduced_bytes.len();
+    result[offset..].copy_from_slice(&reduced_bytes);
     result
-        .try_into()
-        .expect("Failed to convert result to [u8; 32]")
 }
 
 #[cfg(test)]

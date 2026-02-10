@@ -218,23 +218,6 @@ impl MerkleTreeConfig {
     }
 }
 
-        let zero_root = "0x0000000000000000000000000000000000000000000000000000000000000000";
-        if self.merkle_root == zero_root {
-            return Err(anyhow::anyhow!("MERKLE_TREE_ROOT cannot be zero root"));
-        }
-
-        if self.source.is_empty() {
-            return Err(anyhow::anyhow!("MERKLE_TREE_SOURCE cannot be empty"));
-        }
-
-        if self.cache_path.is_empty() {
-            return Err(anyhow::anyhow!("MERKLE_TREE_CACHE_PATH cannot be empty"));
-        }
-
-        Ok(())
-    }
-}
-
 impl CorsConfig {
     pub fn validate(&self) -> Result<()> {
         if self.allowed_origins.is_empty() {
