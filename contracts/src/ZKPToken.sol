@@ -36,13 +36,7 @@ contract ZKPToken is ERC20, Ownable {
         return DECIMALS;
     }
 
-    /**
-     * @notice Returns the number of decimals used to get its user representation
-     * @return Number of decimals (18)
-     */
-    function decimals() public pure override returns (uint8) {
-        return _decimals;
-    }
+
 
     /**
      * @notice Mint new tokens to a specified address

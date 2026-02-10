@@ -67,7 +67,6 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     event RelayerDeauthorized(address indexed relayer);
     event DonationReceived(address indexed donor, uint256 amount);
     event FundsWithdrawn(address indexed relayer, uint256 amount);
-    event FundsWithdrawnTransfer(address indexed relayer, uint256 amount);
 
     /**
      * @notice Modifier to restrict access to authorized relayers
@@ -91,6 +90,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
      * @param _defaultRelayer Address of the default relayer (auto-authorized)
      */
     constructor(address _defaultRelayer) Ownable(msg.sender) {
+        require(_defaultRelayer != address(0), "Invalid default relayer: cannot be zero address");
         defaultRelayer = _defaultRelayer;
         authorizedRelayers[_defaultRelayer] = true;
         emit RelayerAuthorized(_defaultRelayer);
@@ -138,7 +138,6 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
         (bool success, ) = payable(msg.sender).call{value: amount}("");
         require(success, "Transfer failed");
         emit FundsWithdrawn(msg.sender, amount);
-        emit FundsWithdrawnTransfer(msg.sender, amount);
     }
 
     /**

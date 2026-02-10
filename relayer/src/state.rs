@@ -67,6 +67,7 @@ const RPC_HEALTH_CHECK_TIMEOUT_SECONDS: u64 = 5;
 const RATE_LIMIT_WINDOW_SECONDS: u64 = 120;
 const MAX_TRANSACTION_RETRIES: u32 = 3;
 const TRANSACTION_RETRY_DELAY_MS: u64 = 1000;
+const TOTAL_TRANSACTION_TIMEOUT_SECONDS: u64 = 60;
 const BALANCE_CACHE_TTL_SECONDS: u64 = 30;
 
 #[derive(Clone, Copy)]
@@ -516,8 +517,17 @@ impl AppState {
                 })?;
 
                 let mut retry_count = 0;
+                let total_start_time = std::time::Instant::now();
 
                 loop {
+                    if total_start_time.elapsed().as_secs() > TOTAL_TRANSACTION_TIMEOUT_SECONDS {
+                        self.increment_failed_claims();
+                        return Err(format!(
+                            "Transaction submission exceeded total timeout of {} seconds",
+                            TOTAL_TRANSACTION_TIMEOUT_SECONDS
+                        ));
+                    }
+
                     let current_nonce = if retry_count == 0 {
                         nonce
                     } else {
@@ -577,17 +587,10 @@ impl AppState {
                     }
                     let random_factor = rand::thread_rng().gen_range(0..=gas_randomization_factor);
                     let adjustment_multiplier = 100u128 + random_factor as u128;
-                    if base_gas_price_u128 > u128::MAX / adjustment_multiplier {
-                        self.increment_failed_claims();
-                        return Err(format!(
-                            "Gas price calculation would overflow: base {} gwei, multiplier {}",
-                            base_gas_price_u128 / 1_000_000_000,
-                            adjustment_multiplier
-                        ));
-                    }
+
                     let adjusted_price = base_gas_price_u128
-                        .checked_mul(adjustment_multiplier)
-                        .and_then(|v| v.checked_div(100))
+                        .saturating_mul(adjustment_multiplier)
+                        .checked_div(100)
                         .ok_or_else(|| {
                             self.increment_failed_claims();
                             "Gas price calculation division failed".to_string()

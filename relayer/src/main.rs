@@ -65,7 +65,8 @@ async fn main() -> anyhow::Result<()> {
                             if let Ok(origin_str) = origin.to_str() {
                                 allowed_origins
                                     .iter()
-                                    .any(|allowed| allowed == "*" || origin_str == *allowed)
+                                    .filter(|allowed| *allowed != "*")
+                                    .any(|allowed| origin_str == *allowed)
                             } else {
                                 false
                             }

@@ -58,6 +58,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         require(!paused, "Contract is paused: claims are temporarily suspended");
         require(block.timestamp <= claimDeadline, "Claim period ended: deadline has passed");
         require(recipient != address(0), "Invalid recipient: cannot be zero address");
+        require(nullifier != bytes32(0), "Invalid nullifier: cannot be zero");
         require(!nullifiers[nullifier], "Already claimed: this nullifier has been used");
         _;
     }

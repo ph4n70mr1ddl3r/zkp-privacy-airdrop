@@ -148,7 +148,6 @@ impl Proof {
 
     /// Estimate proof size in bytes for logging purposes
     #[must_use]
-    #[allow(dead_code)]
     pub fn estimated_size_bytes(&self) -> usize {
         match self {
             Proof::Groth16(ref proof) => {
@@ -177,16 +176,17 @@ pub struct SubmitClaimRequest {
 impl SubmitClaimRequest {
     /// Create a minimal PLONK request for testing
     #[must_use]
-    #[allow(dead_code)]
     pub fn plonk_minimal() -> Self {
         Self {
             proof: Proof::Plonk(PlonkProof {
                 proof: vec!["0".to_string(); 8],
             }),
             recipient: "0x1234567890123456789012345678901234567890".to_string(),
-            nullifier: "0x0000000000000000000000000000000000000000000000000000000000".to_string(),
-            merkle_root: "0x0000000000000000000000000000000000000000000000000000000000".to_string(),
+            nullifier: "0x0000000000000000000000000000000000000000000000000000000".to_string(),
+            merkle_root: "0x0000000000000000000000000000000000000000000000000000000".to_string(),
         }
+    }
+}
     }
 }
 
