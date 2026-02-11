@@ -17,7 +17,16 @@ pub struct PlonkProof {
 
 impl PlonkProof {
     /// Convert Plonk proof to flat array for API transmission
+    ///
+    /// # Returns
+    /// Returns a reference to the proof array after validating it has at least one element
+    ///
+    /// # Panics
+    /// Panics if the proof is empty (this should not happen with properly generated proofs)
     pub fn to_flat_array(&self) -> &[String] {
+        if self.proof.is_empty() {
+            panic!("PlonkProof::to_flat_array called on empty proof");
+        }
         &self.proof
     }
 

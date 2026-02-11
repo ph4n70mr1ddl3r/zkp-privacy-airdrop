@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
 use ark_ff::PrimeField;
+use ark_ff::Zero;
 use chrono::Utc;
 use ethers::types::{Address, H256};
 use num_bigint::BigUint;
 use num_traits::Num;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use zeroize::Zeroize;
 
 use crate::crypto::{address_to_field, derive_address, generate_nullifier};
 use crate::tree::MerkleTree;
@@ -125,7 +125,8 @@ pub fn generate_plonk_proof(
         derive_address(private_key).context("Failed to derive address from private key")?;
 
     // Step 2: Convert address to field elements (pad to 32 bytes)
-    let recipient_field = address_to_field(&recipient);
+    let recipient_field = address_to_field(&recipient)
+        .context("Failed to convert recipient address to field element")?;
 
     // Step 3: Find Merkle path for address
     let address_hash = merkle_tree.get_leaf_hash(&address)?;
@@ -173,11 +174,11 @@ pub fn generate_plonk_proof(
     // Pack indices (26 bits into 1 field element)
     let mut indices_bytes = [0u8; 32];
     for (i, &bit) in indices.iter().enumerate().take(26) {
-        if bit {
+        if bit != 0 {
             indices_bytes[i / 8] |= 1 << (i % 8);
         }
     }
-    let indices_field = F::from_be_bytes_mod_order(&indices_bytes, true);
+    let indices_field = F::from_be_bytes_mod_order(&indices_bytes);
 
     let private_inputs = PrivateInputs {
         private_key: *private_key,
@@ -202,7 +203,7 @@ pub fn generate_plonk_proof(
         public_inputs,
         nullifier,
         recipient,
-        merkle_root: H256::from_slice(merkle_tree.root),
+        merkle_root: H256::from_slice(&merkle_tree.root),
         generated_at: Utc::now().to_rfc3339(),
     })
 }

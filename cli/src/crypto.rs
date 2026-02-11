@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use ethers::types::Address;
-use num_traits::{ToPrimitive, Zero};
+use num_traits::Zero;
 use secp256k1::{PublicKey, SecretKey};
 use sha3::{Digest, Keccak256};
 use std::path::PathBuf;
@@ -106,9 +106,7 @@ fn get_nullifier_salt() -> ark_bn254::Fr {
             let mut salt_array = [0u8; 32];
             let offset = 32 - salt_bytes.len();
             salt_array[offset..].copy_from_slice(&salt_bytes);
-            ark_bn254::Fr::from_be_bytes_mod_order(&salt_array).map_err(|e| {
-                anyhow::anyhow!("Failed to convert nullifier salt to field element: {}", e)
-            })?
+            ark_bn254::Fr::from_be_bytes_mod_order(&salt_array)
         })
         .clone()
 }
@@ -149,8 +147,11 @@ pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
 }
 
 fn field_element_from_bytes(bytes: &[u8; 32]) -> Result<ark_bn254::Fr> {
-    ark_bn254::Fr::from_be_bytes_mod_order(bytes)
-        .map_err(|e| anyhow::anyhow!("Failed to convert bytes to field element: {}", e))
+    let field = ark_bn254::Fr::from_be_bytes_mod_order(bytes);
+    if field.is_zero() {
+        return Err(anyhow::anyhow!("Field element cannot be zero"));
+    }
+    Ok(field)
 }
 
 fn field_to_bytes_be(field: &ark_bn254::Fr) -> [u8; 32] {

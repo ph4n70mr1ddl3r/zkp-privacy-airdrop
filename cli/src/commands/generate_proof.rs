@@ -13,9 +13,9 @@ pub async fn execute(
     private_key_stdin: bool,
     recipient: String,
     merkle_tree: String,
-    output: Option<PathBuf>,
-    format: String,
-    config: &Config,
+    _output: Option<PathBuf>,
+    _format: String,
+    _config: &Config,
 ) -> Result<()> {
     if private_key_opt.is_some() {
         eprintln!(
@@ -30,7 +30,7 @@ pub async fn execute(
         read_private_key(private_key_opt, private_key_file, private_key_stdin)?;
     let private_key: [u8; 32] = private_key_wrapper
         .try_into_array()
-        .map_err(|e| anyhow::anyhow!("Invalid private key length: expected 32 bytes",))?;
+        .map_err(|_| anyhow::anyhow!("Invalid private key length: expected 32 bytes",))?;
 
     let address =
         derive_address(&private_key).context("Failed to derive address from private key")?;
@@ -39,7 +39,7 @@ pub async fn execute(
     tracing::debug!("Address: {}", address_str);
 
     let nullifier = generate_nullifier(&private_key).context("Failed to generate nullifier")?;
-    let nullifier_hex = format!("0x{}", hex::encode(&nullifier.as_bytes()));
+    let _nullifier_hex = format!("0x{}", hex::encode(&nullifier.as_bytes()));
 
     tracing::debug!("Recipient: {}", recipient);
 
@@ -69,7 +69,7 @@ pub async fn execute(
         .context("Failed to load Merkle tree")?;
 
     let merkle_root = tree.root.clone();
-    let merkle_root_hex = format!("0x{}", hex::encode(&merkle_root));
+    let _merkle_root_hex = format!("0x{}", hex::encode(&merkle_root));
 
     pb.finish();
 

@@ -6,6 +6,22 @@ use tracing::warn;
 use zeroize::Zeroize;
 
 /// Wrapper for private key string that zeroizes on drop
+///
+/// # Security Considerations
+///
+/// This struct implements `Clone` for convenience, but cloning a sensitive value
+/// increases its exposure in memory. When cloning:
+/// - The original and clone both contain the same private key
+/// - Both will be zeroized when dropped, but there may be a time gap
+/// - Consider using references (`&SecretKey`) instead of cloning where possible
+///
+/// # Example
+///
+/// ```ignore
+/// let key = SecretKey::new("0x1234...".to_string());
+/// // Avoid unnecessary clones:
+/// use_key(&key);  // Pass by reference instead of key.clone()
+/// ```
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct SecretKey(String);
 
@@ -21,6 +37,56 @@ impl SecretKey {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+}
+
+/// Detects weak private key patterns to prevent use of low-entropy keys
+///
+/// Checks for:
+/// - Repeated bytes (e.g., 0xaaaaaa...)
+/// - Sequential bytes (e.g., 0x010203...)
+/// - High frequency of the same byte (>8 occurrences)
+fn _has_weak_key_pattern(key_bytes: &[u8]) -> bool {
+    if key_bytes.len() != 32 {
+        return true;
+    }
+
+    let mut has_repeated_bytes = true;
+    for i in 1..key_bytes.len() {
+        if key_bytes[i] != key_bytes[0] {
+            has_repeated_bytes = false;
+            break;
+        }
+    }
+    if has_repeated_bytes {
+        return true;
+    }
+
+    let mut has_sequential_bytes = true;
+    let diff = if key_bytes[1] as i16 - key_bytes[0] as i16 != 0 {
+        key_bytes[1] as i16 - key_bytes[0] as i16
+    } else {
+        1
+    };
+    for i in 2..key_bytes.len() {
+        if key_bytes[i] as i16 - key_bytes[i - 1] as i16 != diff {
+            has_sequential_bytes = false;
+            break;
+        }
+    }
+    if has_sequential_bytes {
+        return true;
+    }
+
+    let mut byte_counts = [0u8; 256];
+    for &byte in key_bytes {
+        byte_counts[byte as usize] = byte_counts[byte as usize].saturating_add(1);
+    }
+    let max_count = *byte_counts.iter().max().unwrap_or(&0);
+    if max_count > 8 {
+        return true;
+    }
+
+    false
 }
 
 impl std::fmt::Debug for SecretKey {
@@ -211,6 +277,7 @@ pub struct MerkleTreeConfig {
     pub cache_path: String,
     pub merkle_root: String,
     pub block_number: u64,
+    pub timestamp: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -273,6 +340,48 @@ impl MerkleTreeConfig {
 
         if self.cache_path.trim().is_empty() {
             return Err(anyhow::anyhow!("MERKLE_TREE_CACHE_PATH cannot be empty"));
+        }
+
+        if self.block_number == 0 {
+            return Err(anyhow::anyhow!(
+                "MERKLE_TREE_BLOCK_NUMBER must be greater than 0"
+            ));
+        }
+
+        if self.block_number > 100_000_000 {
+            return Err(anyhow::anyhow!(
+                "MERKLE_TREE_BLOCK_NUMBER {} exceeds reasonable maximum (100M). \
+                 This may indicate a configuration error.",
+                self.block_number
+            ));
+        }
+
+        if let Some(ts) = self.timestamp {
+            if ts <= 0 {
+                return Err(anyhow::anyhow!(
+                    "MERKLE_TREE_TIMESTAMP must be a valid Unix timestamp (positive value)"
+                ));
+            }
+
+            let current_ts = chrono::Utc::now().timestamp();
+            const MAX_FUTURE_SECONDS: i64 = 86400;
+            if ts > current_ts + MAX_FUTURE_SECONDS {
+                return Err(anyhow::anyhow!(
+                    "MERKLE_TREE_TIMESTAMP {} is more than {} seconds in the future. \
+                     This may indicate a configuration error.",
+                    ts,
+                    MAX_FUTURE_SECONDS
+                ));
+            }
+
+            const MIN_PAST_SECONDS: i64 = 31536000;
+            if ts < current_ts - MIN_PAST_SECONDS {
+                warn!(
+                    "MERKLE_TREE_TIMESTAMP {} is more than {} seconds in the past. \
+                     Verify this is intentional.",
+                    ts, MIN_PAST_SECONDS
+                );
+            }
         }
 
         Ok(())
@@ -370,6 +479,16 @@ impl Config {
                         return Err(anyhow::anyhow!(
                             "Private key must be 32 bytes, got {}",
                             decoded.len()
+                        ));
+                    }
+
+                    if _has_weak_key_pattern(&decoded) {
+                        normalized_key.zeroize();
+                        decoded.zeroize();
+                        return Err(anyhow::anyhow!(
+                            "CRITICAL ERROR: Weak private key pattern detected! \
+                             The key appears to have low entropy (sequential or repeated bytes). \
+                             Please use a cryptographically secure random key generator."
                         ));
                     }
 
@@ -504,6 +623,9 @@ impl Config {
                     .unwrap_or_else(|_| "0".to_string())
                     .parse()
                     .unwrap_or(0),
+                timestamp: std::env::var("MERKLE_TREE_TIMESTAMP")
+                    .ok()
+                    .and_then(|s| s.parse().ok()),
             },
             cors: CorsConfig {
                 allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")

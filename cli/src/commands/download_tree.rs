@@ -11,7 +11,7 @@ pub async fn execute(
     format: String,
     verify: bool,
     resume: bool,
-    chunk_size: u64,
+    _chunk_size: u64,
 ) -> Result<()> {
     println!("{} {}", "Downloading Merkle tree:".cyan(), source);
     println!("{} {}", "Output:".cyan(), output.display());

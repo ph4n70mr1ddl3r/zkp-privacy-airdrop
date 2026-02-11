@@ -287,9 +287,7 @@ pub async fn submit_claim(
         };
         let error_message = match &claim.proof {
             Proof::Plonk(_) => "Plonk proof format is invalid. Expected at least 8 field elements.".to_string(),
-            Proof::Groth16(_) => format!(
-                "The provided Groth16 proof is invalid. Please regenerate proof with correct inputs."
-            ),
+            Proof::Groth16(_) => "The provided Groth16 proof is invalid. Please regenerate proof with correct inputs.".to_string(),
         };
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,

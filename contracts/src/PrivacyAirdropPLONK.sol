@@ -70,13 +70,12 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
         _validatePLONKProof(proof);
+        _validateRecipientAddress(recipient);
 
         uint256[3] memory instances;
         instances[0] = uint256(MERKLE_ROOT);
         instances[1] = uint256(uint160(recipient));
         instances[2] = uint256(nullifier);
-
-        require(recipient == address(uint160(recipient)), "Invalid recipient address: cannot be cast safely");
 
         require(
             VERIFIER.verifyProof(proof.proof, instances),
@@ -87,6 +86,11 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         _transferTokens(recipient, CLAIM_AMOUNT);
 
         emit Claimed(nullifier, recipient, block.timestamp);
+    }
+
+    function _validateRecipientAddress(address recipient) private pure {
+        require(recipient != address(0), "Invalid recipient: zero address not allowed");
+        require(recipient == address(uint160(recipient)), "Invalid recipient address: cannot be cast safely");
     }
 
     function _validatePLONKProof(PLONKProof calldata proof) private view {

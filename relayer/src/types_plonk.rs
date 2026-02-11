@@ -1,8 +1,17 @@
 use ethers::contract::abigen;
 use serde::{Deserialize, Serialize};
 
+/// Maximum number of field elements in a PLONK proof
+/// PLONK proofs for this circuit contain 8 elements: A, B, C, Z, T1, T2, T3, WXi
 const MAX_PROOF_SIZE: usize = 8;
+
+/// Maximum length of a single proof element string (in characters)
+/// BN254 field elements can be up to 78 chars when represented as hex:
+/// 0x + up to 64 hex chars (32 bytes * 2 chars/byte)
 const MAX_ELEMENT_LENGTH: usize = 78;
+
+/// Maximum total bytes allowed for proof data
+/// Prevents memory exhaustion from oversized proofs
 const MAX_PROOF_BYTES: usize = MAX_PROOF_SIZE * MAX_ELEMENT_LENGTH;
 
 abigen!(
