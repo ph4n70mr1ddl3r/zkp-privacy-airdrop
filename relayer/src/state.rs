@@ -469,12 +469,6 @@ impl AppState {
             return Err("Invalid nullifier: cannot be all zeros".to_string());
         }
 
-        let zero_nullifier = [0u8; 32];
-        if nullifier_array == zero_nullifier {
-            self.increment_failed_claims();
-            return Err("Invalid nullifier: cannot be all zeros".to_string());
-        }
-
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 

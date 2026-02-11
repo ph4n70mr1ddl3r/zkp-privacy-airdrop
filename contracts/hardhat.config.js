@@ -66,8 +66,5 @@ module.exports = {
         return [privateKey];
       })()
     }
-        return [privateKey];
-      })()
-    }
   }
 };

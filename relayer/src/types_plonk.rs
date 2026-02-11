@@ -38,11 +38,6 @@ pub struct PlonkProof {
     pub proof: Vec<String>, // Flat array of 8+ field elements
 }
 
-/// Validates that a string represents a valid field element in BN254 scalar field
-fn is_valid_field_element(hex_str: &str) -> bool {
-    zkp_airdrop_utils::is_valid_field_element(hex_str)
-}
-
 /// Union type for different proof systems
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -69,12 +64,18 @@ impl Proof {
     pub fn is_valid_structure(&self) -> bool {
         match self {
             Proof::Groth16(ref proof) => {
-                let valid_a = proof.a.iter().all(|s| is_valid_field_element(s));
-                let valid_c = proof.c.iter().all(|s| is_valid_field_element(s));
-                let valid_b = proof
-                    .b
+                let valid_a = proof
+                    .a
                     .iter()
-                    .all(|row| row.iter().all(|s| is_valid_field_element(s)));
+                    .all(|s| zkp_airdrop_utils::is_valid_field_element(s));
+                let valid_c = proof
+                    .c
+                    .iter()
+                    .all(|s| zkp_airdrop_utils::is_valid_field_element(s));
+                let valid_b = proof.b.iter().all(|row| {
+                    row.iter()
+                        .all(|s| zkp_airdrop_utils::is_valid_field_element(s))
+                });
                 valid_a && valid_c && valid_b
             }
             Proof::Plonk(ref proof) => {
@@ -102,7 +103,7 @@ impl Proof {
                         );
                         return false;
                     }
-                    if !is_valid_field_element(element) {
+                    if !zkp_airdrop_utils::is_valid_field_element(element) {
                         tracing::warn!(
                             "PLONK proof element at index {} is invalid field element",
                             idx
