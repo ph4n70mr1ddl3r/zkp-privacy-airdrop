@@ -71,7 +71,7 @@ fn get_bn254_field_modulus() -> &'static num_bigint::BigUint {
     static FIELD_MODULUS: OnceLock<num_bigint::BigUint> = OnceLock::new();
     FIELD_MODULUS.get_or_init(|| {
         num_bigint::BigUint::from_str_radix(BN254_SCALAR_FIELD_MODULUS, 10)
-            .expect("Invalid modulus constant")
+            .unwrap_or_else(|_| num_bigint::BigUint::from(0u32))
     })
 }
 
@@ -193,6 +193,22 @@ fn poseidon_round_constants() -> Result<Vec<Vec<ark_bn254::Fr>>> {
     Ok(constants)
 }
 
+fn poseidon_constants_seed() -> Result<[u8; 32]> {
+    let salt = get_nullifier_salt();
+    let bigint = salt.into_bigint();
+    let salt_bytes = bigint.to_bytes_be();
+
+    if salt_bytes.is_empty() {
+        return Err(anyhow::anyhow!("Nullifier salt bytes are empty"));
+    }
+
+    let mut hasher = Keccak256::new();
+    hasher.update(b"POSEIDON_CONSTANTS_SEED");
+    hasher.update(&salt_bytes);
+    let hash = hasher.finalize();
+    Ok(hash.into())
+}
+
 fn poseidon_mds_matrix() -> [[ark_bn254::Fr; 3]; 3] {
     [
         [
@@ -211,21 +227,6 @@ fn poseidon_mds_matrix() -> [[ark_bn254::Fr; 3]; 3] {
             ark_bn254::Fr::from(3u64),
         ],
     ]
-}
-
-/// Computes a deterministic seed for Poseidon round constants based on the nullifier salt
-/// to ensure consistency between circuit and CLI implementations
-fn poseidon_constants_seed() -> Result<[u8; 32]> {
-    use sha3::{Digest, Keccak256};
-
-    let mut hasher = Keccak256::new();
-    hasher.update(b"POSEIDON_CONSTANTS_SEED");
-    let salt = get_nullifier_salt();
-    let bigint = salt.into_bigint();
-    let salt_bytes = bigint.to_bytes_be();
-    hasher.update(&salt_bytes);
-    let hash = hasher.finalize();
-    Ok(hash.into())
 }
 
 /// Derives an Ethereum address from a private key.

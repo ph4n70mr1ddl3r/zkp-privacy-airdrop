@@ -4,6 +4,9 @@ use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use std::fs::File;
 use std::io::Write;
+use std::time::Duration;
+
+const HTTP_TIMEOUT_SECONDS: u64 = 300;
 
 pub async fn execute(
     source: String,
@@ -17,7 +20,10 @@ pub async fn execute(
     println!("{} {}", "Output:".cyan(), output.display());
     println!("{} {}", "Format:".cyan(), format);
 
-    let client = Client::new();
+    let client = Client::builder()
+        .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))
+        .build()
+        .context("Failed to create HTTP client")?;
 
     if resume && output.exists() {
         println!("\n{}", "Resuming download...".yellow());

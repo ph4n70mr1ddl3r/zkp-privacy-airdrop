@@ -1,10 +1,13 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 use reqwest::Client;
+use std::time::Duration;
 
 use crate::config::Config;
 use crate::crypto::validate_nullifier;
 use crate::types::CheckStatusResponse;
+
+const HTTP_TIMEOUT_SECONDS: u64 = 30;
 
 pub async fn execute(
     nullifier: String,
@@ -35,7 +38,10 @@ async fn check_status_via_relayer(
     println!("{} {}", "Checking status via relayer:".cyan(), relayer_url);
     println!("{} {}", "Nullifier:".cyan(), nullifier);
 
-    let client = Client::new();
+    let client = Client::builder()
+        .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))
+        .build()
+        .context("Failed to create HTTP client")?;
     let url = format!("{}/api/v1/check-status/{}", relayer_url, nullifier);
 
     let response = client
