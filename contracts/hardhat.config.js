@@ -30,7 +30,14 @@ module.exports = {
       chainId: 11155420,
       accounts: (() => {
         if (!process.env.PRIVATE_KEY) return [];
-        const privateKey = process.env.PRIVATE_KEY;
+        const privateKey = process.env.PRIVATE_KEY.trim();
+
+        if (!privateKey.startsWith('0x')) {
+          throw new Error("CRITICAL: Private key must start with '0x' prefix");
+        }
+        if (privateKey.length !== 66) {
+          throw new Error("CRITICAL: Private key must be 32 bytes (64 hex chars + '0x' prefix)");
+        }
 
         const insecureKeys = [
           "0x0000000000000000000000000000000000000000000000000000000000000000000",
@@ -53,7 +60,15 @@ module.exports = {
       chainId: 10,
       accounts: (() => {
         if (!process.env.PRIVATE_KEY) return [];
-        const privateKey = process.env.PRIVATE_KEY;
+        const privateKey = process.env.PRIVATE_KEY.trim();
+
+        if (!privateKey.startsWith('0x')) {
+          throw new Error("CRITICAL: Private key must start with '0x' prefix");
+        }
+        if (privateKey.length !== 66) {
+          throw new Error("CRITICAL: Private key must be 32 bytes (64 hex chars + '0x' prefix)");
+        }
+
         const insecureKeys = [
           "0x0000000000000000000000000000000000000000000000000000000000000000000",
           "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",

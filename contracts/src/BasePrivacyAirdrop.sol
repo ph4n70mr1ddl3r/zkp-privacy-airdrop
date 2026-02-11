@@ -23,6 +23,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     bool public paused;
     uint256 public totalClaimed;
     uint256 public totalWithdrawn;
+    uint256 public cumulativeWithdrawn;
     uint256 public lastWithdrawalTime;
     uint256 public immutable MAX_WITHDRAWAL_PERCENT;
     uint256 public immutable WITHDRAWAL_COOLDOWN;
@@ -32,7 +33,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     event TokensTransferred(address indexed recipient, uint256 amount, uint256 timestamp);
     event Paused(address indexed account);
     event Unpaused(address indexed account);
-    event EmergencyWithdraw(address indexed recipient, uint256 amount, uint256 timestamp);
+    event EmergencyWithdraw(address indexed recipient, uint256 amount, uint256 cumulativeWithdrawn, uint256 timestamp);
 
     /**
      * @notice Initialize the base airdrop contract
@@ -128,7 +129,8 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         TOKEN.safeTransfer(recipient, amount);
         uint256 balanceAfter = TOKEN.balanceOf(recipient);
 
-        require(balanceAfter >= balanceBefore, "Transfer amount mismatch or fee-on-transfer token");
+        uint256 actualReceived = balanceAfter - balanceBefore;
+        require(actualReceived >= amount, "Insufficient tokens received: possible fee-on-transfer token");
         totalClaimed += amount;
         emit TokensTransferred(recipient, amount, block.timestamp);
     }
@@ -168,11 +170,13 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
 
         uint256 maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
         require(amount + totalWithdrawn <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
+        require(amount + cumulativeWithdrawn <= unclaimedAmount, "Cumulative withdrawals exceed available tokens");
 
         totalWithdrawn += amount;
+        cumulativeWithdrawn += amount;
         lastWithdrawalTime = block.timestamp;
 
-        emit EmergencyWithdraw(recipient, amount, block.timestamp);
+        emit EmergencyWithdraw(recipient, amount, cumulativeWithdrawn, block.timestamp);
         TOKEN.safeTransfer(recipient, amount);
     }
 }
