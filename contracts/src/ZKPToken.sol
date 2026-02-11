@@ -46,7 +46,9 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
      *      Owner can mint tokens, pause minting, and burn tokens (anyone can burn their own)
      */
     constructor() ERC20("ZKP Token", "ZKP") Ownable(msg.sender) {
+        // solhint-disable not-rely-on-time
         DEPLOY_TIMESTAMP = block.timestamp;
+        // solhint-enable not-rely-on-time
     }
 
     /**
@@ -86,7 +88,9 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
 
         _mint(to, amount);
         mintCount++;
+        // solhint-disable not-rely-on-time
         emit TokensMinted(to, amount, totalSupply(), mintCount, block.timestamp);
+        // solhint-enable not-rely-on-time
 
         if (totalSupply() == MAX_SUPPLY) {
             emit MaxSupplyReached(totalSupply());

@@ -87,12 +87,16 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         if (_claimAmount == 0) {
             revert InvalidClaimAmount();
         }
+        // solhint-disable not-rely-on-time
         if (_claimDeadline <= block.timestamp) {
             revert InvalidClaimDeadline();
         }
+        // solhint-enable not-rely-on-time
+        // solhint-disable not-rely-on-time
         if (_claimDeadline >= block.timestamp + MAX_CLAIM_DEADLINE) {
             revert InvalidClaimDeadline();
         }
+        // solhint-enable not-rely-on-time
         if (_maxWithdrawalPercent == 0 || _maxWithdrawalPercent > 100) {
             revert InvalidWithdrawalPercentage();
         }
@@ -117,9 +121,11 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         if (paused) {
             revert ContractPaused();
         }
+        // solhint-disable not-rely-on-time
         if (block.timestamp > CLAIM_DEADLINE) {
             revert ClaimPeriodEnded();
         }
+        // solhint-enable not-rely-on-time
         if (recipient == address(0)) {
             revert InvalidRecipient();
         }
@@ -167,6 +173,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
       */
     function _transferTokens(address recipient, uint256 amount) internal {
         uint256 balanceBefore = TOKEN.balanceOf(recipient);
+        totalClaimed += amount;
         TOKEN.safeTransfer(recipient, amount);
         uint256 balanceAfter = TOKEN.balanceOf(recipient);
 
@@ -174,8 +181,9 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         if (actualReceived < amount) {
             revert InsufficientTokensReceived();
         }
-        totalClaimed += amount;
+        // solhint-disable not-rely-on-time
         emit TokensTransferred(recipient, amount, block.timestamp);
+        // solhint-enable not-rely-on-time
     }
 
     /**
@@ -189,9 +197,11 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @dev Uses nonReentrant modifier to prevent reentrancy attacks
      */
     function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
+        // solhint-disable not-rely-on-time
         if (block.timestamp <= CLAIM_DEADLINE + EMERGENCY_WITHDRAWAL_DELAY) {
             revert EmergencyWithdrawalNotAvailable();
         }
+        // solhint-enable not-rely-on-time
         if (recipient == address(0)) {
             revert InvalidRecipient();
         }
@@ -216,20 +226,23 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
             revert WithdrawalExceedsUnclaimed();
         }
 
+        // solhint-disable not-rely-on-time
         uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
+        // solhint-enable not-rely-on-time
 
-        uint256 maxWithdrawalThisPeriod;
+        uint256 maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
         if (timeSinceLastWithdrawal >= WITHDRAWAL_COOLDOWN) {
-            maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
             totalWithdrawn = amount;
-            lastWithdrawalTime = block.timestamp;
         } else {
-            maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
             if (totalWithdrawn + amount > maxWithdrawalThisPeriod) {
                 revert WithdrawalExceedsLimit();
             }
             totalWithdrawn += amount;
         }
+
+        // solhint-disable not-rely-on-time
+        lastWithdrawalTime = block.timestamp;
+        // solhint-enable not-rely-on-time
 
         if (cumulativeWithdrawn + amount > unclaimedAmount) {
             revert CumulativeWithdrawalExceedsAvailable();
@@ -237,7 +250,9 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
 
         cumulativeWithdrawn += amount;
 
+        // solhint-disable not-rely-on-time
         emit EmergencyWithdraw(recipient, amount, cumulativeWithdrawn, block.timestamp);
+        // solhint-enable not-rely-on-time
         TOKEN.safeTransfer(recipient, amount);
     }
 }

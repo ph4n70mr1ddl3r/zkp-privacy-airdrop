@@ -88,9 +88,11 @@ const BALANCE_CACHE_TTL_SECONDS: u64 = 30;
 const MIN_GAS_PRICE_WEI: u128 = 1_000_000_000;
 const MAX_BASE_GAS_PRICE_WEI: u128 = 5_000_000_000_000;
 // Maximum safe gas price after adjustment (500 gwei)
+// This is the internal limit used in gas price randomization
 // Note: This is different from config.rs MAX_SAFE_GAS_PRICE (200 gwei) which validates user config
 const MAX_SAFE_GAS_PRICE: u128 = 500_000_000_000;
 // Maximum gas randomization percentage (10%)
+// This is the internal limit for randomization factor calculation
 // Note: This is different from config.rs MAX_GAS_RANDOMIZATION (0.20 / 20%) which validates user config
 const MAX_GAS_RANDOMIZATION: u64 = 10;
 
@@ -526,6 +528,15 @@ impl AppState {
                     self.increment_failed_claims();
                     format!("Failed to get chain ID: {e}")
                 })?;
+
+                if chain_id.as_u64() != self.config.network.chain_id {
+                    self.increment_failed_claims();
+                    return Err(format!(
+                        "Chain ID mismatch: expected {}, got {}",
+                        self.config.network.chain_id,
+                        chain_id.as_u64()
+                    ));
+                }
 
                 let wallet_with_chain = wallet.with_chain_id(chain_id.as_u32());
                 let plonk_verifier = privacy_airdrop_plonk::PrivacyAirdropPLONK::new(

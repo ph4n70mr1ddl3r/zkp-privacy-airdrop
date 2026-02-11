@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Minimum number of field elements in a PLONK proof
-/// PLONK proofs for this circuit contain 8 elements: A, B, C, Z, T1, T2, T3, `WXi`
-const MIN_PLONK_PROOF_SIZE: usize = 8;
+/// Exact number of field elements in a PLONK proof
+/// PLONK proofs for this circuit contain exactly 8 elements: A, B, C, Z, T1, T2, T3, `WXi`
+const PLONK_PROOF_SIZE: usize = 8;
 
 /// Plonk proof format (new format for universal trusted setup)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,10 +24,10 @@ impl PlonkProof {
         if self.proof.is_empty() {
             return Err("PlonkProof is empty".to_string());
         }
-        if self.proof.len() < MIN_PLONK_PROOF_SIZE {
+        if self.proof.len() != PLONK_PROOF_SIZE {
             return Err(format!(
-                "PlonkProof must have at least {} elements, found {}",
-                MIN_PLONK_PROOF_SIZE,
+                "PlonkProof must have exactly {} elements, found {}",
+                PLONK_PROOF_SIZE,
                 self.proof.len()
             ));
         }
@@ -53,12 +53,10 @@ impl PlonkProof {
     /// Create a minimal Plonk proof for testing
     #[allow(dead_code)]
     pub fn minimal() -> Self {
+        let test_element =
+            "0x0000000000000000000000000000000000000000000000000000000000000000001".to_string();
         Self {
-            proof: vec![
-                "0x0000000000000000000000000000000000000000000000000000000000000001"
-                    .to_string();
-                MIN_PLONK_PROOF_SIZE
-            ],
+            proof: vec![test_element; PLONK_PROOF_SIZE],
         }
     }
 }

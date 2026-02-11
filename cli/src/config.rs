@@ -5,6 +5,9 @@ use std::path::Path;
 
 const SUPPORTED_NETWORKS: &[&str] = &["optimism", "optimism-sepolia", "mainnet", "sepolia"];
 
+const OPTIMISM_CHAIN_ID: u64 = 10;
+const OPTIMISM_SEPOLIA_CHAIN_ID: u64 = 11155420;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub network: String,
@@ -30,14 +33,15 @@ impl Default for Config {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or_else(|| match network.as_str() {
-                    "optimism-sepolia" => 11155420,
-                    "optimism" | "mainnet" => 10,
+                    "optimism-sepolia" => OPTIMISM_SEPOLIA_CHAIN_ID,
+                    "optimism" | "mainnet" => OPTIMISM_CHAIN_ID,
                     _ => {
                         tracing::warn!(
-                            "Unknown network {}, defaulting to optimism chain_id 10",
-                            network
+                            "Unknown network {}, defaulting to optimism chain_id {}",
+                            network,
+                            OPTIMISM_CHAIN_ID
                         );
-                        10
+                        OPTIMISM_CHAIN_ID
                     }
                 }),
             max_submits_per_window: std::env::var("ZKP_MAX_SUBMITS_PER_WINDOW")
@@ -74,8 +78,8 @@ impl Config {
         }
 
         let expected_chain_id = match self.network.as_str() {
-            "optimism" | "mainnet" => 10,
-            "optimism-sepolia" | "sepolia" => 11155420,
+            "optimism" | "mainnet" => OPTIMISM_CHAIN_ID,
+            "optimism-sepolia" | "sepolia" => OPTIMISM_SEPOLIA_CHAIN_ID,
             _ => return Err(anyhow::anyhow!("Unknown network: {}", self.network)),
         };
 

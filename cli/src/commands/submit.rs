@@ -263,6 +263,11 @@ pub async fn execute(
                     "optimism-sepolia" => "https://sepolia-optimism.etherscan.io",
                     _ => "https://optimism.etherscan.io",
                 };
+
+                tracing::info!(
+                    "Transaction submitted on network: {}",
+                    config.network.as_str()
+                );
                 println!("  {}", format!("{explorer_url}/tx/{tx_hash}").cyan());
             }
         }
@@ -275,7 +280,10 @@ async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
     use ethers::providers::{Http, Provider};
     use ethers::types::H256;
 
-    let tx_hash_parsed: H256 = tx_hash.parse().unwrap_or_else(|_| H256::default());
+    let tx_hash_parsed: H256 = tx_hash.parse().unwrap_or_else(|e| {
+        tracing::warn!("Invalid transaction hash format: {}, using default", e);
+        H256::default()
+    });
 
     match Provider::<Http>::try_from(rpc_url) {
         Ok(provider) => match provider.get_transaction_receipt(tx_hash_parsed).await {

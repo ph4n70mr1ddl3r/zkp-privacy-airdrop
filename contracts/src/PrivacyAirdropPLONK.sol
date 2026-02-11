@@ -95,7 +95,9 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         _transferTokens(recipient, CLAIM_AMOUNT);
 
+        // solhint-disable not-rely-on-time
         emit Claimed(nullifier, recipient, block.timestamp);
+        // solhint-enable not-rely-on-time
     }
 
     function _validateRecipientAddress(address recipient) private pure {

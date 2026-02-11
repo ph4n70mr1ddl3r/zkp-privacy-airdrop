@@ -110,6 +110,16 @@ fn validate_claim_input(
         }));
     }
 
+    if !claim.proof.is_valid_structure() {
+        warn!("Invalid proof structure for {}", claim.proof.type_name());
+        return Err(HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: "Invalid proof structure.".to_string(),
+            code: Some("INVALID_PROOF_STRUCTURE".to_string()),
+            retry_after: None,
+        }));
+    }
+
     Ok(())
 }
 
@@ -319,7 +329,13 @@ pub async fn submit_claim(
     state: web::Data<AppState>,
     claim: web::Json<SubmitClaimRequest>,
 ) -> impl Responder {
+    let start_time = std::time::Instant::now();
+
     if let Err(response) = validate_claim_input(&claim, &state.config.merkle_tree.merkle_root) {
+        let elapsed = start_time.elapsed();
+        if elapsed < std::time::Duration::from_millis(100) {
+            tokio::time::sleep(std::time::Duration::from_millis(100) - elapsed).await;
+        }
         return response;
     }
 
@@ -330,22 +346,16 @@ pub async fn submit_claim(
         .check_rate_limit(&claim.nullifier, RateLimitType::SubmitClaim)
         .await
     {
+        let elapsed = start_time.elapsed();
+        if elapsed < std::time::Duration::from_millis(100) {
+            tokio::time::sleep(std::time::Duration::from_millis(100) - elapsed).await;
+        }
         warn!("Rate limit exceeded: {}", e);
         return HttpResponse::TooManyRequests().json(ErrorResponse {
             success: false,
             error: "Rate limit exceeded. Try again later.".to_string(),
             code: Some("RATE_LIMITED".to_string()),
             retry_after: Some(60),
-        });
-    }
-
-    if !claim.proof.is_valid_structure() {
-        warn!("Invalid {} proof structure", claim.proof.type_name());
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            success: false,
-            error: "Plonk proof format is invalid. Expected at least 8 field elements.".to_string(),
-            code: Some("PLONK_FORMAT_ERROR".to_string()),
-            retry_after: None,
         });
     }
 
