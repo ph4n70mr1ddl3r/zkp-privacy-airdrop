@@ -47,6 +47,7 @@ pub async fn execute(
     pb.set_style(
         ProgressStyle::default_bar()
             .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+            .expect("Failed to create progress style")
             .progress_chars("=>-"),
     );
     pb.set_message("Deriving public key...");

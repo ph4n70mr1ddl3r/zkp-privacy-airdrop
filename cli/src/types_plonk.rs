@@ -1,4 +1,3 @@
-use ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

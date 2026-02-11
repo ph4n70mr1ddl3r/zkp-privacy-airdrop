@@ -1,8 +1,11 @@
 use anyhow::{Context, Result};
-use ark_bn254::Fq;
+use ark_ff::PrimeField;
 use chrono::Utc;
 use ethers::types::{Address, H256};
+use num_bigint::BigUint;
+use num_traits::Num;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 use crate::crypto::{address_to_field, derive_address, generate_nullifier};
 use crate::tree::MerkleTree;
@@ -12,7 +15,7 @@ use std::time::Instant;
 type F = ark_bn254::Fq;
 
 /// Public inputs for PLONK proof
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct PublicInputs {
     /// Merkle root (3 field elements: padded address)
     pub merkle_root: [F; 3],
@@ -34,7 +37,7 @@ pub struct PrivateInputs {
 }
 
 /// Plonk proof structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct PlonkProof {
     /// A[2] elements
     pub a: [F; 2],
@@ -45,7 +48,7 @@ pub struct PlonkProof {
 }
 
 /// Plonk proof data ready for API submission
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct PlonkProofData {
     pub proof: PlonkProof,
     pub public_inputs: PublicInputs,
@@ -142,16 +145,21 @@ pub fn generate_plonk_proof(
     let merkle_root_field = {
         let mut bytes = [0u8; 32];
         bytes.copy_from_slice(&merkle_root[..]);
-        F::from_be_bytes_mod_order(&bytes, true)
+        F::from_le_bytes_mod_order(&bytes)
     };
 
-    let recipient_f = F::from_str(&recipient_field)
+    let recipient_biguint = BigUint::from_str_radix(&recipient_field, 10)
         .with_context(|| format!("Failed to parse recipient field: {}", recipient_field))?;
+    let recipient_bytes = recipient_biguint.to_bytes_be();
+    let mut recipient_array = [0u8; 32];
+    let offset = 32 - recipient_bytes.len();
+    recipient_array[offset..].copy_from_slice(&recipient_bytes);
+    let recipient_f = F::from_le_bytes_mod_order(&recipient_array);
 
     let public_inputs = PublicInputs {
         merkle_root: [merkle_root_field, F::zero(), F::zero()],
         recipient: [recipient_f, F::zero(), F::zero()],
-        nullifier: F::from_be_bytes_mod_order(nullifier.as_bytes(), true),
+        nullifier: F::from_le_bytes_mod_order(nullifier.as_bytes()),
     };
 
     // Step 6: Prepare private inputs
@@ -159,7 +167,7 @@ pub fn generate_plonk_proof(
     for sibling in &merkle_path {
         let mut bytes = [0u8; 32];
         bytes.copy_from_slice(&sibling[..]);
-        merkle_path_fields.push(F::from_be_bytes_mod_order(&bytes, true));
+        merkle_path_fields.push(F::from_le_bytes_mod_order(&bytes));
     }
 
     // Pack indices (26 bits into 1 field element)

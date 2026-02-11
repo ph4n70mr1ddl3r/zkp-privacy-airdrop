@@ -31,6 +31,10 @@ pub async fn execute(
     let address = crate::crypto::derive_address(&private_key)
         .context("Failed to derive address from private key")?;
 
+    let recipient_address: ethers::types::Address = recipient
+        .parse()
+        .context("Failed to parse recipient address")?;
+
     println!("{} {}", "Address:".green(), address);
     println!("{} {}", "Recipient:".green(), recipient);
     println!("{} Proof System: {}", "Using:".blue().bold(), proof_system);
@@ -62,13 +66,14 @@ pub async fn execute(
     pb.set_style(
         indicatif::ProgressStyle::default_bar()
             .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+            .expect("Failed to create progress style")
             .progress_chars("=>-"),
     );
     pb.set_message("Deriving public key...");
     pb.set_position(10);
 
     let plonk_proof_data = if use_plonk {
-        generate_plonk_proof(&private_key, &recipient, &merkle_tree)
+        generate_plonk_proof(&private_key, recipient_address, &merkle_tree)
             .context("Failed to generate PLONK proof")?
     } else {
         anyhow::bail!(

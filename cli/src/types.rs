@@ -1,6 +1,4 @@
-use ethers::types::{Address, H256};
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 #[deprecated(note = "Groth16 is deprecated, use PLONK instead. See PLONK-README.md for migration.")]
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,11 +1,14 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
+use ethers::providers::Middleware;
 use reqwest::Client;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 use tracing::info;
+use zeroize::Zeroize;
 
 use crate::config::Config;
 use crate::crypto::{validate_address, validate_merkle_root, validate_nullifier};
@@ -58,19 +61,8 @@ pub async fn execute(
 
     let recipient_addr = validate_address(&recipient).context("Invalid recipient address")?;
 
-    let proof_content = std::fs::read_to_string(&proof_path)
-        .with_context(|| format!("Failed to read proof file from {}", proof_path.display()))?;
-
-    if proof_content.len() > MAX_PROOF_SIZE_BYTES {
-        proof_content.zeroize();
-        return Err(anyhow::anyhow!(
-            "Proof file too large: {} bytes (max: {})",
-            proof_content.len(),
-            MAX_PROOF_SIZE_BYTES
-        ));
-    }
-
-    use zeroize::Zeroize;
+    let mut proof_content =
+        std::fs::read_to_string(&proof_path).context("Failed to read proof file")?;
 
     let proof_data: ProofData = serde_json::from_str(&proof_content).with_context(|| {
         format!(
@@ -105,7 +97,7 @@ pub async fn execute(
         proof_data.proof.estimated_size_bytes()
     );
 
-    let proof_type = proof_data.proof.type_name();
+    let proof_type = proof_data.proof.type_name().to_string();
 
     fn sanitize_output(input: &str) -> String {
         input
@@ -128,7 +120,7 @@ pub async fn execute(
         "\n{} {} proof with {}-element structure",
         "Proof Type:".cyan(),
         proof_type,
-        match proof_type {
+        match proof_type.as_str() {
             "Plonk" => "8-field",
             _ => "3-field",
         }
@@ -142,7 +134,7 @@ pub async fn execute(
         let window_start = RATE_LIMIT_STATE.window_start.load(Ordering::Acquire);
 
         if window_start == 0 || current_secs.saturating_sub(window_start) >= window_secs {
-            let mut new_count = 1u32;
+            let new_count = 1u32;
             match RATE_LIMIT_STATE.window_start.compare_exchange(
                 window_start,
                 current_secs,
@@ -188,6 +180,7 @@ pub async fn execute(
         .context("Failed to send HTTP request to relayer")?;
 
     let status = response.status();
+    let headers = response.headers().clone();
     let response_text = response
         .text()
         .await
@@ -206,7 +199,7 @@ pub async fn execute(
             match code.as_str() {
                 "RATE_LIMITED" => {
                     use reqwest::header::RETRY_AFTER;
-                    if let Some(retry_after) = response.headers().get(RETRY_AFTER) {
+                    if let Some(retry_after) = headers.get(RETRY_AFTER) {
                         if let Ok(seconds_str) = retry_after.to_str() {
                             if let Ok(secs) = seconds_str.parse::<u64>() {
                                 if secs > MAX_RETRY_AFTER_SECONDS {
@@ -267,7 +260,11 @@ pub async fn execute(
     println!(
         "\n{} {}",
         "✓ Claim submitted successfully!".green(),
-        submit_response.tx_hash.unwrap_or_else(|| "N/A".to_string())
+        submit_response
+            .tx_hash
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("N/A")
     );
 
     if proof_type == "Plonk" {
@@ -321,9 +318,12 @@ pub async fn execute(
 
 async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
     use ethers::providers::{Http, Provider};
+    use ethers::types::H256;
+
+    let tx_hash_parsed: H256 = tx_hash.parse().unwrap_or_else(|_| H256::default());
 
     match Provider::<Http>::try_from(rpc_url) {
-        Ok(provider) => match provider.get_transaction_receipt(tx_hash).await {
+        Ok(provider) => match provider.get_transaction_receipt(tx_hash_parsed).await {
             Ok(Some(_receipt)) => true,
             Ok(None) => false,
             Err(e) => {

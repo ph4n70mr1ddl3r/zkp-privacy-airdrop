@@ -1,10 +1,15 @@
 use anyhow::{Context, Result};
 use ethers::types::Address;
+use num_traits::{ToPrimitive, Zero};
 use secp256k1::{PublicKey, SecretKey};
 use sha3::{Digest, Keccak256};
 use std::path::PathBuf;
 use std::sync::OnceLock;
 use zeroize::Zeroize;
+
+use ark_ff::BigInteger;
+use ark_ff::Field;
+use ark_ff::PrimeField;
 
 /// Wrapper for private key bytes that zeroizes on drop
 pub struct PrivateKey(Vec<u8>);
@@ -33,9 +38,9 @@ impl PrivateKey {
     pub fn try_into_array<const N: usize>(mut self) -> Result<[u8; N]> {
         let bytes = self.0;
         self.0.zeroize();
-        bytes
-            .try_into()
-            .map_err(|e| anyhow::anyhow!("Invalid array length: expected {}, got {}", N, e.len()))
+        bytes.try_into().map_err(|e: Vec<u8>| {
+            anyhow::anyhow!("Invalid array length: expected {}, got {}", N, e.len())
+        })
     }
 }
 
@@ -91,7 +96,6 @@ fn get_bn254_field_modulus() -> &'static num_bigint::BigUint {
 }
 
 fn get_nullifier_salt() -> ark_bn254::Fr {
-    use ark_ff::PrimeField;
     use num_traits::Num;
     static NULLIFIER_SALT: OnceLock<ark_bn254::Fr> = OnceLock::new();
     NULLIFIER_SALT
@@ -102,8 +106,9 @@ fn get_nullifier_salt() -> ark_bn254::Fr {
             let mut salt_array = [0u8; 32];
             let offset = 32 - salt_bytes.len();
             salt_array[offset..].copy_from_slice(&salt_bytes);
-            ark_bn254::Fr::from_be_bytes(salt_array)
-                .expect("Failed to convert nullifier salt to field element")
+            ark_bn254::Fr::from_be_bytes_mod_order(&salt_array).map_err(|e| {
+                anyhow::anyhow!("Failed to convert nullifier salt to field element: {}", e)
+            })?
         })
         .clone()
 }
@@ -144,18 +149,20 @@ pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
 }
 
 fn field_element_from_bytes(bytes: &[u8; 32]) -> Result<ark_bn254::Fr> {
-    use ark_ff::PrimeField;
-    ark_bn254::Fr::from_be_bytes(*bytes)
+    ark_bn254::Fr::from_be_bytes_mod_order(bytes)
         .map_err(|e| anyhow::anyhow!("Failed to convert bytes to field element: {}", e))
 }
 
 fn field_to_bytes_be(field: &ark_bn254::Fr) -> [u8; 32] {
-    field.into_bigint().to_bytes_be()
+    let bigint = field.into_bigint();
+    let bytes = bigint.to_bytes_be();
+    let mut result = [0u8; 32];
+    let offset = 32 - bytes.len();
+    result[offset..].copy_from_slice(&bytes);
+    result
 }
 
 fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr> {
-    use ark_ff::PrimeField;
-
     if inputs.len() != 3 {
         return Err(anyhow::anyhow!(
             "Poseidon hash requires exactly 3 inputs, got {}",
@@ -187,8 +194,6 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
 }
 
 fn poseidon_round_constants() -> Result<Vec<Vec<ark_bn254::Fr>>> {
-    use ark_ff::PrimeField;
-
     let round_constants_bytes = poseidon_constants_seed()?;
     let mut constants = Vec::with_capacity(POSEIDON_ROUNDS);
 
@@ -201,7 +206,7 @@ fn poseidon_round_constants() -> Result<Vec<Vec<ark_bn254::Fr>>> {
                 hash[j] = round_constants_bytes[(offset + j) % round_constants_bytes.len()];
             }
 
-            let fr = ark_bn254::Fr::from_be_bytes_mod_order(&hash, true);
+            let fr = ark_bn254::Fr::from_le_bytes_mod_order(&hash);
             round_keys.push(fr);
         }
         constants.push(round_keys);
@@ -210,7 +215,6 @@ fn poseidon_round_constants() -> Result<Vec<Vec<ark_bn254::Fr>>> {
 }
 
 fn poseidon_mds_matrix() -> [[ark_bn254::Fr; 3]; 3] {
-    use ark_ff::PrimeField;
     [
         [
             ark_bn254::Fr::from(3u64),
@@ -238,7 +242,8 @@ fn poseidon_constants_seed() -> Result<[u8; 32]> {
     let mut hasher = Keccak256::new();
     hasher.update(b"POSEIDON_CONSTANTS_SEED");
     let salt = get_nullifier_salt();
-    let salt_bytes = salt.into_bigint().to_bytes_be();
+    let bigint = salt.into_bigint();
+    let salt_bytes = bigint.to_bytes_be();
     hasher.update(&salt_bytes);
     let hash = hasher.finalize();
     hash.try_into()
@@ -269,7 +274,7 @@ pub fn derive_address(private_key: &[u8; 32]) -> Result<Address> {
     let hash = Keccak256::digest(&public_key_bytes[1..]);
     let address_bytes = &hash[hash.len() - 20..];
 
-    Address::from_slice(address_bytes).context("Failed to derive address")
+    Ok(Address::from_slice(address_bytes))
 }
 
 /// Reads a private key from multiple possible sources.
@@ -353,8 +358,6 @@ pub fn read_private_key(
     }
 
     zkp_airdrop_utils::validate_private_key(&key_bytes).map_err(|e| anyhow::anyhow!("{}", e))?;
-
-    key_str.zeroize();
 
     key_str.zeroize();
 

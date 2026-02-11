@@ -23,11 +23,11 @@ pub async fn execute(
         println!("\n{}", "Resuming download...".yellow());
     }
 
-    let pb = ProgressBar::new(100);
+    let mut pb = ProgressBar::new(100);
     pb.set_style(
         ProgressStyle::default_bar()
             .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
-            .unwrap_or_default()
+            .expect("Failed to create progress style")
             .progress_chars("=>-"),
     );
 
@@ -46,7 +46,7 @@ pub async fn execute(
         pb.set_style(
             ProgressStyle::default_bar()
                 .template("{spinner:.green} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
-                .unwrap_or_default()
+                .expect("Failed to create progress style")
                 .progress_chars("=>-"),
         );
     }

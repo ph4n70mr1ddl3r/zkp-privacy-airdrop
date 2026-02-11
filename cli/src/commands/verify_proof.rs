@@ -36,7 +36,7 @@ pub fn execute(
     );
     println!("  {} {}", "Merkle Root:".green(), proof_root);
 
-    crate::crypto::validate_merkle_root(merkle_root).context("Invalid merkle_root format")?;
+    crate::crypto::validate_merkle_root(&merkle_root).context("Invalid merkle_root format")?;
 
     if proof_root.to_lowercase() != merkle_root.to_lowercase() {
         println!("\n{} {}", "Error:".red(), "Merkle root mismatch!");
