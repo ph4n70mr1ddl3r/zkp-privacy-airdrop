@@ -2,8 +2,8 @@ use num_bigint::BigUint;
 use num_traits::{Num, Zero};
 
 /// Minimum entropy score threshold for private key validation
-/// A score of 600 indicates sufficient randomness for cryptographic security
-pub const MIN_ENTROPY_SCORE: u32 = 600;
+/// A score of 750 indicates sufficient randomness for cryptographic security
+pub const MIN_ENTROPY_SCORE: u32 = 750;
 
 /// BN254 scalar field modulus
 pub const BN254_FIELD_MODULUS: &str =
@@ -228,6 +228,26 @@ pub fn is_valid_field_element(hex_str: &str) -> bool {
 
     // Must be strictly less than modulus and not zero
     value < field_modulus && !value.is_zero()
+}
+
+/// Sanitizes a nullifier for logging by truncating it.
+///
+/// # Arguments
+/// * `nullifier` - The nullifier string to sanitize
+///
+/// # Returns
+/// A truncated version of the nullifier suitable for logging
+pub fn sanitize_nullifier(nullifier: &str) -> String {
+    let chars: Vec<char> = nullifier.chars().collect();
+    if chars.len() > 16 {
+        let first_part: String = chars[..10].iter().collect();
+        let second_part: String = chars[chars.len() - 6..].iter().collect();
+        format!("{}...{}", first_part, second_part)
+    } else if chars.len() > 6 {
+        format!("{}***", &chars[..3].iter().collect::<String>())
+    } else {
+        "***".to_string()
+    }
 }
 
 #[cfg(test)]

@@ -19,10 +19,10 @@ impl PlonkProof {
     /// Convert Plonk proof to flat array for API transmission
     ///
     /// # Returns
-    /// Returns a reference to the proof array after validating it
+    /// Returns a reference to proof array after validating it
     ///
     /// # Errors
-    /// Returns an error if the proof is empty or invalid
+    /// Returns an error if proof is empty or invalid
     #[allow(dead_code)]
     pub fn to_flat_array(&self) -> Result<&[String], String> {
         if self.proof.is_empty() {
@@ -41,6 +41,12 @@ impl PlonkProof {
             if !element.starts_with("0x") && !element.starts_with("0X") {
                 return Err(format!(
                     "PlonkProof element at index {} missing 0x prefix",
+                    idx
+                ));
+            }
+            if !zkp_airdrop_utils::is_valid_field_element(element) {
+                return Err(format!(
+                    "PlonkProof element at index {} is not a valid field element",
                     idx
                 ));
             }

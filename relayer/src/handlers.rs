@@ -51,6 +51,7 @@ static SENSITIVE_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
 
 use crate::state::AppState;
 use crate::types_plonk::*;
+use zkp_airdrop_utils::sanitize_nullifier;
 
 /// Validates claim input parameters and returns an error response if invalid
 fn validate_claim_input(
@@ -106,19 +107,6 @@ fn validate_claim_input(
     }
 
     Ok(())
-}
-
-fn sanitize_nullifier(nullifier: &str) -> String {
-    let chars: Vec<char> = nullifier.chars().collect();
-    if chars.len() > 16 {
-        let first_part: String = chars[..10].iter().collect();
-        let second_part: String = chars[chars.len() - 6..].iter().collect();
-        format!("{}...{}", first_part, second_part)
-    } else if chars.len() > 6 {
-        format!("{}***", &chars[..3].iter().collect::<String>())
-    } else {
-        "***".to_string()
-    }
 }
 
 fn sanitize_error_message(error: &str) -> String {

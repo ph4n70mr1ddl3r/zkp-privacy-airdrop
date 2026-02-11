@@ -180,6 +180,12 @@ pub fn generate_plonk_proof(
 
     // Pack indices (26 bits into 1 field element)
     let mut indices_bytes = [0u8; 32];
+    if indices.len() < 26 {
+        return Err(anyhow::anyhow!(
+            "Merkle path indices must have at least 26 elements, got {}",
+            indices.len()
+        ));
+    }
     for (i, &bit) in indices.iter().enumerate().take(26) {
         if bit != 0 {
             indices_bytes[i / 8] |= 1 << (i % 8);

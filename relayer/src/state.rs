@@ -13,19 +13,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
-
-fn sanitize_nullifier(nullifier: &str) -> String {
-    let chars: Vec<char> = nullifier.chars().collect();
-    if chars.len() > 16 {
-        let first_part: String = chars[..10].iter().collect();
-        let second_part: String = chars[chars.len() - 6..].iter().collect();
-        format!("{}...{}", first_part, second_part)
-    } else if chars.len() > 6 {
-        format!("{}***", &chars[..3].iter().collect::<String>())
-    } else {
-        "***".to_string()
-    }
-}
+use zkp_airdrop_utils::sanitize_nullifier;
 
 mod privacy_airdrop_plonk {
     ethers::contract::abigen!(PrivacyAirdropPLONK, "./PrivacyAirdropPLONK.json");
