@@ -132,7 +132,49 @@ fn sanitize_nullifier(nullifier: &str) -> String {
 }
 
 fn sanitize_error_message(error: &str) -> String {
+    let safe_messages = [
+        "nullifier already used",
+        "invalid proof",
+        "insufficient balance",
+        "rate limit exceeded",
+        "invalid nullifier",
+        "invalid address",
+        "invalid merkle_root",
+        "merkle root mismatch",
+        "proof verification failed",
+    ];
+
+    for safe_msg in &safe_messages {
+        if error.to_lowercase().contains(safe_msg) {
+            return error.to_string();
+        }
+    }
+
+    let sensitive_indicators = [
+        "database",
+        "redis",
+        "password",
+        "secret",
+        "0x[0-9a-f]{64}",
+        "postgresql://",
+        "mongodb://",
+        "127.0.0.1",
+        "localhost",
+        "private[-_]?key",
+        "priv[-_]?key",
+        "api[-_]?key",
+        "auth[-_]?token",
+    ];
+
     let lower = error.to_lowercase();
+    for indicator in &sensitive_indicators {
+        if let Ok(re) = regex::Regex::new(indicator) {
+            if re.is_match(&lower) {
+                tracing::warn!("Filtered sensitive error message: error='{}'", error);
+                return "Transaction failed. Please check your inputs and try again.".to_string();
+            }
+        }
+    }
 
     for (re, description) in SENSITIVE_PATTERNS.iter() {
         if re.is_match(&lower) {

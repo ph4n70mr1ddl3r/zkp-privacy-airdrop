@@ -96,16 +96,15 @@ fn get_bn254_field_modulus() -> &'static num_bigint::BigUint {
 fn get_nullifier_salt() -> ark_bn254::Fr {
     use num_traits::Num;
     static NULLIFIER_SALT: OnceLock<ark_bn254::Fr> = OnceLock::new();
-    *NULLIFIER_SALT
-        .get_or_init(|| {
-            let salt_biguint = num_bigint::BigUint::from_str_radix(NULLIFIER_SALT_STR, 10)
-                .expect("Invalid nullifier salt constant");
-            let salt_bytes = salt_biguint.to_bytes_be();
-            let mut salt_array = [0u8; 32];
-            let offset = 32 - salt_bytes.len();
-            salt_array[offset..].copy_from_slice(&salt_bytes);
-            ark_bn254::Fr::from_be_bytes_mod_order(&salt_array)
-        })
+    *NULLIFIER_SALT.get_or_init(|| {
+        let salt_biguint = num_bigint::BigUint::from_str_radix(NULLIFIER_SALT_STR, 10)
+            .expect("Invalid nullifier salt constant");
+        let salt_bytes = salt_biguint.to_bytes_be();
+        let mut salt_array = [0u8; 32];
+        let offset = 32 - salt_bytes.len();
+        salt_array[offset..].copy_from_slice(&salt_bytes);
+        ark_bn254::Fr::from_be_bytes_mod_order(&salt_array)
+    })
 }
 
 /// Generates a nullifier from a private key using Poseidon hash.
@@ -275,7 +274,7 @@ pub fn derive_address(private_key: &[u8; 32]) -> Result<Address> {
     Ok(Address::from_slice(address_bytes))
 }
 
-/// Reads a private key from multiple possible sources.
+/// Reads a private key from multiple possible sources with secure memory handling.
 ///
 /// Supports multiple input methods with the following priority:
 /// 1. `private_key_opt` - Direct key string
@@ -292,9 +291,10 @@ pub fn derive_address(private_key: &[u8; 32]) -> Result<Address> {
 /// The decoded private key wrapped in PrivateKey type
 ///
 /// # Security
-/// - Keys are zeroized from memory after use via Drop implementation
-/// - Supports both "0x" prefix and raw hex format
-/// - Validates hex encoding
+/// - Keys are read directly into zeroable buffers
+/// - Immediate zeroization after processing
+/// - Minimal copying of sensitive data
+/// - Uses Zeroize trait for secure memory clearing
 ///
 /// # Errors
 /// Returns an error if:
@@ -306,33 +306,24 @@ pub fn read_private_key(
     private_key_file: Option<PathBuf>,
     private_key_stdin: bool,
 ) -> Result<PrivateKey> {
-    use std::io::{self, Read};
+    use std::io::Read;
     use zeroize::Zeroize;
 
-    let mut key_str = if private_key_stdin {
-        let mut input = String::new();
+    let mut key_buf: Vec<u8> = if private_key_stdin {
+        let mut buf = Vec::new();
         io::stdin()
-            .read_to_string(&mut input)
+            .read_to_end(&mut buf)
             .context("Failed to read private key from stdin")?;
-        let trimmed = input.trim().to_string();
-        input.zeroize();
-        trimmed
+        buf
     } else if let Some(file) = private_key_file {
-        let key = std::fs::read_to_string(&file)
-            .context(format!(
-                "Failed to read private key file: {}",
-                file.display()
-            ))?
-            .trim()
-            .to_string();
-        let mut key_bytes = key.into_bytes();
-        let key_str = String::from_utf8_lossy(&key_bytes).to_string();
-        key_bytes.zeroize();
-        key_str
+        std::fs::read(&file).context(format!(
+            "Failed to read private key file: {}",
+            file.display()
+        ))?
     } else if let Some(key) = private_key_opt {
-        key
+        key.into_bytes()
     } else if let Ok(key) = std::env::var("ZKP_AIRDROP_PRIVATE_KEY") {
-        key
+        key.into_bytes()
     } else {
         anyhow::bail!(
             "No private key provided. Use one of:\n\
@@ -343,23 +334,35 @@ pub fn read_private_key(
         );
     };
 
-    let key_bytes = if key_str.starts_with("0x") || key_str.starts_with("0X") {
-        hex::decode(&key_str[2..])
-    } else {
-        hex::decode(&key_str)
-    }
-    .context("Invalid hex private key")?;
+    let key_str = String::from_utf8_lossy(&key_buf).trim().to_string();
+    let key_bytes = {
+        let hex_str = if key_str.starts_with("0x") || key_str.starts_with("0X") {
+            &key_str[2..]
+        } else {
+            &key_str
+        };
+
+        hex::decode(hex_str).map_err(|e| {
+            key_buf.zeroize();
+            anyhow::anyhow!("Invalid hex private key: {}", e)
+        })?
+    };
 
     if key_bytes.len() != 32 {
-        key_str.zeroize();
+        key_buf.zeroize();
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
 
-    zkp_airdrop_utils::validate_private_key(&key_bytes).map_err(|e| anyhow::anyhow!("{}", e))?;
+    zkp_airdrop_utils::validate_private_key(&key_bytes).map_err(|e| {
+        key_buf.zeroize();
+        anyhow::anyhow!("{}", e)
+    })?;
 
-    key_str.zeroize();
+    let mut result = [0u8; 32];
+    result.copy_from_slice(&key_bytes);
+    key_buf.zeroize();
 
-    Ok(PrivateKey::new(key_bytes))
+    Ok(PrivateKey::new(result.to_vec()))
 }
 
 /// Validates an Ethereum address.

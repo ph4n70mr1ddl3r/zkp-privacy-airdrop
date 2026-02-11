@@ -51,15 +51,22 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         uint256 _withdrawalCooldown
     ) Ownable(msg.sender) {
         require(_token != address(0), "Invalid token address: cannot be zero address");
+        
         bytes32 zeroRoot = bytes32(0);
         bytes32 onesRoot = bytes32(type(uint256).max);
         require(_merkleRoot != zeroRoot && _merkleRoot != onesRoot,
             "Invalid merkle root: cannot be all zeros or all ones");
+        
+        bytes4 prefix = bytes4(_merkleRoot);
+        require(prefix != bytes4(0) && prefix != bytes4(type(uint32).max),
+            "Invalid merkle root: suspicious prefix pattern");
+        
         require(_claimAmount > 0, "Invalid claim amount: must be greater than zero");
         require(_claimDeadline > block.timestamp, "Invalid deadline: must be in the future");
         require(_claimDeadline < block.timestamp + MAX_CLAIM_DEADLINE, "Deadline too far in future");
         require(_maxWithdrawalPercent > 0 && _maxWithdrawalPercent <= 100, "Invalid withdrawal percentage");
         require(_withdrawalCooldown > 0, "Invalid withdrawal cooldown");
+
         TOKEN = IERC20(_token);
         MERKLE_ROOT = _merkleRoot;
         CLAIM_AMOUNT = _claimAmount;

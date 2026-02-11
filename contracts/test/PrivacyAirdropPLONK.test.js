@@ -8,7 +8,7 @@ describe("PrivacyAirdropPLONK", function () {
   let owner;
   let user;
 
-  const MERKLE_ROOT = ethers.keccak256(ethers.toUtf8Bytes("test"));
+  const MERKLE_ROOT = "0x" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join("");
   const CLAIM_AMOUNT = ethers.parseUnits("1000", 18);
   const CLAIM_DEADLINE = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60;
 

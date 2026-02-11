@@ -97,10 +97,11 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         require(recipient == address(uint160(recipient)), "Invalid recipient address: cannot be cast safely");
     }
 
-    function _validatePLONKProof(PLONKProof calldata proof) private view {
+    function _validatePLONKProof(PLONKProof calldata proof) private pure {
         require(proof.proof.length == 8, "Invalid PLONK proof: expected 8 elements");
 
         for (uint256 i = 0; i < 8; i++) {
+            require(proof.proof[i] > 0, "Invalid PLONK proof: element at index cannot be zero");
             require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element at index exceeds field modulus");
         }
 
@@ -109,6 +110,12 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             allZeros |= proof.proof[i];
         }
         require(allZeros > 0, "Invalid PLONK proof: all elements are zero");
+
+        for (uint256 i = 0; i < 7; i++) {
+            for (uint256 j = i + 1; j < 8; j++) {
+                require(proof.proof[i] != proof.proof[j], "Invalid PLONK proof: repeated elements detected");
+            }
+        }
     }
 
 /**

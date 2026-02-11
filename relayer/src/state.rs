@@ -19,6 +19,7 @@ mod privacy_airdrop_plonk {
 }
 
 const RPC_TIMEOUT_SECONDS: u64 = 10;
+const RPC_CONNECTION_TIMEOUT_SECONDS: u64 = 5;
 
 /// Pre-compiled Lua script for rate limiting
 static RATE_LIMIT_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
@@ -618,19 +619,31 @@ impl AppState {
                         return Err("Invalid gas price: base gas price is zero".to_string());
                     }
 
+                    const MAX_BASE_GAS_PRICE: u128 = 10_000_000_000_000;
                     const MAX_GAS_RANDOMIZATION_PERCENT: u64 = 20;
+                    const MAX_ADJUSTMENT_MULTIPLIER: u64 = 150;
+
+                    if base_gas_price_u128 > MAX_BASE_GAS_PRICE {
+                        self.increment_failed_claims();
+                        return Err(format!(
+                            "Gas price {} gwei exceeds safe maximum {} gwei",
+                            base_gas_price_u128 / 1_000_000_000,
+                            MAX_BASE_GAS_PRICE / 1_000_000_000
+                        ));
+                    }
+
                     let gas_randomization_percent = ((self.config.relayer.gas_price_randomization
                         * 100.0) as u64)
-                        .min(MAX_GAS_RANDOMIZATION_PERCENT);
+                        .min(MAX_GAS_RANDOMIZATION_PERCENT)
+                        .min(MAX_ADJUSTMENT_MULTIPLIER - 100);
                     let random_factor = OsRng.gen_range(0..=gas_randomization_percent);
-                    let adjustment_multiplier = 100u64 + random_factor;
+                    let adjustment_multiplier = 100u64.saturating_add(random_factor);
 
                     let adjusted_price = base_gas_price_u128
-                        .checked_mul(adjustment_multiplier as u128)
-                        .and_then(|v| v.checked_div(100))
+                        .saturating_mul(adjustment_multiplier as u128)
+                        .checked_div(100)
                         .ok_or_else(|| {
-                            "Gas price calculation overflow: multiplication or division failed"
-                                .to_string()
+                            "Gas price calculation overflow: division failed".to_string()
                         })?
                         .min(MAX_SAFE_GAS_PRICE);
 

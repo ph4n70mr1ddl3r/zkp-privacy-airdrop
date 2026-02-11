@@ -103,12 +103,15 @@ impl PlonkProof {
 
     #[cfg(test)]
     /// Flatten proof for serialization
-    pub fn to_flat_array(&self) -> Vec<String> {
+    pub fn to_flat_array(&self) -> Result<Vec<String>, String> {
         let mut proof_vec = Vec::with_capacity(8);
         proof_vec.extend(self.a.iter().map(|f| f.to_string()));
         proof_vec.extend(self.b.iter().flatten().map(|f| f.to_string()));
         proof_vec.extend(self.c.iter().map(|f| f.to_string()));
-        proof_vec
+        if proof_vec.is_empty() {
+            return Err("PlonkProof::to_flat_array called on empty proof".to_string());
+        }
+        Ok(proof_vec)
     }
 }
 
