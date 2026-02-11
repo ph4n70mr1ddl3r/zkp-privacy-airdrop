@@ -34,7 +34,7 @@ pub const BN254_FIELD_MODULUS: &str =
 /// let score = calculate_entropy_score(&mixed);
 /// assert!(score > 0);
 /// ```
-#[must_use] 
+#[must_use]
 pub fn calculate_entropy_score(bytes: &[u8]) -> u32 {
     if bytes.is_empty() {
         return 0;
@@ -187,7 +187,7 @@ fn check_weak_key_patterns(key_bytes: &[u8]) -> Result<(), String> {
 /// - Must be exactly 66 characters (0x + 64 hex chars)
 /// - Must decode to exactly 32 bytes
 /// - Value must be less than BN254 field modulus
-#[must_use] 
+#[must_use]
 pub fn is_valid_field_element(hex_str: &str) -> bool {
     let trimmed = hex_str.trim();
     if trimmed.is_empty() {
@@ -238,7 +238,7 @@ pub fn is_valid_field_element(hex_str: &str) -> bool {
 ///
 /// # Returns
 /// A truncated version of the nullifier suitable for logging
-#[must_use] 
+#[must_use]
 pub fn sanitize_nullifier(nullifier: &str) -> String {
     let chars: Vec<char> = nullifier.chars().collect();
     if chars.len() > 16 {
