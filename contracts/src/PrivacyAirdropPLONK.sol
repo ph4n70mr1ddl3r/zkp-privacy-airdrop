@@ -14,7 +14,6 @@ import {BasePrivacyAirdrop} from "./BasePrivacyAirdrop.sol";
  * before deploying to production. See PLONK-README.md for verification key generation steps.
  */
 contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
-    uint256 private constant PLONK_GAS_ESTIMATE = 1_300_000;
     IPLONKVerifier public immutable VERIFIER;
     uint256 private constant BN254_FIELD_PRIME =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -89,23 +88,22 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         _transferTokens(recipient, CLAIM_AMOUNT);
     }
 
-    function _validatePLONKProof(PLONKProof calldata proof) private pure {
+    function _validatePLONKProof(PLONKProof calldata proof) private view {
         require(proof.proof.length == 8, "Invalid PLONK proof: expected 8 elements");
 
         for (uint256 i = 0; i < 8; i++) {
-            require(proof.proof[i] != 0, "Invalid PLONK proof: element at index is zero");
-            require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element exceeds field modulus");
+            require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element at index exceeds field modulus");
         }
     }
 
-    /**
-      * @notice Estimate gas required for a PLONK claim transaction
-      * @dev PLONK verification requires more gas than Groth16
-      * @return Estimated gas in wei (conservative 1.3M with buffer)
-      */
-    function estimateClaimGas() external pure returns (uint256) {
-        return PLONK_GAS_ESTIMATE;
-    }
+/**
+  * @notice Estimate gas required for a PLONK claim transaction
+  * @dev PLONK verification requires more gas than Groth16
+  * @return Estimated gas in wei (conservative 1.5M with buffer)
+  */
+function estimateClaimGas() external pure returns (uint256) {
+    return 1_500_000;
+}
 }
 
 /**

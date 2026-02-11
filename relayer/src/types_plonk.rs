@@ -65,9 +65,6 @@ fn is_valid_field_element(hex_str: &str) -> bool {
     }
 
     let value = BigUint::from_bytes_be(&bytes);
-    if value.is_zero() {
-        return false;
-    }
     value < *get_field_modulus()
 }
 

@@ -102,4 +102,4 @@ def test_invalid_proof_submission(relayer_url):
     except requests.exceptions.RequestException as e:
         pytest.fail(f"Network error: {e}")
     # Should fail with invalid proof
-    assert response.status_code in [400, 500]
+    assert response.status_code == 400

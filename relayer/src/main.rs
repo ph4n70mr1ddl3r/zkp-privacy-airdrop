@@ -33,6 +33,10 @@ async fn main() -> anyhow::Result<()> {
 
     let allowed_origins = Arc::new(config.cors.allowed_origins.clone());
 
+    if allowed_origins.is_empty() {
+        tracing::warn!("CORS allowed_origins is empty - no origins will be accepted");
+    }
+
     let app_state = state::AppState::new(config.clone(), db_pool, redis_client).await?;
 
     info!("Listening on {}", bind_address);

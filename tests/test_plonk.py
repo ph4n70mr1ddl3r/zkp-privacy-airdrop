@@ -19,7 +19,7 @@ def valid_plonk_proof() -> Dict[str, Any]:
     """A valid PLONK proof structure (minimal for testing)"""
     return {
         "proof": {
-            "proof": ["0"] * 8,  # 8 field elements for PLONK
+            "proof": ["0x" + "1" * 64] * 8,  # 8 field elements for PLONK
         },
         "public_signals": ["0", "0", "0"],
         "nullifier": "0x" + "1" * 64,
@@ -196,10 +196,16 @@ def test_plonk_error_codes_distinct_from_groth16(
     relayer_url: str, invalid_plonk_proof_too_few_elements: Dict[str, Any]
 ) -> None:
     """Test that PLONK uses distinct error codes from Groth16"""
-    response = requests.post(
-        f"{relayer_url}/api/v1/submit-claim", json=invalid_plonk_proof_too_few_elements
-    )
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim",
+            json=invalid_plonk_proof_too_few_elements,
+            timeout=30,
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
 
+    assert response.status_code == 400
     data = response.json()
 
     # PLONK should return PLONK_FORMAT_ERROR, not INVALID_PROOF

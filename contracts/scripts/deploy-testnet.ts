@@ -44,6 +44,10 @@ async function main() {
     throw new Error("Failed to generate Merkle root - deployment aborted");
   }
 
+  if (!MERKLE_ROOT || MERKLE_ROOT === ethers.ZeroHash) {
+    throw new Error("Invalid merkle root: cannot deploy with zero hash");
+  }
+
   const CLAIM_AMOUNT = ethers.parseUnits("1000", 18);
   const CLAIM_DEADLINE = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60; // 1 year from now
   const MAX_WITHDRAWAL_PERCENT = 10; // 10% per period

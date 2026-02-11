@@ -73,7 +73,7 @@ pub async fn execute(
             .context("Failed to generate PLONK proof")?
     } else {
         anyhow::bail!(
-            "Unsupported proof system: {}. Only PLONK is supported.",
+            "Unsupported proof system: '{}'. Only PLONK is supported. Use --proof-system plonk or the generate-proof-plonk subcommand.",
             proof_system
         )
     };

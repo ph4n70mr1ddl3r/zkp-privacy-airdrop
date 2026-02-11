@@ -563,7 +563,7 @@ impl AppState {
                     }
 
                     let retry_delay = std::cmp::min(
-                        TRANSACTION_RETRY_DELAY_MS * (1u64 << retry_count),
+                        TRANSACTION_RETRY_DELAY_MS.saturating_mul(1u64 << retry_count.min(10)),
                         TRANSACTION_RETRY_DELAY_MS * 8,
                     );
 

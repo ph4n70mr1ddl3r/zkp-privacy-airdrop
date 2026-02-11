@@ -2,10 +2,11 @@
 
 import os
 import pytest
+from typing import Dict, Any
 
 
 @pytest.fixture
-def test_config():
+def test_config() -> Dict[str, Any]:
     """Test configuration fixture"""
     airdrop_contract = os.getenv("TEST_AIRDROP_CONTRACT")
     if not airdrop_contract:
