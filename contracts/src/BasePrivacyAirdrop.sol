@@ -6,13 +6,30 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/**
- * @title BasePrivacyAirdrop
- * @notice Base contract containing common functionality for privacy airdrop implementations
- * @dev This contract provides shared logic for different proof systems (Groth16, PLONK)
- */
 abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
+
+    error InvalidTokenAddress();
+    error InvalidMerkleRoot();
+    error InvalidClaimAmount();
+    error InvalidClaimDeadline();
+    error InvalidWithdrawalPercentage();
+    error InvalidWithdrawalCooldown();
+    error ContractPaused();
+    error ClaimPeriodEnded();
+    error InvalidRecipient();
+    error InvalidNullifier();
+    error AlreadyClaimed();
+    error InvalidMerkleRootPrefix();
+    error InsufficientTokensReceived();
+    error EmergencyWithdrawalNotAvailable();
+    error InvalidWithdrawalAmount();
+    error NoContractBalance();
+    error BalanceInconsistent();
+    error NoUnclaimedTokens();
+    error WithdrawalExceedsUnclaimed();
+    error WithdrawalExceedsLimit();
+    error CumulativeWithdrawalExceedsAvailable();
 
     bytes32 public immutable MERKLE_ROOT;
     uint256 private constant MAX_CLAIM_DEADLINE = 365 days;
@@ -52,22 +69,36 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         uint256 _maxWithdrawalPercent,
         uint256 _withdrawalCooldown
     ) Ownable(msg.sender) {
-        require(_token != address(0), "Invalid token address: cannot be zero address");
+        if (_token == address(0)) {
+            revert InvalidTokenAddress();
+        }
 
         bytes32 zeroRoot = bytes32(0);
         bytes32 onesRoot = bytes32(type(uint256).max);
-        require(_merkleRoot != zeroRoot && _merkleRoot != onesRoot,
-            "Invalid merkle root: cannot be all zeros or all ones");
+        if (_merkleRoot == zeroRoot || _merkleRoot == onesRoot) {
+            revert InvalidMerkleRoot();
+        }
 
         bytes4 prefix = bytes4(_merkleRoot);
-        require(prefix != bytes4(0) && prefix != bytes4(type(uint32).max),
-            "Invalid merkle root: suspicious prefix pattern");
+        if (prefix == bytes4(0) || prefix == bytes4(type(uint32).max)) {
+            revert InvalidMerkleRootPrefix();
+        }
 
-        require(_claimAmount > 0, "Invalid claim amount: must be greater than zero");
-        require(_claimDeadline > block.timestamp, "Invalid deadline: must be in the future");
-        require(_claimDeadline < block.timestamp + MAX_CLAIM_DEADLINE, "Deadline too far in future");
-        require(_maxWithdrawalPercent > 0 && _maxWithdrawalPercent <= 100, "Invalid withdrawal percentage");
-        require(_withdrawalCooldown > 0, "Invalid withdrawal cooldown");
+        if (_claimAmount == 0) {
+            revert InvalidClaimAmount();
+        }
+        if (_claimDeadline <= block.timestamp) {
+            revert InvalidClaimDeadline();
+        }
+        if (_claimDeadline >= block.timestamp + MAX_CLAIM_DEADLINE) {
+            revert InvalidClaimDeadline();
+        }
+        if (_maxWithdrawalPercent == 0 || _maxWithdrawalPercent > 100) {
+            revert InvalidWithdrawalPercentage();
+        }
+        if (_withdrawalCooldown == 0) {
+            revert InvalidWithdrawalCooldown();
+        }
 
         TOKEN = IERC20(_token);
         MERKLE_ROOT = _merkleRoot;
@@ -83,11 +114,21 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @param nullifier Unique identifier for the claim
      */
     modifier validClaim(address recipient, bytes32 nullifier) {
-        require(!paused, "Contract is paused: claims are temporarily suspended");
-        require(block.timestamp <= CLAIM_DEADLINE, "Claim period ended: deadline has passed");
-        require(recipient != address(0), "Invalid recipient: cannot be zero address");
-        require(nullifier != bytes32(0), "Invalid nullifier: cannot be zero");
-        require(!nullifiers[nullifier], "Already claimed: this nullifier has been used");
+        if (paused) {
+            revert ContractPaused();
+        }
+        if (block.timestamp > CLAIM_DEADLINE) {
+            revert ClaimPeriodEnded();
+        }
+        if (recipient == address(0)) {
+            revert InvalidRecipient();
+        }
+        if (nullifier == bytes32(0)) {
+            revert InvalidNullifier();
+        }
+        if (nullifiers[nullifier]) {
+            revert AlreadyClaimed();
+        }
         _;
     }
 
@@ -130,7 +171,9 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         uint256 balanceAfter = TOKEN.balanceOf(recipient);
 
         uint256 actualReceived = balanceAfter - balanceBefore;
-        require(actualReceived >= amount, "Insufficient tokens received: possible fee-on-transfer token");
+        if (actualReceived < amount) {
+            revert InsufficientTokensReceived();
+        }
         totalClaimed += amount;
         emit TokensTransferred(recipient, amount, block.timestamp);
     }
@@ -146,21 +189,32 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @dev Uses nonReentrant modifier to prevent reentrancy attacks
      */
     function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
-        require(
-            block.timestamp > CLAIM_DEADLINE + EMERGENCY_WITHDRAWAL_DELAY,
-            "Emergency withdrawal not available yet"
-        );
-        require(recipient != address(0), "Invalid recipient");
-        require(amount > 0, "Amount must be greater than zero");
+        if (block.timestamp <= CLAIM_DEADLINE + EMERGENCY_WITHDRAWAL_DELAY) {
+            revert EmergencyWithdrawalNotAvailable();
+        }
+        if (recipient == address(0)) {
+            revert InvalidRecipient();
+        }
+        if (amount == 0) {
+            revert InvalidWithdrawalAmount();
+        }
 
         uint256 contractBalance = TOKEN.balanceOf(address(this));
-        require(contractBalance > 0, "Contract has no balance");
+        if (contractBalance == 0) {
+            revert NoContractBalance();
+        }
 
         uint256 claimed = totalClaimed;
-        require(contractBalance >= claimed, "Contract balance inconsistent");
+        if (contractBalance < claimed) {
+            revert BalanceInconsistent();
+        }
         uint256 unclaimedAmount = contractBalance - claimed;
-        require(unclaimedAmount > 0, "No unclaimed tokens available");
-        require(amount <= unclaimedAmount, "Cannot withdraw claimed tokens");
+        if (unclaimedAmount == 0) {
+            revert NoUnclaimedTokens();
+        }
+        if (amount > unclaimedAmount) {
+            revert WithdrawalExceedsUnclaimed();
+        }
 
         uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
 
@@ -171,11 +225,15 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
             lastWithdrawalTime = block.timestamp;
         } else {
             maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
-            require(totalWithdrawn + amount <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
+            if (totalWithdrawn + amount > maxWithdrawalThisPeriod) {
+                revert WithdrawalExceedsLimit();
+            }
             totalWithdrawn += amount;
         }
 
-        require(cumulativeWithdrawn + amount <= unclaimedAmount, "Cumulative withdrawals exceed available tokens");
+        if (cumulativeWithdrawn + amount > unclaimedAmount) {
+            revert CumulativeWithdrawalExceedsAvailable();
+        }
 
         cumulativeWithdrawn += amount;
 

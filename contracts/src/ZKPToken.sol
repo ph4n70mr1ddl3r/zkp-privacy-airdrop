@@ -12,6 +12,15 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * Maximum supply: 65,249,064,000 tokens (18 decimals)
  */
 contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
+    error MintingIsPaused();
+    error MintRecipientInvalid();
+    error MintToContractNotAllowed();
+    error MintAmountInvalid();
+    error TokenMaxSupplyReached();
+    error MintExceedsMaxSupply();
+    error BurnAmountInvalid();
+    error BurnInsufficientBalance();
+
     uint256 public constant MAX_SUPPLY = 65_249_064_000 * 10**18;
     uint256 public immutable DEPLOY_TIMESTAMP;
     uint256 public mintCount;
@@ -56,12 +65,24 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
       * @dev Only callable by owner, enforces MAX_SUPPLY cap
       */
     function mint(address to, uint256 amount) external onlyOwner nonReentrant {
-        require(!mintingPaused, "Minting is paused");
-        require(to != address(0), "Invalid recipient address");
-        require(to != address(this), "Cannot mint to contract address");
-        require(amount > 0, "Amount must be greater than 0");
-        require(totalSupply() < MAX_SUPPLY, "MAX_SUPPLY already reached");
-        require(totalSupply() + amount <= MAX_SUPPLY, "Minting would exceed MAX_SUPPLY");
+        if (mintingPaused) {
+            revert MintingIsPaused();
+        }
+        if (to == address(0)) {
+            revert MintRecipientInvalid();
+        }
+        if (to == address(this)) {
+            revert MintToContractNotAllowed();
+        }
+        if (amount == 0) {
+            revert MintAmountInvalid();
+        }
+        if (totalSupply() >= MAX_SUPPLY) {
+            revert TokenMaxSupplyReached();
+        }
+        if (totalSupply() + amount > MAX_SUPPLY) {
+            revert MintExceedsMaxSupply();
+        }
 
         _mint(to, amount);
         mintCount++;
@@ -96,8 +117,12 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
      * @dev Reduces total supply
      */
     function burn(uint256 amount) external nonReentrant {
-        require(amount > 0, "Amount must be greater than 0");
-        require(balanceOf(msg.sender) >= amount, "Insufficient balance");
+        if (amount == 0) {
+            revert BurnAmountInvalid();
+        }
+        if (balanceOf(msg.sender) < amount) {
+            revert BurnInsufficientBalance();
+        }
 
         _burn(msg.sender, amount);
         emit TokensBurned(msg.sender, amount, totalSupply());

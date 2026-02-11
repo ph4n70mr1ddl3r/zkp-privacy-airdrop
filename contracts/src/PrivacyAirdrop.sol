@@ -31,6 +31,9 @@ interface IVerifier {
  * Inherits from BasePrivacyAirdrop to share common functionality with PrivacyAirdropPLONK
  */
 contract PrivacyAirdrop is BasePrivacyAirdrop {
+    error InvalidVerifierAddress();
+    error InvalidProof();
+
     uint256 private constant GROTH16_GAS_ESTIMATE = 700_000;
     IVerifier public immutable VERIFIER;
 
@@ -66,7 +69,9 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
         _maxWithdrawalPercent,
         _withdrawalCooldown
     ) {
-        require(_verifier != address(0), "Invalid verifier address");
+        if (_verifier == address(0)) {
+            revert InvalidVerifierAddress();
+        }
         VERIFIER = IVerifier(_verifier);
     }
 
@@ -87,7 +92,9 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
         publicSignals[1] = uint256(uint160(recipient));
         publicSignals[2] = uint256(nullifier);
 
-        require(VERIFIER.verifyProof(proof.a, proof.b, proof.c, publicSignals), "Invalid proof");
+        if (!VERIFIER.verifyProof(proof.a, proof.b, proof.c, publicSignals)) {
+            revert InvalidProof();
+        }
 
         nullifiers[nullifier] = true;
         _transferTokens(recipient, CLAIM_AMOUNT);

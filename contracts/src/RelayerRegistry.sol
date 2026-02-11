@@ -59,6 +59,15 @@ interface IRelayerRegistry {
  * @dev Allows relayers to withdraw donated funds and manages authorization
  */
 contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
+    error NotAuthorized();
+    error InvalidAddress();
+    error InvalidDefaultRelayer();
+    error RelayerNotAuthorized();
+    error DonationMustBePositive();
+    error InsufficientBalance();
+    error AmountMustBePositive();
+    error TransferFailed();
+
     address public defaultRelayer;
     mapping(address => bool) public authorizedRelayers;
     mapping(address => uint256) public relayerBalances;
@@ -73,7 +82,9 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
      * @notice Modifier to restrict access to authorized relayers
      */
     modifier onlyAuthorized() {
-        require(authorizedRelayers[msg.sender], "Not authorized");
+        if (!authorizedRelayers[msg.sender]) {
+            revert NotAuthorized();
+        }
         _;
     }
 
@@ -82,7 +93,9 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
      * @param addr Address to validate
      */
     modifier validAddress(address addr) {
-        require(addr != address(0), "Invalid address");
+        if (addr == address(0)) {
+            revert InvalidAddress();
+        }
         _;
     }
 
@@ -91,7 +104,9 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
      * @param _defaultRelayer Address of the default relayer (auto-authorized)
      */
     constructor(address _defaultRelayer) Ownable(msg.sender) {
-        require(_defaultRelayer != address(0), "Invalid default relayer: cannot be zero address");
+        if (_defaultRelayer == address(0)) {
+            revert InvalidDefaultRelayer();
+        }
         defaultRelayer = _defaultRelayer;
         authorizedRelayers[_defaultRelayer] = true;
         emit RelayerAuthorized(_defaultRelayer);
@@ -113,7 +128,9 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
      * @dev Only callable by owner, transfers remaining balance to owner
      */
     function deauthorizeRelayer(address relayer) external onlyOwner validAddress(relayer) {
-        require(authorizedRelayers[relayer], "Relayer not authorized");
+        if (!authorizedRelayers[relayer]) {
+            revert RelayerNotAuthorized();
+        }
         authorizedRelayers[relayer] = false;
 
         uint256 balance = relayerBalances[relayer];
@@ -127,13 +144,10 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
         emit RelayerDeauthorized(relayer);
     }
 
-    /**
-     * @notice Internal function to handle donation logic
-     * @param donor Address of the donor
-     * @param amount Amount of ETH donated
-     */
     function _handleDonation(address donor, uint256 amount) internal {
-        require(amount > 0, "Donation must be greater than 0");
+        if (amount == 0) {
+            revert DonationMustBePositive();
+        }
         relayerBalances[defaultRelayer] += amount;
         emit DonationReceived(donor, amount);
     }
@@ -153,12 +167,18 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
      * @dev Uses checks-effects-interactions pattern to prevent reentrancy attacks
      */
     function withdraw(uint256 amount) external onlyAuthorized nonReentrant {
-        require(relayerBalances[msg.sender] >= amount, "Insufficient balance");
-        require(amount > 0, "Amount must be greater than zero");
+        if (relayerBalances[msg.sender] < amount) {
+            revert InsufficientBalance();
+        }
+        if (amount == 0) {
+            revert AmountMustBePositive();
+        }
         relayerBalances[msg.sender] -= amount;
         emit FundsWithdrawn(msg.sender, amount);
         (bool success, ) = payable(msg.sender).call{value: amount}("");
-        require(success, "Transfer failed");
+        if (!success) {
+            revert TransferFailed();
+        }
     }
 
     /**

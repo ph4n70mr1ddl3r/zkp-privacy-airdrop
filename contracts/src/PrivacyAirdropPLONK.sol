@@ -14,6 +14,14 @@ import {BasePrivacyAirdrop} from "./BasePrivacyAirdrop.sol";
  * before deploying to production. See PLONK-README.md for verification key generation steps.
  */
 contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
+    error InvalidVerifierAddress();
+    error InvalidPLONKProofLength();
+    error InvalidPLONKProofZero();
+    error InvalidPLONKProofOverflow();
+    error InvalidPLONKProofAllZeros();
+    error InvalidPLONKProofUniform();
+    error PLONKProofVerificationFailed();
+
     IPLONKVerifier public immutable VERIFIER;
     uint256 private constant BN254_FIELD_PRIME =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -52,7 +60,9 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         _maxWithdrawalPercent,
         _withdrawalCooldown
     ) {
-        require(_verifier != address(0), "Invalid verifier address");
+        if (_verifier == address(0)) {
+            revert InvalidVerifierAddress();
+        }
         VERIFIER = IPLONKVerifier(_verifier);
     }
 
@@ -69,13 +79,9 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
-        // CHECKS - Validate all inputs before any state changes
         _validatePLONKProof(proof);
         _validateRecipientAddress(recipient);
 
-        // EFFECTS - Update state BEFORE verification (strict checks-effects-interactions)
-        // Setting nullifier first prevents reentrancy attacks even if verification
-        // is somehow bypassed or if malicious token with callbacks is used
         nullifiers[nullifier] = true;
 
         uint256[3] memory instances;
@@ -83,49 +89,58 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         instances[1] = uint256(uint160(recipient));
         instances[2] = uint256(nullifier);
 
-        require(
-            VERIFIER.verifyProof(proof.proof, instances),
-            "PLONK proof verification failed"
-        );
+        if (!VERIFIER.verifyProof(proof.proof, instances)) {
+            revert PLONKProofVerificationFailed();
+        }
 
-        // INTERACTIONS - External calls after all state changes
         _transferTokens(recipient, CLAIM_AMOUNT);
 
         emit Claimed(nullifier, recipient, block.timestamp);
     }
 
     function _validateRecipientAddress(address recipient) private pure {
-        require(recipient != address(0), "Invalid recipient: zero address not allowed");
+        if (recipient == address(0)) {
+            revert InvalidRecipient();
+        }
     }
 
     function _validatePLONKProof(PLONKProof calldata proof) private pure {
-        require(proof.proof.length == 8, "Invalid PLONK proof: expected 8 elements");
+        if (proof.proof.length != 8) {
+            revert InvalidPLONKProofLength();
+        }
 
         uint256[8] memory checkedProof;
+        uint256 allZeros;
+        uint256 firstValue = proof.proof[0];
+        bool allSame = true;
+
         for (uint256 i = 0; i < 8; i++) {
-            require(proof.proof[i] > 0, "Invalid PLONK proof: element at index cannot be zero");
-            require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element at index exceeds field modulus");
+            if (proof.proof[i] == 0) {
+                revert InvalidPLONKProofZero();
+            }
+            if (proof.proof[i] >= BN254_FIELD_PRIME) {
+                revert InvalidPLONKProofOverflow();
+            }
 
             checkedProof[i] = proof.proof[i];
-
-            require(checkedProof[i] == proof.proof[i], "Invalid PLONK proof: element overflow detected");
-        }
-
-        uint256 allZeros;
-        for (uint256 i = 0; i < 8; i++) {
             allZeros |= proof.proof[i];
-        }
-        require(allZeros > 0, "Invalid PLONK proof: all elements are zero");
 
-        uint256 firstValue = checkedProof[0];
-        bool allSame = true;
-        for (uint256 i = 1; i < 8; i++) {
-            if (checkedProof[i] != firstValue) {
+            if (checkedProof[i] != proof.proof[i]) {
+                revert InvalidPLONKProofOverflow();
+            }
+
+            if (i > 0 && checkedProof[i] != firstValue) {
                 allSame = false;
-                break;
             }
         }
-        require(!allSame, "Invalid PLONK proof: suspicious uniform pattern");
+
+        if (allZeros == 0) {
+            revert InvalidPLONKProofAllZeros();
+        }
+
+        if (allSame) {
+            revert InvalidPLONKProofUniform();
+        }
     }
 
 /**
