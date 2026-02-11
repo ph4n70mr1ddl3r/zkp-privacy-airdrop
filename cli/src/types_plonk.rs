@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+/// Minimum number of field elements in a PLONK proof
+/// PLONK proofs for this circuit contain 8 elements: A, B, C, Z, T1, T2, T3, `WXi`
+const MIN_PLONK_PROOF_SIZE: usize = 8;
+
 /// Groth16 proof format (deprecated, kept for backward compatibility)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Groth16Proof {
@@ -28,9 +32,10 @@ impl PlonkProof {
         if self.proof.is_empty() {
             return Err("PlonkProof is empty".to_string());
         }
-        if self.proof.len() < 8 {
+        if self.proof.len() < MIN_PLONK_PROOF_SIZE {
             return Err(format!(
-                "PlonkProof must have at least 8 elements, found {}",
+                "PlonkProof must have at least {} elements, found {}",
+                MIN_PLONK_PROOF_SIZE,
                 self.proof.len()
             ));
         }
@@ -60,7 +65,7 @@ impl PlonkProof {
             proof: vec![
                 "0x0000000000000000000000000000000000000000000000000000000000000001"
                     .to_string();
-                8
+                MIN_PLONK_PROOF_SIZE
             ],
         }
     }

@@ -1,5 +1,8 @@
 use crate::config::Config;
-use crate::types_plonk::{RateLimitType, SubmitClaimRequest, CheckStatusResponse, MerklePathResponse, StatsResponse, ResponseTime};
+use crate::types_plonk::{
+    CheckStatusResponse, MerklePathResponse, RateLimitType, ResponseTime, StatsResponse,
+    SubmitClaimRequest,
+};
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Address;
@@ -59,7 +62,7 @@ static NULLIFIER_CHECK_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
         -- If key doesn't exist, set it atomically
         if not existing then
             redis.call("SET", key, recipient)
-            redis.call("EXPIRE", key, 31536000) -- 1 year expiry
+            redis.call("EXPIRE", key, 31536000) -- 1 year expiry (365 days)
             return 1 -- Success
         else
             -- Validate recipient matches to prevent proof reuse across different addresses
@@ -80,9 +83,15 @@ const TRANSACTION_RETRY_DELAY_MS: u64 = 1000;
 const TOTAL_TRANSACTION_TIMEOUT_SECONDS: u64 = 60;
 const BALANCE_CACHE_TTL_SECONDS: u64 = 30;
 
+// Gas price constants (in wei)
+// 1 gwei = 1_000_000_000 wei
 const MIN_GAS_PRICE_WEI: u128 = 1_000_000_000;
 const MAX_BASE_GAS_PRICE_WEI: u128 = 5_000_000_000_000;
+// Maximum safe gas price after adjustment (500 gwei)
+// Note: This is different from config.rs MAX_SAFE_GAS_PRICE (200 gwei) which validates user config
 const MAX_SAFE_GAS_PRICE: u128 = 500_000_000_000;
+// Maximum gas randomization percentage (10%)
+// Note: This is different from config.rs MAX_GAS_RANDOMIZATION (0.20 / 20%) which validates user config
 const MAX_GAS_RANDOMIZATION: u64 = 10;
 
 #[derive(Clone, Copy)]
@@ -511,9 +520,7 @@ impl AppState {
                 .await
                 .map_err(|_| {
                     self.increment_failed_claims();
-                    format!(
-                        "Failed to get chain ID: timeout after {RPC_TIMEOUT_SECONDS} seconds"
-                    )
+                    format!("Failed to get chain ID: timeout after {RPC_TIMEOUT_SECONDS} seconds")
                 })?
                 .map_err(|e| {
                     self.increment_failed_claims();
@@ -554,9 +561,8 @@ impl AppState {
                     .iter()
                     .enumerate()
                     .map(|(i, s)| {
-                        ethers::types::U256::from_str_radix(s, 16).map_err(|e| {
-                            format!("Invalid proof element at index {i}: '{s}': {e}")
-                        })
+                        ethers::types::U256::from_str_radix(s, 16)
+                            .map_err(|e| format!("Invalid proof element at index {i}: '{s}': {e}"))
                     })
                     .collect::<Result<Vec<_>, _>>()
                     .inspect_err(|_| {
@@ -677,8 +683,7 @@ impl AppState {
                     let adjusted_price = base_gas_price_u128
                         .saturating_mul(u128::from(adjustment_multiplier))
                         .saturating_div(100)
-                        .min(MAX_SAFE_GAS_PRICE)
-                        .max(MIN_GAS_PRICE_WEI);
+                        .clamp(MIN_GAS_PRICE_WEI, MAX_SAFE_GAS_PRICE);
 
                     if adjusted_price == 0 {
                         self.increment_failed_claims();
@@ -813,8 +818,7 @@ impl AppState {
         let mut redis = self.redis.lock().await;
 
         let leaf_index: Option<u64> = redis.get(format!("{key}:index")).await.ok().flatten()?;
-        let merkle_path: Option<String> =
-            redis.get(format!("{key}:path")).await.ok().flatten()?;
+        let merkle_path: Option<String> = redis.get(format!("{key}:path")).await.ok().flatten()?;
         let path_indices: Option<String> =
             redis.get(format!("{key}:indices")).await.ok().flatten()?;
 

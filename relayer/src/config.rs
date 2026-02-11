@@ -234,7 +234,9 @@ pub struct RelayerConfig {
     pub max_gas_price: u128,
 }
 
-const MAX_GAS_RANDOMIZATION: f64 = 0.20; // 20%
+// Gas price randomization bounds for configuration validation
+// These are different from state.rs constants which are used in runtime calculations
+const MAX_GAS_RANDOMIZATION: f64 = 0.20;
 const MIN_GAS_RANDOMIZATION: f64 = 0.0;
 
 impl ContractsConfig {
@@ -558,7 +560,9 @@ impl Config {
                         )
                     })?;
 
-                    const MAX_SAFE_GAS_PRICE: u128 = 200_000_000_000; // 200 gwei
+                    // Maximum safe gas price for configuration validation (200 gwei)
+                    // Note: This is different from state.rs MAX_SAFE_GAS_PRICE (500 gwei) which is used in runtime calculations
+                    const MAX_SAFE_GAS_PRICE: u128 = 200_000_000_000;
                     if max_gas_price > MAX_SAFE_GAS_PRICE {
                         return Err(anyhow::anyhow!(
                             "RELAYER_MAX_GAS_PRICE '{}' ({} gwei) exceeds safe maximum of {} gwei. \
