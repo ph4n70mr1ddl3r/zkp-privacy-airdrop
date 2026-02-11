@@ -5,6 +5,7 @@ use sha3::{Digest, Keccak256};
 #[derive(Debug, Clone)]
 pub struct MerkleTree {
     pub root: [u8; 32],
+    #[allow(dead_code)]
     pub height: u8,
 }
 

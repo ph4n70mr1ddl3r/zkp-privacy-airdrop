@@ -162,7 +162,7 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
         let mut new_state = [ark_bn254::Fr::zero(); 3];
         for (i, new_state_i) in new_state.iter_mut().enumerate() {
             for (j, mds_row) in mds_matrix[i].iter().enumerate() {
-                *new_state_i += *mds_row * &state[j];
+                *new_state_i += *mds_row * state[j];
             }
             *new_state_i += round_keys[i];
         }
@@ -225,8 +225,7 @@ fn poseidon_constants_seed() -> Result<[u8; 32]> {
     let salt_bytes = bigint.to_bytes_be();
     hasher.update(&salt_bytes);
     let hash = hasher.finalize();
-    hash.try_into()
-        .map_err(|_| anyhow::anyhow!("Invalid hash length: expected 32 bytes"))
+    Ok(hash.into())
 }
 
 /// Derives an Ethereum address from a private key.
@@ -448,20 +447,11 @@ fn validate_hex_bytes(input: &str, field_name: &str) -> Result<()> {
     Ok(())
 }
 
-fn keccak_hash(input: &[u8]) -> String {
-    let mut hasher = Keccak256::new();
-    hasher.update(input);
-    let result = hasher.finalize();
-    hex::encode(result)
-}
-
-pub fn keccak_hash_field(input: &[u8; 32]) -> Result<String> {
-    let hash = keccak_hash(input);
-    let hash_bytes =
-        hex::decode(&hash).map_err(|e| anyhow::anyhow!("Failed to decode hash: {}", e))?;
-    let mut hash_array = [0u8; 32];
-    hash_array.copy_from_slice(&hash_bytes[..32]);
-    Ok(field_element_to_decimal(&hash_array))
+pub fn address_to_field(address: &Address) -> Result<String> {
+    let address_bytes = address.as_bytes();
+    let mut padded = [0u8; 32];
+    padded[12..].copy_from_slice(address_bytes);
+    Ok(field_element_to_decimal(&padded))
 }
 
 fn field_element_to_decimal(bytes: &[u8; 32]) -> String {
@@ -471,11 +461,4 @@ fn field_element_to_decimal(bytes: &[u8; 32]) -> String {
 
     let reduced = big_int % get_bn254_field_modulus();
     reduced.to_str_radix(10)
-}
-
-pub fn address_to_field(address: &Address) -> Result<String> {
-    let address_bytes = address.as_bytes();
-    let mut padded = [0u8; 32];
-    padded[12..].copy_from_slice(address_bytes);
-    Ok(field_element_to_decimal(&padded))
 }

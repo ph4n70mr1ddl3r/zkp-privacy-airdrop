@@ -286,7 +286,7 @@ mod tests {
         let result = validate_private_key(&pseudo_random);
         // May pass or fail depending on entropy score
         // The important thing is it doesn't panic and returns a proper Result
-        assert_eq!(result.is_err() || result.is_ok(), true);
+        assert!(result.is_err() || result.is_ok());
     }
 
     #[test]

@@ -7,6 +7,7 @@ use tracing::info;
 use crate::config::Config;
 use crate::crypto::{derive_address, generate_nullifier, read_private_key};
 
+#[allow(clippy::too_many_arguments)]
 pub async fn execute(
     private_key_opt: Option<String>,
     private_key_file: Option<PathBuf>,

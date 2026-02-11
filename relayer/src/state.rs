@@ -478,13 +478,10 @@ impl AppState {
                     claim.recipient
                 );
             }
-            return Err(if result == -1 {
+            return Err(
                 "This nullifier has already been used. Each qualified account can only claim once."
-                    .to_string()
-            } else {
-                "This nullifier has already been used. Each qualified account can only claim once."
-                    .to_string()
-            });
+                    .to_string(),
+            );
         }
 
         drop(redis);

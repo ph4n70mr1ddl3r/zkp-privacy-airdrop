@@ -23,6 +23,7 @@ impl PlonkProof {
     ///
     /// # Errors
     /// Returns an error if the proof is empty or invalid
+    #[allow(dead_code)]
     pub fn to_flat_array(&self) -> Result<&[String], String> {
         if self.proof.is_empty() {
             return Err("PlonkProof is empty".to_string());
@@ -49,6 +50,7 @@ impl PlonkProof {
 
     #[cfg(test)]
     /// Create a minimal Plonk proof for testing
+    #[allow(dead_code)]
     pub fn minimal() -> Self {
         Self {
             proof: vec![
@@ -122,6 +124,7 @@ pub struct SubmitClaimResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct CheckStatusResponse {
     pub nullifier: String,
     pub claimed: bool,
@@ -132,6 +135,7 @@ pub struct CheckStatusResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct HealthResponse {
     pub status: String,
     pub timestamp: String,
@@ -140,6 +144,7 @@ pub struct HealthResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Services {
     pub database: String,
     pub redis: String,
@@ -148,6 +153,7 @@ pub struct Services {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct RelayerWallet {
     pub address: String,
     pub balance: String,
@@ -155,6 +161,7 @@ pub struct RelayerWallet {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct ContractInfoResponse {
     pub network: String,
     pub chain_id: u64,
@@ -164,6 +171,7 @@ pub struct ContractInfoResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Contracts {
     pub airdrop: ContractInfo,
     pub token: TokenInfo,
@@ -171,6 +179,7 @@ pub struct Contracts {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct ContractInfo {
     pub address: String,
     pub deployed_at: Option<String>,
@@ -178,6 +187,7 @@ pub struct ContractInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct TokenInfo {
     pub address: String,
     pub symbol: String,
@@ -185,12 +195,14 @@ pub struct TokenInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct DonateRequest {
     pub amount: String,
     pub donor: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct DonateResponse {
     pub donation_address: String,
     pub amount_received: String,
@@ -199,6 +211,7 @@ pub struct DonateResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct StatsResponse {
     pub total_claims: u64,
     pub successful_claims: u64,
@@ -213,6 +226,7 @@ pub struct StatsResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct ResponseTime {
     pub p50: u64,
     pub p95: u64,

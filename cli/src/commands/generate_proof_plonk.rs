@@ -6,6 +6,7 @@ use tracing::info;
 use crate::config::Config;
 use crate::plonk_prover::generate_plonk_proof;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn execute(
     private_key_opt: Option<String>,
     private_key_file: Option<PathBuf>,

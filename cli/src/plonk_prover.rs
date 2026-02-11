@@ -22,6 +22,7 @@ pub struct PublicInputs {
     /// Recipient address (3 field elements: padded address)
     pub recipient: [F; 3],
     /// Nullifier (1 field element)
+    #[allow(dead_code)]
     pub nullifier: F,
 }
 
@@ -29,10 +30,13 @@ pub struct PublicInputs {
 #[derive(Debug, Clone)]
 pub struct PrivateInputs {
     /// Ethereum private key (32 bytes)
+    #[allow(dead_code)]
     pub private_key: [u8; 32],
     /// Merkle path siblings (26 field elements)
+    #[allow(dead_code)]
     pub merkle_path: Vec<F>,
     /// Merkle path indices (26 bits, packed into 1 field element)
+    #[allow(dead_code)]
     pub merkle_path_indices: F,
 }
 
@@ -230,6 +234,7 @@ fn generate_plonk_proof_internal(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn test_plonk_proof_structure() {
@@ -238,13 +243,13 @@ mod tests {
         assert_eq!(proof.a.len(), 2);
         assert_eq!(proof.b.len(), 2);
         assert_eq!(proof.c.len(), 2);
-        assert_eq!(proof.to_flat_array().len(), 8);
+        assert_eq!(proof.to_flat_array().unwrap().len(), 8);
     }
 
     #[test]
     fn test_field_element_conversion() {
         let address = Address::from([0x12u8; 20]);
-        let field = address_to_field(&address);
+        let field = address_to_field(&address).unwrap();
 
         let parsed_field = F::from_str(&field).unwrap();
         assert!(!parsed_field.is_zero());
