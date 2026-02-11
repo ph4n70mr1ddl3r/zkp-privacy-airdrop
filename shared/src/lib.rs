@@ -2,8 +2,8 @@ use num_bigint::BigUint;
 use num_traits::{Num, Zero};
 
 /// Minimum entropy score threshold for private key validation
-/// A score of 750 indicates sufficient randomness for cryptographic security
-pub const MIN_ENTROPY_SCORE: u32 = 750;
+/// A score of 790 indicates sufficient randomness for cryptographic security
+pub const MIN_ENTROPY_SCORE: u32 = 790;
 
 /// BN254 scalar field modulus
 pub const BN254_FIELD_MODULUS: &str =

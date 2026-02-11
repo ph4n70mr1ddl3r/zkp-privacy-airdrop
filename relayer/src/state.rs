@@ -81,8 +81,9 @@ const TOTAL_TRANSACTION_TIMEOUT_SECONDS: u64 = 60;
 const BALANCE_CACHE_TTL_SECONDS: u64 = 30;
 
 const MIN_GAS_PRICE_WEI: u128 = 1_000_000_000;
-const MAX_BASE_GAS_PRICE_WEI: u128 = 10_000_000_000_000;
-const MAX_SAFE_GAS_PRICE: u128 = 1_000_000_000_000;
+const MAX_BASE_GAS_PRICE_WEI: u128 = 5_000_000_000_000;
+const MAX_SAFE_GAS_PRICE: u128 = 500_000_000_000;
+const MAX_GAS_RANDOMIZATION: u64 = 10;
 
 #[derive(Clone, Copy)]
 struct BalanceCache {
@@ -146,8 +147,11 @@ impl AppState {
     /// # Returns
     /// The relayer's Ethereum address as a hex string
     pub fn relayer_address(&self) -> Result<String, String> {
-        let wallet = LocalWallet::from_str(self.config.relayer.private_key.as_str())
-            .map_err(|e| format!("Failed to parse private key: {}", e))?;
+        let wallet =
+            LocalWallet::from_str(self.config.relayer.private_key.as_str()).map_err(|e| {
+                tracing::error!("Failed to parse wallet private key: {}", e);
+                "Failed to parse private key".to_string()
+            })?;
         Ok(format!("{:#x}", wallet.address()))
     }
 
@@ -665,8 +669,6 @@ impl AppState {
                         return Err("Invalid gas price: base gas price is zero".to_string());
                     }
 
-                    const MAX_GAS_RANDOMIZATION_PERCENT: u64 = 20;
-
                     if base_gas_price_u128 > MAX_BASE_GAS_PRICE_WEI {
                         self.increment_failed_claims();
                         return Err(format!(
@@ -678,14 +680,15 @@ impl AppState {
 
                     let gas_randomization_percent = ((self.config.relayer.gas_price_randomization
                         * 100.0) as u64)
-                        .min(MAX_GAS_RANDOMIZATION_PERCENT);
+                        .min(MAX_GAS_RANDOMIZATION);
                     let random_factor = OsRng.gen_range(0..=gas_randomization_percent);
                     let adjustment_multiplier = 100u64 + random_factor;
 
                     let adjusted_price = base_gas_price_u128
                         .saturating_mul(adjustment_multiplier as u128)
                         .saturating_div(100)
-                        .min(MAX_SAFE_GAS_PRICE);
+                        .min(MAX_SAFE_GAS_PRICE)
+                        .max(MIN_GAS_PRICE_WEI);
 
                     if adjusted_price == 0 {
                         self.increment_failed_claims();
@@ -694,16 +697,7 @@ impl AppState {
 
                     let max_gas_price =
                         ethers::types::U256::from(self.config.relayer.max_gas_price);
-                    let mut gas_price =
-                        ethers::types::U256::from(adjusted_price).max(max_gas_price);
-
-                    if gas_price > max_gas_price {
-                        gas_price = max_gas_price;
-                    }
-
-                    if gas_price.as_u128() < MIN_GAS_PRICE_WEI {
-                        gas_price = ethers::types::U256::from(MIN_GAS_PRICE_WEI);
-                    }
+                    let gas_price = ethers::types::U256::from(adjusted_price).max(max_gas_price);
 
                     let builder = call
                         .from(wallet_with_chain.address())

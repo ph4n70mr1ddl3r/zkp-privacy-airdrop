@@ -73,7 +73,9 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         _validatePLONKProof(proof);
         _validateRecipientAddress(recipient);
 
-        // EFFECTS - Update state BEFORE any external interactions (checks-effects-interactions)
+        // EFFECTS - Update state BEFORE verification (strict checks-effects-interactions)
+        // Setting nullifier first prevents reentrancy attacks even if verification
+        // is somehow bypassed or if malicious token with callbacks is used
         nullifiers[nullifier] = true;
 
         uint256[3] memory instances;
@@ -99,9 +101,14 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     function _validatePLONKProof(PLONKProof calldata proof) private pure {
         require(proof.proof.length == 8, "Invalid PLONK proof: expected 8 elements");
 
+        uint256[8] memory checkedProof;
         for (uint256 i = 0; i < 8; i++) {
             require(proof.proof[i] > 0, "Invalid PLONK proof: element at index cannot be zero");
             require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element at index exceeds field modulus");
+
+            checkedProof[i] = proof.proof[i];
+
+            require(checkedProof[i] == proof.proof[i], "Invalid PLONK proof: element overflow detected");
         }
 
         uint256 allZeros;
@@ -109,6 +116,16 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             allZeros |= proof.proof[i];
         }
         require(allZeros > 0, "Invalid PLONK proof: all elements are zero");
+
+        uint256 firstValue = checkedProof[0];
+        bool allSame = true;
+        for (uint256 i = 1; i < 8; i++) {
+            if (checkedProof[i] != firstValue) {
+                allSame = false;
+                break;
+            }
+        }
+        require(!allSame, "Invalid PLONK proof: suspicious uniform pattern");
     }
 
 /**
