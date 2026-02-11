@@ -106,7 +106,7 @@ contract PlonkVerifier {
     uint16 private constant LAST_MEM = 896;
 
     /* eslint-disable */ 
-    function verifyProof(uint256[24] calldata _proof, uint256[3] calldata _pubSignals) public view returns (bool) {
+    function verifyProof(uint256[24] calldata, uint256[3] calldata _pubSignals) public view returns (bool) {
         assembly {
             /////////
             // Computes the inverse using the extended euclidean algorithm

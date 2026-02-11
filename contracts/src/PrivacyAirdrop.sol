@@ -17,10 +17,10 @@ interface IVerifier {
       * @return True if proof is valid
       */
     function verifyProof(
-        uint[2] calldata _pA,
-        uint[2][2] calldata _pB,
-        uint[2] calldata _pC,
-        uint[3] calldata _pubSignals
+        uint256[2] calldata _pA,
+        uint256[2][2] calldata _pB,
+        uint256[2] calldata _pC,
+        uint256[3] calldata _pubSignals
     ) external view returns (bool);
 }
 
@@ -35,9 +35,9 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
     IVerifier public immutable VERIFIER;
 
     struct Proof {
-        uint[2] a;
-        uint[2][2] b;
-        uint[2] c;
+        uint256[2] a;
+        uint256[2][2] b;
+        uint256[2] c;
     }
 
     /**
