@@ -692,7 +692,7 @@ impl AppState {
 
                     let max_gas_price =
                         ethers::types::U256::from(self.config.relayer.max_gas_price);
-                    let gas_price = ethers::types::U256::from(adjusted_price).max(max_gas_price);
+                    let gas_price = ethers::types::U256::from(adjusted_price).min(max_gas_price);
 
                     let builder = call
                         .from(wallet_with_chain.address())

@@ -75,9 +75,7 @@ async fn check_status_via_relayer(
     } else {
         println!("  {} Not claimed", "Status:".yellow());
         println!("\n{}", "You can submit a claim using:".yellow());
-        println!(
-            "  zkp-airdrop submit --proof <PROOF> --relayer-url {relayer_url}"
-        );
+        println!("  zkp-airdrop submit --proof <PROOF> --relayer-url {relayer_url}");
     }
 
     Ok(())

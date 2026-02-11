@@ -56,8 +56,10 @@ pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
          \n\
          Check Redis status with: redis-cli -u {} ping",
         MAX_RETRIES,
-        last_error
-            .as_ref().map_or_else(|| "Unknown error".to_string(), std::string::ToString::to_string),
+        last_error.as_ref().map_or_else(
+            || "Unknown error".to_string(),
+            std::string::ToString::to_string
+        ),
         redis_url
     ))
 }

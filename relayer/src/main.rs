@@ -92,9 +92,13 @@ async fn main() -> anyhow::Result<()> {
                             .cors
                             .allowed_headers
                             .iter()
-                            .filter_map(|h| if let Ok(header_name) = HeaderName::from_bytes(h.as_bytes()) { Some(header_name) } else {
-                                tracing::warn!("Invalid header name: {}", h);
-                                None
+                            .filter_map(|h| {
+                                if let Ok(header_name) = HeaderName::from_bytes(h.as_bytes()) {
+                                    Some(header_name)
+                                } else {
+                                    tracing::warn!("Invalid header name: {}", h);
+                                    None
+                                }
                             })
                             .collect::<Vec<_>>(),
                     )

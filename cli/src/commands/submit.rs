@@ -115,7 +115,7 @@ pub async fn execute(
     };
 
     println!(
-        "\n{} {} proof with {}-element structure",
+        "{} {} proof with {}-element structure",
         "Proof Type:".cyan(),
         proof_type,
         match proof_type.as_str() {

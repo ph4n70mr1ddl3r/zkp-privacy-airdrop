@@ -434,8 +434,8 @@ fn validate_hex_bytes(input: &str, field_name: &str) -> Result<()> {
         ));
     }
 
-    let decoded = hex::decode(&input[2..])
-        .context(format!("Invalid {field_name}: invalid hex encoding"))?;
+    let decoded =
+        hex::decode(&input[2..]).context(format!("Invalid {field_name}: invalid hex encoding"))?;
     if decoded.len() != 32 {
         return Err(anyhow::anyhow!(
             "Invalid {}: expected 32 bytes, got {}",
