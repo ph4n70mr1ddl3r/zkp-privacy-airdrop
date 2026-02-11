@@ -82,10 +82,9 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         );
 
         nullifiers[nullifier] = true;
+        _transferTokens(recipient, CLAIM_AMOUNT);
 
         emit Claimed(nullifier, recipient, block.timestamp);
-
-        _transferTokens(recipient, CLAIM_AMOUNT);
     }
 
     function _validatePLONKProof(PLONKProof calldata proof) private view {
@@ -97,10 +96,10 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     }
 
 /**
-  * @notice Estimate gas required for a PLONK claim transaction
-  * @dev PLONK verification requires more gas than Groth16
-  * @return Estimated gas in wei (conservative 1.5M with buffer)
-  */
+ * @notice Estimate gas required for a PLONK claim transaction
+ * @dev PLONK verification requires more gas than Groth16
+ * @return Estimated gas in wei (conservative 1.5M with buffer)
+ */
 function estimateClaimGas() external pure returns (uint256) {
     return 1_500_000;
 }

@@ -90,10 +90,9 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
         require(VERIFIER.verifyProof(proof.a, proof.b, proof.c, publicSignals), "Invalid proof");
 
         nullifiers[nullifier] = true;
+        _transferTokens(recipient, CLAIM_AMOUNT);
 
         emit Claimed(nullifier, recipient, block.timestamp);
-
-        _transferTokens(recipient, CLAIM_AMOUNT);
     }
 
     /**

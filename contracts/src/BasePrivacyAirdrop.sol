@@ -115,7 +115,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
       * @param amount Amount of tokens to transfer
       * @dev Uses SafeERC20 to prevent token transfer failures
       */
-    function _transferTokens(address recipient, uint256 amount) internal nonReentrant {
+    function _transferTokens(address recipient, uint256 amount) internal {
         TOKEN.safeTransfer(recipient, amount);
         totalClaimed += amount;
         emit TokensTransferred(recipient, amount, block.timestamp);
@@ -148,7 +148,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
             totalWithdrawn = 0;
         }
 
-        uint256 maxWithdrawalThisPeriod = (unclaimedAmount / 100) * MAX_WITHDRAWAL_PERCENT;
+        uint256 maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
         require(amount + totalWithdrawn <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
 
         totalWithdrawn += amount;

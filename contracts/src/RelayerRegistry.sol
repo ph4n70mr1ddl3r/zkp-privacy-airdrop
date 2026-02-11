@@ -67,6 +67,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     event RelayerDeauthorized(address indexed relayer);
     event DonationReceived(address indexed donor, uint256 amount);
     event FundsWithdrawn(address indexed relayer, uint256 amount);
+    event BalanceTransferredToOwner(address indexed relayer, address indexed owner, uint256 amount);
 
     /**
      * @notice Modifier to restrict access to authorized relayers
@@ -120,6 +121,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
             relayerBalances[relayer] = 0;
             relayerBalances[owner()] += balance;
             emit FundsWithdrawn(relayer, balance);
+            emit BalanceTransferredToOwner(relayer, owner(), balance);
         }
 
         emit RelayerDeauthorized(relayer);
