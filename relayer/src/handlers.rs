@@ -109,6 +109,16 @@ fn validate_claim_input(
     Ok(())
 }
 
+/// Sanitize error messages to prevent leaking sensitive information.
+///
+/// Filters out database connection strings, passwords, private keys, and other sensitive data.
+/// Allows safe error messages that guide users without exposing internal details.
+///
+/// # Arguments
+/// * `error` - The raw error message to sanitize
+///
+/// # Returns
+/// A sanitized error message safe for client responses
 fn sanitize_error_message(error: &str) -> String {
     let safe_messages = [
         "nullifier already used",
@@ -167,12 +177,6 @@ fn sanitize_error_message(error: &str) -> String {
     error.to_string()
 }
 
-fn is_valid_hex_string(input: &str, expected_len: usize) -> bool {
-    input.len() == expected_len
-        && (input.starts_with("0x") || input.starts_with("0X"))
-        && hex::decode(&input[2..]).is_ok()
-}
-
 pub fn is_valid_address(address: &str) -> bool {
     Address::from_str(address).is_ok()
 }
@@ -186,24 +190,36 @@ pub fn is_valid_merkle_root(merkle_root: &str) -> bool {
 }
 
 fn is_valid_hex_bytes(input: &str, expected_len: usize, reject_zero: bool) -> bool {
-    if !is_valid_hex_string(input, expected_len) {
+    if input.len() != expected_len {
+        return false;
+    }
+
+    if !input.starts_with("0x") && !input.starts_with("0X") {
         return false;
     }
 
     let hex = &input[2..];
-    if let Ok(bytes) = hex::decode(hex) {
-        if bytes.len() == 32 {
-            if !reject_zero {
-                return true;
-            }
-            let zero_value = [0u8; 32];
-            return bytes != zero_value;
-        }
+    let bytes = match hex::decode(hex) {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+
+    if bytes.len() != 32 {
+        return false;
     }
 
-    false
+    if !reject_zero {
+        return true;
+    }
+
+    let zero_value = [0u8; 32];
+    bytes != zero_value
 }
 
+/// Health check endpoint to monitor relayer service status.
+///
+/// Returns overall health status and individual component status.
+/// Rate limited to prevent abuse of health checks.
 pub async fn health(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
     let client_ip = req
         .connection_info()
@@ -283,6 +299,18 @@ pub async fn health(req: HttpRequest, state: web::Data<AppState>) -> impl Respon
     })
 }
 
+/// Submit a zero-knowledge proof claim to the airdrop.
+///
+/// Validates the claim, checks for double-spending via nullifier,
+/// and submits the transaction to the blockchain.
+///
+/// # Arguments
+/// * `_req` - HTTP request (unused but kept for middleware compatibility)
+/// * `state` - Application state containing blockchain and database connections
+/// * `claim` - Claim data including proof, recipient, nullifier, and merkle root
+///
+/// # Returns
+/// JSON response with transaction hash if successful, error details otherwise
 pub async fn submit_claim(
     _req: HttpRequest,
     state: web::Data<AppState>,

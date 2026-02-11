@@ -94,7 +94,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
     function _validateRecipientAddress(address recipient) private pure {
         require(recipient != address(0), "Invalid recipient: zero address not allowed");
-        require(recipient == address(uint160(recipient)), "Invalid recipient address: cannot be cast safely");
     }
 
     function _validatePLONKProof(PLONKProof calldata proof) private pure {

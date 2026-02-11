@@ -20,6 +20,7 @@ mod privacy_airdrop_plonk {
 }
 
 const RPC_TIMEOUT_SECONDS: u64 = 10;
+const RPC_HEALTH_CHECK_TIMEOUT_SECONDS: u64 = 5;
 
 /// Pre-compiled Lua script for rate limiting
 static RATE_LIMIT_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
@@ -72,13 +73,14 @@ static NULLIFIER_CHECK_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
     "#,
     )
 });
-
-const RPC_HEALTH_CHECK_TIMEOUT_SECONDS: u64 = 5;
 const RATE_LIMIT_WINDOW_SECONDS: u64 = 120;
 const MAX_TRANSACTION_RETRIES: u32 = 3;
 const TRANSACTION_RETRY_DELAY_MS: u64 = 1000;
 const TOTAL_TRANSACTION_TIMEOUT_SECONDS: u64 = 60;
 const BALANCE_CACHE_TTL_SECONDS: u64 = 30;
+
+const MIN_GAS_PRICE_WEI: u128 = 1_000_000_000;
+const MAX_BASE_GAS_PRICE_WEI: u128 = 10_000_000_000_000;
 const MAX_SAFE_GAS_PRICE: u128 = 1_000_000_000_000;
 
 #[derive(Clone, Copy)]
@@ -115,6 +117,12 @@ impl Default for RelayerStats {
 }
 
 impl AppState {
+    /// Create a new AppState instance with the given configuration and connections.
+    ///
+    /// # Arguments
+    /// * `config` - Application configuration
+    /// * `db` - PostgreSQL database connection pool
+    /// * `redis_conn` - Redis connection manager
     pub async fn new(
         config: Config,
         db: PgPool,
@@ -132,12 +140,20 @@ impl AppState {
         })
     }
 
+    /// Get the relayer's Ethereum address from its private key.
+    ///
+    /// # Returns
+    /// The relayer's Ethereum address as a hex string
     pub fn relayer_address(&self) -> Result<String, String> {
         let wallet = LocalWallet::from_str(self.config.relayer.private_key.as_str())
             .map_err(|e| format!("Failed to parse private key: {}", e))?;
         Ok(format!("{:#x}", wallet.address()))
     }
 
+    /// Get the relayer's current ETH balance with caching.
+    ///
+    /// # Returns
+    /// The relayer's balance in wei
     pub async fn get_relayer_balance(&self) -> u128 {
         {
             let cache_read = self.balance_cache.read();
@@ -211,11 +227,19 @@ impl AppState {
         balance
     }
 
+    /// Check if the relayer has sufficient balance to process claims.
+    ///
+    /// # Returns
+    /// True if balance is above the minimum critical threshold
     pub async fn has_sufficient_balance(&self) -> bool {
         let balance = self.get_relayer_balance().await;
         balance > self.config.relayer.min_balance_critical
     }
 
+    /// Check overall health status of the relayer service.
+    ///
+    /// # Returns
+    /// True if all critical systems are healthy (database, redis, balance, merkle tree)
     pub async fn is_healthy(&self) -> bool {
         let db_healthy = self.check_db_connection().await;
         let redis_healthy = self.check_redis_connection().await;
@@ -623,15 +647,14 @@ impl AppState {
                         return Err("Invalid gas price: base gas price is zero".to_string());
                     }
 
-                    const MAX_BASE_GAS_PRICE: u128 = 10_000_000_000_000;
                     const MAX_GAS_RANDOMIZATION_PERCENT: u64 = 20;
 
-                    if base_gas_price_u128 > MAX_BASE_GAS_PRICE {
+                    if base_gas_price_u128 > MAX_BASE_GAS_PRICE_WEI {
                         self.increment_failed_claims();
                         return Err(format!(
                             "Gas price {} gwei exceeds safe maximum {} gwei",
                             base_gas_price_u128 / 1_000_000_000,
-                            MAX_BASE_GAS_PRICE / 1_000_000_000
+                            MAX_BASE_GAS_PRICE_WEI / 1_000_000_000
                         ));
                     }
 
@@ -641,8 +664,9 @@ impl AppState {
                     let random_factor = OsRng.gen_range(0..=gas_randomization_percent);
                     let adjustment_multiplier = 100u64 + random_factor;
 
-                    let adjusted_price = (base_gas_price_u128 * adjustment_multiplier as u128
-                        / 100)
+                    let adjusted_price = base_gas_price_u128
+                        .saturating_mul(adjustment_multiplier as u128)
+                        .saturating_div(100)
                         .min(MAX_SAFE_GAS_PRICE);
 
                     if adjusted_price == 0 {
@@ -659,8 +683,8 @@ impl AppState {
                         gas_price = max_gas_price;
                     }
 
-                    if gas_price.as_u128() < 1_000_000_000 {
-                        gas_price = ethers::types::U256::from(1_000_000_000u128);
+                    if gas_price.as_u128() < MIN_GAS_PRICE_WEI {
+                        gas_price = ethers::types::U256::from(MIN_GAS_PRICE_WEI);
                     }
 
                     let builder = call
