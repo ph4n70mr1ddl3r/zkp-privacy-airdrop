@@ -55,6 +55,13 @@ async function main() {
 
   console.log("\n5. Deploying PrivacyAirdropPLONK...");
   const PrivacyAirdropPLONK = await ethers.getContractFactory("PrivacyAirdropPLONK");
+
+  const feeData = await deployer.provider.getFeeData();
+  const maxGasPrice = ethers.parseUnits("100", "gwei");
+  const gasPrice = feeData.gasPrice && feeData.gasPrice < maxGasPrice
+    ? feeData.gasPrice
+    : maxGasPrice;
+
   const airdrop = await PrivacyAirdropPLONK.deploy(
     tokenAddress,
     MERKLE_ROOT,

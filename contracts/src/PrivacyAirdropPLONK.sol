@@ -73,6 +73,9 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         _validatePLONKProof(proof);
         _validateRecipientAddress(recipient);
 
+        // EFFECTS - Update state BEFORE any external interactions (checks-effects-interactions)
+        nullifiers[nullifier] = true;
+
         uint256[3] memory instances;
         instances[0] = uint256(MERKLE_ROOT);
         instances[1] = uint256(uint160(recipient));
@@ -82,9 +85,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             VERIFIER.verifyProof(proof.proof, instances),
             "PLONK proof verification failed"
         );
-
-        // EFFECTS - Update state before any external interactions
-        nullifiers[nullifier] = true;
 
         // INTERACTIONS - External calls after all state changes
         _transferTokens(recipient, CLAIM_AMOUNT);

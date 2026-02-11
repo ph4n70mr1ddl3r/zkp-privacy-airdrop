@@ -26,6 +26,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     uint256 public lastWithdrawalTime;
     uint256 public immutable MAX_WITHDRAWAL_PERCENT;
     uint256 public immutable WITHDRAWAL_COOLDOWN;
+    uint256 public constant EMERGENCY_WITHDRAWAL_DELAY = 30 days;
 
     event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
     event TokensTransferred(address indexed recipient, uint256 amount, uint256 timestamp);
@@ -123,7 +124,11 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
       * @dev Uses SafeERC20 to prevent token transfer failures
       */
     function _transferTokens(address recipient, uint256 amount) internal {
+        uint256 balanceBefore = TOKEN.balanceOf(recipient);
         TOKEN.safeTransfer(recipient, amount);
+        uint256 balanceAfter = TOKEN.balanceOf(recipient);
+
+        require(balanceAfter >= balanceBefore, "Transfer amount mismatch or fee-on-transfer token");
         totalClaimed += amount;
         emit TokensTransferred(recipient, amount, block.timestamp);
     }
@@ -139,7 +144,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @dev Uses nonReentrant modifier to prevent reentrancy attacks
      */
     function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
-        require(block.timestamp > CLAIM_DEADLINE, "Claim period not ended");
+        require(block.timestamp > CLAIM_DEADLINE + EMERGENCY_WITHDRAWAL_DELAY, "Emergency withdrawal not available yet");
         require(recipient != address(0), "Invalid recipient");
         require(amount > 0, "Amount must be greater than zero");
 

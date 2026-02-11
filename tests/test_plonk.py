@@ -2,6 +2,7 @@
 
 import pytest
 import os
+import secrets
 import requests
 from web3 import Web3
 from typing import Dict, Any
@@ -19,12 +20,14 @@ def valid_plonk_proof() -> Dict[str, Any]:
     """A valid PLONK proof structure (minimal for testing)"""
     return {
         "proof": {
-            "proof": ["0x" + "1" * 64] * 8,  # 8 field elements for PLONK
+            "proof": [
+                "0x" + secrets.token_hex(32) for _ in range(8)
+            ],  # 8 field elements for PLONK
         },
         "public_signals": ["0", "0", "0"],
-        "nullifier": "0x" + "1" * 64,
-        "recipient": "0x1234567890123456789012345678901234567890",
-        "merkle_root": "0x" + "0" * 64,
+        "nullifier": "0x" + secrets.token_hex(32),
+        "recipient": "0x" + secrets.token_hex(20),
+        "merkle_root": "0x" + secrets.token_hex(32),
         "generated_at": "2026-02-08T00:00:00Z",
     }
 
@@ -34,12 +37,14 @@ def invalid_plonk_proof_too_few_elements() -> Dict[str, Any]:
     """PLONK proof with insufficient elements"""
     return {
         "proof": {
-            "proof": ["0"] * 7,  # Only 7 elements (should be 8+)
+            "proof": [
+                "0x" + secrets.token_hex(32) for _ in range(7)
+            ],  # Only 7 elements (should be 8+)
         },
         "public_signals": ["0", "0", "0"],
-        "nullifier": "0x" + "2" * 64,
-        "recipient": "0x1234567890123456789012345678901234567890",
-        "merkle_root": "0x" + "0" * 64,
+        "nullifier": "0x" + secrets.token_hex(32),
+        "recipient": "0x" + secrets.token_hex(20),
+        "merkle_root": "0x" + secrets.token_hex(32),
         "generated_at": "2026-02-08T00:00:00Z",
     }
 

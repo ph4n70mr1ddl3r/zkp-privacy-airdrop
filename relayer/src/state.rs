@@ -21,6 +21,7 @@ mod privacy_airdrop_plonk {
 
 const RPC_TIMEOUT_SECONDS: u64 = 10;
 const RPC_HEALTH_CHECK_TIMEOUT_SECONDS: u64 = 5;
+const MAX_PROOF_STRING_LENGTH: usize = 256;
 
 /// Pre-compiled Lua script for rate limiting
 static RATE_LIMIT_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
@@ -468,6 +469,12 @@ impl AppState {
             return Err("Invalid nullifier: cannot be all zeros".to_string());
         }
 
+        let zero_nullifier = [0u8; 32];
+        if nullifier_array == zero_nullifier {
+            self.increment_failed_claims();
+            return Err("Invalid nullifier: cannot be all zeros".to_string());
+        }
+
         let key = format!("nullifier:{}", claim.nullifier);
         let mut redis = self.redis.lock().await;
 
@@ -529,6 +536,23 @@ impl AppState {
                         "Invalid PLONK proof: expected 8 elements, got {}",
                         proof.proof.len()
                     ));
+                }
+
+                for (i, s) in proof.proof.iter().enumerate() {
+                    if s.len() > MAX_PROOF_STRING_LENGTH {
+                        self.increment_failed_claims();
+                        return Err(format!(
+                            "Proof element at index {} exceeds maximum length of {}",
+                            i, MAX_PROOF_STRING_LENGTH
+                        ));
+                    }
+                    if s.len() < 3 || !s.starts_with("0x") && !s.starts_with("0X") {
+                        self.increment_failed_claims();
+                        return Err(format!(
+                            "Invalid proof element at index {}: must start with 0x",
+                            i
+                        ));
+                    }
                 }
 
                 let parsed_elements: Vec<ethers::types::U256> = proof
