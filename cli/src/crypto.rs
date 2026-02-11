@@ -19,22 +19,6 @@ impl PrivateKey {
         PrivateKey(bytes)
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.0
-    }
-
-    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-
     pub fn try_into_array<const N: usize>(&self) -> Result<[u8; N]> {
         self.0.as_slice().try_into().map_err(|_| {
             anyhow::anyhow!("Invalid array length: expected {}, got {}", N, self.0.len())
@@ -72,8 +56,6 @@ impl AsMut<[u8]> for PrivateKey {
     }
 }
 
-/// Standard Ethereum private key length in bytes
-const PRIVATE_KEY_LEN: usize = 32;
 const POSEIDON_ROUNDS: usize = 64;
 
 /// BN254 scalar field modulus
@@ -172,17 +154,17 @@ fn poseidon_hash_circom_compat(inputs: &[ark_bn254::Fr]) -> Result<ark_bn254::Fr
 
     let mut state = [inputs[0], inputs[1], inputs[2]];
 
-    for round in 0..POSEIDON_ROUNDS {
-        for i in 0..3 {
-            state[i] = state[i].pow([5u64]);
+    for round_keys in round_keys.iter().take(POSEIDON_ROUNDS) {
+        for s in &mut state {
+            *s = s.pow([5u64]);
         }
 
         let mut new_state = [ark_bn254::Fr::zero(); 3];
-        for i in 0..3 {
-            for j in 0..3 {
-                new_state[i] += mds_matrix[i][j] * state[j];
+        for (i, new_state_i) in new_state.iter_mut().enumerate() {
+            for (j, mds_row) in mds_matrix[i].iter().enumerate() {
+                *new_state_i += *mds_row * &state[j];
             }
-            new_state[i] += round_keys[round][i];
+            *new_state_i += round_keys[i];
         }
         state = new_state;
     }
@@ -395,13 +377,6 @@ pub fn validate_address(address: &str) -> Result<Address> {
         );
     }
 
-    Ok(addr)
-}
-
-pub fn normalize_address(address: &str) -> Result<Address> {
-    let addr: Address = address
-        .parse::<Address>()
-        .context("Invalid Ethereum address format")?;
     Ok(addr)
 }
 

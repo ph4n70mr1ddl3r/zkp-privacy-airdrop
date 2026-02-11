@@ -19,7 +19,6 @@ const HTTP_TIMEOUT_SECONDS: u64 = 30;
 const MAX_RETRY_AFTER_SECONDS: u64 = 86400;
 const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
 const SUBMIT_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
-const MAX_PROOF_SIZE_BYTES: usize = 10 * 1024 * 1024;
 
 struct RateLimitState {
     window_start: AtomicU64,

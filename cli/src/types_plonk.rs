@@ -19,22 +19,43 @@ impl PlonkProof {
     /// Convert Plonk proof to flat array for API transmission
     ///
     /// # Returns
-    /// Returns a reference to the proof array after validating it has at least one element
+    /// Returns a reference to the proof array after validating it
     ///
-    /// # Panics
-    /// Panics if the proof is empty (this should not happen with properly generated proofs)
-    pub fn to_flat_array(&self) -> &[String] {
+    /// # Errors
+    /// Returns an error if the proof is empty or invalid
+    pub fn to_flat_array(&self) -> Result<&[String], String> {
         if self.proof.is_empty() {
-            panic!("PlonkProof::to_flat_array called on empty proof");
+            return Err("PlonkProof is empty".to_string());
         }
-        &self.proof
+        if self.proof.len() < 8 {
+            return Err(format!(
+                "PlonkProof must have at least 8 elements, found {}",
+                self.proof.len()
+            ));
+        }
+        for (idx, element) in self.proof.iter().enumerate() {
+            if element.trim().is_empty() {
+                return Err(format!("PlonkProof element at index {} is empty", idx));
+            }
+            if !element.starts_with("0x") && !element.starts_with("0X") {
+                return Err(format!(
+                    "PlonkProof element at index {} missing 0x prefix",
+                    idx
+                ));
+            }
+        }
+        Ok(&self.proof)
     }
 
     #[cfg(test)]
     /// Create a minimal Plonk proof for testing
     pub fn minimal() -> Self {
         Self {
-            proof: vec!["0".to_string(); 8],
+            proof: vec![
+                "0x0000000000000000000000000000000000000000000000000000000000000001"
+                    .to_string();
+                8
+            ],
         }
     }
 }
