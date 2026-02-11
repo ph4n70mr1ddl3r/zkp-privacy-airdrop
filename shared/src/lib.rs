@@ -142,6 +142,23 @@ fn check_weak_key_patterns(key_bytes: &[u8]) -> Result<(), String> {
         }
     }
 
+    // Check for common 4-byte patterns
+    const WEAK_PATTERNS: [&[u8]; 6] = [
+        b"\x00\x00\x00\x00", // All zeros
+        b"\xFF\xFF\xFF\xFF", // All ones
+        b"\xDE\xAD\xBE\xEF", // Deadbeef
+        b"\xCA\xFE\xBA\xBE", // Cafebabe
+        b"\x12\x34\x56\x78", // Common test pattern
+        b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xBA\xDC\xED\xE8\xCF\xB7\xD0\x5C\xF7\x2C\xB0\x6B\x8A\x4B\xC8\xA6", // Curve order minus 1
+    ];
+    for pattern in &WEAK_PATTERNS {
+        for window in key_bytes.windows(pattern.len()) {
+            if window == *pattern {
+                return Err("Private key contains known weak pattern".to_string());
+            }
+        }
+    }
+
     // Check for common prefixes
     const WEAK_PREFIXES: [[u8; 8]; 3] = [
         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // All zeros

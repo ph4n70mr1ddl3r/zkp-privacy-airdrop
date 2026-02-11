@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 use tracing::info;
+use url::Url;
 use zeroize::Zeroize;
 
 use crate::config::Config;
@@ -46,16 +47,27 @@ pub async fn execute(
             .unwrap_or_else(|_| "https://relayer.zkp-airdrop.io".to_string())
     });
 
-    if !relayer_url.starts_with("http://") && !relayer_url.starts_with("https://") {
+    let parsed_url = Url::parse(&relayer_url)
+        .with_context(|| format!("Invalid relayer URL format: {}", relayer_url))?;
+
+    if !["http", "https"].contains(&parsed_url.scheme()) {
         return Err(anyhow::anyhow!(
-            "Invalid relayer URL: must start with http:// or https://, got: {}",
-            relayer_url
+            "Relayer URL must use http or https scheme, got: {}",
+            parsed_url.scheme()
         ));
     }
 
-    if relayer_url.contains('\0') || relayer_url.len() > 2048 {
+    if parsed_url
+        .host_str()
+        .map(|h| h.contains("localhost"))
+        .unwrap_or(false)
+    {
+        tracing::warn!("Connecting to localhost - ensure this is intentional");
+    }
+
+    if relayer_url.len() > 2048 {
         return Err(anyhow::anyhow!(
-            "Invalid relayer URL: contains null byte or exceeds maximum length"
+            "Invalid relayer URL: exceeds maximum length of 2048 characters"
         ));
     }
 
@@ -260,9 +272,7 @@ pub async fn execute(
     println!(
         "\n{} {}",
         "✓ Claim submitted successfully!".green(),
-        submit_response
-            .tx_hash.as_deref()
-            .unwrap_or("N/A")
+        submit_response.tx_hash.as_deref().unwrap_or("N/A")
     );
 
     if proof_type == "Plonk" {

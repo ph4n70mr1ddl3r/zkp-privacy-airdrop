@@ -69,6 +69,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         bytes32 nullifier,
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
+        // CHECKS - Validate all inputs before any state changes
         _validatePLONKProof(proof);
         _validateRecipientAddress(recipient);
 
@@ -82,7 +83,10 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             "PLONK proof verification failed"
         );
 
+        // EFFECTS - Update state before any external interactions
         nullifiers[nullifier] = true;
+
+        // INTERACTIONS - External calls after all state changes
         _transferTokens(recipient, CLAIM_AMOUNT);
 
         emit Claimed(nullifier, recipient, block.timestamp);
@@ -98,8 +102,13 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         for (uint256 i = 0; i < 8; i++) {
             require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element at index exceeds field modulus");
-            require(proof.proof[i] > 0, "Invalid PLONK proof: element at index cannot be zero");
         }
+
+        uint256 allZeros;
+        for (uint256 i = 0; i < 8; i++) {
+            allZeros |= proof.proof[i];
+        }
+        require(allZeros > 0, "Invalid PLONK proof: all elements are zero");
     }
 
 /**

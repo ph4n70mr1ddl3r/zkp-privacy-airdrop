@@ -23,6 +23,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
     "circomlibjs": "^0.1.7",
-    "dotenv": "^16.3.0"
+    "dotenv": "^16.3.0",
+    "js-sha3": "^0.9.1"
   }
 }

@@ -78,6 +78,7 @@ const MAX_TRANSACTION_RETRIES: u32 = 3;
 const TRANSACTION_RETRY_DELAY_MS: u64 = 1000;
 const TOTAL_TRANSACTION_TIMEOUT_SECONDS: u64 = 60;
 const BALANCE_CACHE_TTL_SECONDS: u64 = 30;
+const MAX_SAFE_GAS_PRICE: u128 = 1_000_000_000_000;
 
 #[derive(Clone, Copy)]
 struct BalanceCache {
@@ -630,7 +631,8 @@ impl AppState {
                         .ok_or_else(|| {
                             "Gas price calculation overflow: multiplication or division failed"
                                 .to_string()
-                        })?;
+                        })?
+                        .min(MAX_SAFE_GAS_PRICE);
 
                     if adjusted_price == 0 {
                         self.increment_failed_claims();

@@ -37,4 +37,5 @@ num-bigint = "0.4"
 num-traits = "0.2"
 url = "2.5"
 regex = "1.10"
+subtle = "2.5"
 zkp-airdrop-utils = { path = "../shared" }

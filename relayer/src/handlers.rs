@@ -3,6 +3,7 @@ use ethers::types::Address;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::str::FromStr;
+use subtle::ConstantTimeEq;
 use tracing::{error, info, warn};
 
 /// Compiled regex patterns for sensitive data filtering (pre-compiled for performance)
@@ -51,6 +52,15 @@ static SENSITIVE_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
 
 use crate::state::AppState;
 use crate::types_plonk::*;
+
+fn constant_time_hex_eq(a: &str, b: &str) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let a_bytes = a.as_bytes();
+    let b_bytes = b.as_bytes();
+    a_bytes.ct_eq(b_bytes).into()
+}
 
 /// Validates claim input parameters and returns an error response if invalid
 fn validate_claim_input(
