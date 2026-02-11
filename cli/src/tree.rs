@@ -44,11 +44,23 @@ impl MerkleTree {
         Ok(result)
     }
 
+    /// Get the Merkle path for an address in the tree.
+    ///
+    /// This method is not supported in the current minimal implementation which only
+    /// loads the Merkle root and height from the binary file.
+    ///
+    /// For generating proofs with Merkle paths, use the tree-builder CLI:
+    /// ```bash
+    /// tree-builder generate-proof --private-key <KEY> --tree <PATH> --output proof.json
+    /// ```
+    ///
+    /// # Errors
+    /// Always returns an error as this feature is not implemented in the minimal tree loader.
     pub fn get_path(&self, _address: &[u8; 32]) -> Result<(Vec<[u8; 32]>, Vec<u8>)> {
         Err(anyhow::anyhow!(
-            "MerkleTree::get_path requires loading the full tree from the binary format. \
-            The current implementation only loads the root and height. \
-            Please use the tree-builder CLI to generate proof data with merkle paths."
+            "Merkle path retrieval is not supported in this minimal MerkleTree implementation. \
+            The tree-builder CLI must be used to generate proofs with Merkle paths. \
+            Run: tree-builder generate-proof --help"
         ))
     }
 }

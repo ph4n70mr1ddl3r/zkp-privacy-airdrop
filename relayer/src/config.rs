@@ -5,6 +5,29 @@ use std::str::FromStr;
 use tracing::warn;
 use zeroize::Zeroize;
 
+fn calculate_entropy_score(bytes: &[u8]) -> u32 {
+    if bytes.is_empty() {
+        return 0;
+    }
+
+    let mut freq = [0u32; 256];
+    for &byte in bytes {
+        freq[byte as usize] += 1;
+    }
+
+    let len = bytes.len() as f64;
+    let mut entropy = 0.0f64;
+
+    for &count in &freq {
+        if count > 0 {
+            let p = count as f64 / len;
+            entropy -= p * p.log2();
+        }
+    }
+
+    (entropy * 10.0) as u32
+}
+
 /// Wrapper for private key string that zeroizes on drop
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct SecretKey(String);
@@ -358,14 +381,15 @@ impl Config {
                         ));
                     }
 
-                    let decoded =
-                        hex::decode(normalized_key.trim_start_matches("0x")).map_err(|e| {
+                    let mut decoded = hex::decode(normalized_key.trim_start_matches("0x"))
+                        .map_err(|e| {
                             normalized_key.zeroize();
                             anyhow::anyhow!("Invalid hex private key: {}", e)
                         })?;
 
                     if decoded.len() != 32 {
                         normalized_key.zeroize();
+                        decoded.zeroize();
                         return Err(anyhow::anyhow!(
                             "Private key must be 32 bytes, got {}",
                             decoded.len()
@@ -375,6 +399,7 @@ impl Config {
                     let decoded_slice = decoded.as_slice();
                     if decoded_slice.iter().all(|&b| b == 0) {
                         normalized_key.zeroize();
+                        decoded.zeroize();
                         return Err(anyhow::anyhow!(
                             "Private key cannot be all zeros - this is an invalid key"
                         ));
@@ -384,6 +409,7 @@ impl Config {
                     const MIN_ENTROPY_SCORE: u32 = 450;
                     if entropy_score < MIN_ENTROPY_SCORE {
                         normalized_key.zeroize();
+                        decoded.zeroize();
                         return Err(anyhow::anyhow!(
                             "Private key has insufficient entropy score ({}), may be weak. \
                              Please use a securely generated random private key.",
@@ -590,29 +616,4 @@ impl Config {
 
         Ok(())
     }
-}
-
-/// Calculate entropy score for a byte array
-/// Higher values indicate higher entropy (more random)
-pub fn calculate_entropy_score(bytes: &[u8]) -> u32 {
-    if bytes.is_empty() {
-        return 0;
-    }
-
-    let mut freq = [0u32; 256];
-    for &byte in bytes {
-        freq[byte as usize] += 1;
-    }
-
-    let len = bytes.len() as f64;
-    let mut entropy = 0.0f64;
-
-    for &count in &freq {
-        if count > 0 {
-            let p = count as f64 / len;
-            entropy -= p * p.log2();
-        }
-    }
-
-    (entropy * 10.0) as u32
 }

@@ -661,7 +661,7 @@ impl AppState {
                         .nonce(current_nonce)
                         .gas_price(gas_price);
 
-                    let send_result = tokio::time::timeout(
+                    let send_result: Result<_, tokio::time::error::Elapsed> = tokio::time::timeout(
                         std::time::Duration::from_secs(RPC_TIMEOUT_SECONDS),
                         builder.send(),
                     )
