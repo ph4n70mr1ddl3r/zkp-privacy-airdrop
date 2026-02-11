@@ -47,7 +47,7 @@ impl SecretKey {
 /// - High frequency of the same byte (>8 occurrences)
 /// - Known suspicious hex patterns (deadbeef, cafebabe, etc.)
 /// - Alternating patterns (e.g., 0xAA, 0x55, 0xAA, 0x55...)
-fn _has_weak_key_pattern(key_bytes: &[u8]) -> bool {
+fn has_weak_key_pattern(key_bytes: &[u8]) -> bool {
     if key_bytes.len() != 32 {
         return true;
     }
@@ -491,7 +491,7 @@ impl Config {
                         ));
                     }
 
-                    if _has_weak_key_pattern(&decoded) {
+                    if has_weak_key_pattern(&decoded) {
                         normalized_key.zeroize();
                         decoded.zeroize();
                         return Err(anyhow::anyhow!(

@@ -5,8 +5,6 @@ use sha3::{Digest, Keccak256};
 #[derive(Debug, Clone)]
 pub struct MerkleTree {
     pub root: [u8; 32],
-    #[allow(dead_code)]
-    pub height: u8,
 }
 
 impl MerkleTree {
@@ -14,25 +12,17 @@ impl MerkleTree {
         let content = std::fs::read(path)
             .with_context(|| format!("Failed to read Merkle tree file: {}", path.display()))?;
 
-        if content.len() < 33 {
+        if content.len() < 32 {
             return Err(anyhow::anyhow!(
-                "Invalid Merkle tree file: expected at least 33 bytes (root + height), got {}",
+                "Invalid Merkle tree file: expected at least 32 bytes (root), got {}",
                 content.len()
             ));
         }
 
         let mut root = [0u8; 32];
         root.copy_from_slice(&content[..32]);
-        let height = content[32];
 
-        if height > 32 {
-            return Err(anyhow::anyhow!(
-                "Invalid Merkle tree height: {}, maximum is 32",
-                height
-            ));
-        }
-
-        Ok(Self { root, height })
+        Ok(Self { root })
     }
 
     pub fn get_leaf_hash(&self, address: &Address) -> Result<[u8; 32]> {
