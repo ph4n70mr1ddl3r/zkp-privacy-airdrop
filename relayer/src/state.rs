@@ -19,7 +19,6 @@ mod privacy_airdrop_plonk {
 }
 
 const RPC_TIMEOUT_SECONDS: u64 = 10;
-const RPC_CONNECTION_TIMEOUT_SECONDS: u64 = 5;
 
 /// Pre-compiled Lua script for rate limiting
 static RATE_LIMIT_SCRIPT: LazyLock<Script> = LazyLock::new(|| {

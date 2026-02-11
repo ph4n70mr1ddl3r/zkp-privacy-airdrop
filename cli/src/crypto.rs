@@ -311,7 +311,7 @@ pub fn read_private_key(
 
     let mut key_buf: Vec<u8> = if private_key_stdin {
         let mut buf = Vec::new();
-        io::stdin()
+        std::io::stdin()
             .read_to_end(&mut buf)
             .context("Failed to read private key from stdin")?;
         buf
