@@ -84,7 +84,7 @@ async fn main() -> anyhow::Result<()> {
                             .cors
                             .allowed_methods
                             .iter()
-                            .map(|s| s.as_str())
+                            .map(std::string::String::as_str)
                             .collect::<Vec<_>>(),
                     )
                     .allowed_headers(
@@ -92,12 +92,9 @@ async fn main() -> anyhow::Result<()> {
                             .cors
                             .allowed_headers
                             .iter()
-                            .filter_map(|h| match HeaderName::from_bytes(h.as_bytes()) {
-                                Ok(header_name) => Some(header_name),
-                                Err(_) => {
-                                    tracing::warn!("Invalid header name: {}", h);
-                                    None
-                                }
+                            .filter_map(|h| if let Ok(header_name) = HeaderName::from_bytes(h.as_bytes()) { Some(header_name) } else {
+                                tracing::warn!("Invalid header name: {}", h);
+                                None
                             })
                             .collect::<Vec<_>>(),
                     )
@@ -155,7 +152,7 @@ async fn main() -> anyhow::Result<()> {
         }
 
         info!("Stopping server gracefully...");
-        let _ = handle.stop(true).await;
+        let () = handle.stop(true).await;
     });
 
     server.await?;

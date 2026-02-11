@@ -36,18 +36,16 @@ impl PlonkProof {
         }
         for (idx, element) in self.proof.iter().enumerate() {
             if element.trim().is_empty() {
-                return Err(format!("PlonkProof element at index {} is empty", idx));
+                return Err(format!("PlonkProof element at index {idx} is empty"));
             }
             if !element.starts_with("0x") && !element.starts_with("0X") {
                 return Err(format!(
-                    "PlonkProof element at index {} missing 0x prefix",
-                    idx
+                    "PlonkProof element at index {idx} missing 0x prefix"
                 ));
             }
             if !zkp_airdrop_utils::is_valid_field_element(element) {
                 return Err(format!(
-                    "PlonkProof element at index {} is not a valid field element",
-                    idx
+                    "PlonkProof element at index {idx} is not a valid field element"
                 ));
             }
         }
@@ -73,7 +71,7 @@ impl PlonkProof {
 pub struct ProofData {
     /// The proof (either Groth16 or PLONK)
     pub proof: Proof,
-    /// Public signals: [merkle_root, recipient, nullifier]
+    /// Public signals: [`merkle_root`, recipient, nullifier]
     pub public_signals: [String; 3],
     /// Unique identifier derived from private key
     pub nullifier: String,
@@ -106,7 +104,7 @@ impl Proof {
     pub fn estimated_size_bytes(&self) -> usize {
         match self {
             Proof::Groth16(_) => 200, // ~200 bytes for Groth16
-            Proof::Plonk(p) => p.proof.iter().map(|s| s.len()).sum::<usize>() + 100, // ~500 bytes for Plonk
+            Proof::Plonk(p) => p.proof.iter().map(std::string::String::len).sum::<usize>() + 100, // ~500 bytes for Plonk
         }
     }
 }

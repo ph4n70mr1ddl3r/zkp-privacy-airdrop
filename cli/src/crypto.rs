@@ -107,7 +107,7 @@ fn get_nullifier_salt() -> ark_bn254::Fr {
 /// Each unique private key produces a unique nullifier.
 ///
 /// # Implementation Details
-/// Matches circuit nullifier generation: Poseidon(private_key, NULLIFIER_SALT, 0)
+/// Matches circuit nullifier generation: `Poseidon(private_key`, `NULLIFIER_SALT`, 0)
 /// This ensures consistency across CLI, circuit, and specification.
 pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
     let private_key_field = field_element_from_bytes(private_key)?;
@@ -270,7 +270,7 @@ pub fn derive_address(private_key: &[u8; 32]) -> Result<Address> {
 /// * `private_key_stdin` - If true, read key from stdin
 ///
 /// # Returns
-/// The decoded private key wrapped in PrivateKey type
+/// The decoded private key wrapped in `PrivateKey` type
 ///
 /// # Security
 /// - Keys are read directly into zeroable buffers
@@ -342,13 +342,13 @@ fn decode_and_validate_key(key_buf: &[u8]) -> Result<Vec<u8>> {
     };
 
     let key_bytes =
-        hex::decode(hex_str).map_err(|e| anyhow::anyhow!("Invalid hex private key: {}", e))?;
+        hex::decode(hex_str).map_err(|e| anyhow::anyhow!("Invalid hex private key: {e}"))?;
 
     if key_bytes.len() != 32 {
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
 
-    zkp_airdrop_utils::validate_private_key(&key_bytes).map_err(|e| anyhow::anyhow!("{}", e))?;
+    zkp_airdrop_utils::validate_private_key(&key_bytes).map_err(|e| anyhow::anyhow!("{e}"))?;
 
     Ok(key_bytes)
 }
@@ -373,7 +373,7 @@ pub fn validate_address(address: &str) -> Result<Address> {
         .parse::<Address>()
         .context("Invalid Ethereum address format")?;
 
-    let expected = format!("{:#x}", addr);
+    let expected = format!("{addr:#x}");
     if !address.eq_ignore_ascii_case(&expected) {
         tracing::warn!(
             "Address checksum mismatch: provided={}, expected={}. \
@@ -404,7 +404,7 @@ pub fn validate_nullifier(nullifier: &str) -> Result<()> {
 
 /// Validates a Merkle root hash format.
 ///
-/// Checks that merkle_root:
+/// Checks that `merkle_root`:
 /// - Is exactly 66 characters (0x + 64 hex chars)
 /// - Starts with "0x" or "0X"
 /// - Contains valid hexadecimal characters
@@ -414,7 +414,7 @@ pub fn validate_nullifier(nullifier: &str) -> Result<()> {
 /// * `merkle_root` - The Merkle root string to validate
 ///
 /// # Errors
-/// Returns an error if merkle_root format is invalid
+/// Returns an error if `merkle_root` format is invalid
 pub fn validate_merkle_root(merkle_root: &str) -> Result<()> {
     validate_hex_bytes(merkle_root, "merkle_root")
 }
@@ -430,13 +430,12 @@ fn validate_hex_bytes(input: &str, field_name: &str) -> Result<()> {
 
     if !input.starts_with("0x") && !input.starts_with("0X") {
         return Err(anyhow::anyhow!(
-            "Invalid {} format: must start with 0x",
-            field_name
+            "Invalid {field_name} format: must start with 0x"
         ));
     }
 
     let decoded = hex::decode(&input[2..])
-        .context(format!("Invalid {}: invalid hex encoding", field_name))?;
+        .context(format!("Invalid {field_name}: invalid hex encoding"))?;
     if decoded.len() != 32 {
         return Err(anyhow::anyhow!(
             "Invalid {}: expected 32 bytes, got {}",

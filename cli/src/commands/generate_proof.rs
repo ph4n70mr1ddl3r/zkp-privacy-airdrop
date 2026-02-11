@@ -36,7 +36,7 @@ pub async fn execute(
     let address =
         derive_address(&private_key).context("Failed to derive address from private key")?;
 
-    let address_str = format!("{:#x}", address);
+    let address_str = format!("{address:#x}");
     tracing::debug!("Address: {}", address_str);
 
     let nullifier = generate_nullifier(&private_key).context("Failed to generate nullifier")?;

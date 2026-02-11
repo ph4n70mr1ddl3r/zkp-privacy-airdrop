@@ -144,7 +144,10 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @dev Uses nonReentrant modifier to prevent reentrancy attacks
      */
     function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
-        require(block.timestamp > CLAIM_DEADLINE + EMERGENCY_WITHDRAWAL_DELAY, "Emergency withdrawal not available yet");
+        require(
+            block.timestamp > CLAIM_DEADLINE + EMERGENCY_WITHDRAWAL_DELAY,
+            "Emergency withdrawal not available yet"
+        );
         require(recipient != address(0), "Invalid recipient");
         require(amount > 0, "Amount must be greater than zero");
 

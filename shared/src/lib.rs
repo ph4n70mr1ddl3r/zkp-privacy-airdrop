@@ -34,6 +34,7 @@ pub const BN254_FIELD_MODULUS: &str =
 /// let score = calculate_entropy_score(&mixed);
 /// assert!(score > 0);
 /// ```
+#[must_use] 
 pub fn calculate_entropy_score(bytes: &[u8]) -> u32 {
     if bytes.is_empty() {
         return 0;
@@ -49,7 +50,7 @@ pub fn calculate_entropy_score(bytes: &[u8]) -> u32 {
 
     for &count in &freq {
         if count > 0 {
-            let p = count as f64 / len;
+            let p = f64::from(count) / len;
             entropy -= p * p.log2();
         }
     }
@@ -70,7 +71,7 @@ pub fn calculate_entropy_score(bytes: &[u8]) -> u32 {
 /// - Key is not exactly 32 bytes
 /// - Key is all zeros
 /// - Key equals the field modulus
-/// - Key has insufficient entropy (below MIN_ENTROPY_SCORE)
+/// - Key has insufficient entropy (below `MIN_ENTROPY_SCORE`)
 pub fn validate_private_key(key_bytes: &[u8]) -> Result<(), String> {
     if key_bytes.len() != 32 {
         return Err(format!(
@@ -86,7 +87,7 @@ pub fn validate_private_key(key_bytes: &[u8]) -> Result<(), String> {
 
     // Check against field modulus
     let field_modulus = BigUint::from_str_radix(BN254_FIELD_MODULUS, 10)
-        .map_err(|e| format!("Failed to parse field modulus: {}", e))?;
+        .map_err(|e| format!("Failed to parse field modulus: {e}"))?;
     let key_biguint = BigUint::from_bytes_be(key_bytes);
     if key_biguint >= field_modulus {
         return Err("Private key exceeds field modulus".to_string());
@@ -96,9 +97,8 @@ pub fn validate_private_key(key_bytes: &[u8]) -> Result<(), String> {
     let entropy_score = calculate_entropy_score(key_bytes);
     if entropy_score < MIN_ENTROPY_SCORE {
         return Err(format!(
-            "Private key has insufficient entropy score ({}), may be weak. \
-             Please use a securely generated random private key.",
-            entropy_score
+            "Private key has insufficient entropy score ({entropy_score}), may be weak. \
+             Please use a securely generated random private key."
         ));
     }
 
@@ -187,6 +187,7 @@ fn check_weak_key_patterns(key_bytes: &[u8]) -> Result<(), String> {
 /// - Must be exactly 66 characters (0x + 64 hex chars)
 /// - Must decode to exactly 32 bytes
 /// - Value must be less than BN254 field modulus
+#[must_use] 
 pub fn is_valid_field_element(hex_str: &str) -> bool {
     let trimmed = hex_str.trim();
     if trimmed.is_empty() {
@@ -237,12 +238,13 @@ pub fn is_valid_field_element(hex_str: &str) -> bool {
 ///
 /// # Returns
 /// A truncated version of the nullifier suitable for logging
+#[must_use] 
 pub fn sanitize_nullifier(nullifier: &str) -> String {
     let chars: Vec<char> = nullifier.chars().collect();
     if chars.len() > 16 {
         let first_part: String = chars[..10].iter().collect();
         let second_part: String = chars[chars.len() - 6..].iter().collect();
-        format!("{}...{}", first_part, second_part)
+        format!("{first_part}...{second_part}")
     } else if chars.len() > 6 {
         format!("{}***", &chars[..3].iter().collect::<String>())
     } else {

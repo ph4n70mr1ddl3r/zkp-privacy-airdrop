@@ -11,14 +11,12 @@ const JITTER_FACTOR: f64 = 0.2;
 pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
     let client = Client::open(redis_url).map_err(|e| {
         anyhow::anyhow!(
-            "Invalid Redis URL: '{}'. Error: {}. \
+            "Invalid Redis URL: '{redis_url}'. Error: {e}. \
              Please ensure REDIS_URL is a valid Redis connection string. \
              Examples:\n\
              - redis://localhost:6379\n\
              - redis://user:password@localhost:6379\n\
-             - redis://localhost:6379/0",
-            redis_url,
-            e
+             - redis://localhost:6379/0"
         )
     })?;
 
@@ -39,7 +37,7 @@ pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
                         delay_ms,
                         last_error
                             .as_ref()
-                            .map(|e| e.to_string())
+                            .map(std::string::ToString::to_string)
                             .unwrap_or_default()
                     );
                     tokio::time::sleep(Duration::from_millis(delay_ms)).await;
@@ -59,9 +57,7 @@ pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
          Check Redis status with: redis-cli -u {} ping",
         MAX_RETRIES,
         last_error
-            .as_ref()
-            .map(|e| e.to_string())
-            .unwrap_or_else(|| "Unknown error".to_string()),
+            .as_ref().map_or_else(|| "Unknown error".to_string(), std::string::ToString::to_string),
         redis_url
     ))
 }

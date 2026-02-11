@@ -44,7 +44,7 @@ pub async fn execute(
 
     let canonical_path = path
         .canonicalize()
-        .with_context(|| format!("Failed to canonicalize path: {}", merkle_tree))?;
+        .with_context(|| format!("Failed to canonicalize path: {merkle_tree}"))?;
 
     if !canonical_path.exists() {
         anyhow::bail!(
@@ -78,8 +78,7 @@ pub async fn execute(
             .context("Failed to generate PLONK proof")?
     } else {
         anyhow::bail!(
-            "Unsupported proof system: '{}'. Only PLONK is supported. Use --proof-system plonk or the generate-proof-plonk subcommand.",
-            proof_system
+            "Unsupported proof system: '{proof_system}'. Only PLONK is supported. Use --proof-system plonk or the generate-proof-plonk subcommand."
         )
     };
 
@@ -94,7 +93,7 @@ pub async fn execute(
     std::fs::write(&output_path, json).context("Failed to write proof file")?;
 
     println!("\n{} {}", "Proof saved to:".cyan(), output_path.display());
-    println!("\n{}", proof_data);
+    println!("\n{proof_data}");
     println!("\n{}", "Next steps:".yellow().bold());
     println!("  Submit via relayer:");
     println!(

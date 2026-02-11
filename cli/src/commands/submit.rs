@@ -35,7 +35,7 @@ pub async fn execute(
     });
 
     let parsed_url = Url::parse(&relayer_url)
-        .with_context(|| format!("Invalid relayer URL format: {}", relayer_url))?;
+        .with_context(|| format!("Invalid relayer URL format: {relayer_url}"))?;
 
     if !["http", "https"].contains(&parsed_url.scheme()) {
         return Err(anyhow::anyhow!(
@@ -46,8 +46,7 @@ pub async fn execute(
 
     if parsed_url
         .host_str()
-        .map(|h| h.contains("localhost"))
-        .unwrap_or(false)
+        .is_some_and(|h| h.contains("localhost"))
     {
         tracing::warn!("Connecting to localhost - ensure this is intentional");
     }
@@ -110,7 +109,7 @@ pub async fn execute(
 
     let request = SubmitClaimRequest {
         proof: proof_data.proof,
-        recipient: recipient.to_string(),
+        recipient: recipient.clone(),
         nullifier: proof_data.nullifier,
         merkle_root: proof_data.merkle_root,
     };
@@ -129,7 +128,7 @@ pub async fn execute(
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))
         .build()
         .context("Failed to create HTTP client")?;
-    let url = format!("{}/api/v1/submit-claim", relayer_url);
+    let url = format!("{relayer_url}/api/v1/submit-claim");
 
     println!("\n{}", "Submitting claim...".yellow());
 
@@ -264,7 +263,7 @@ pub async fn execute(
                     "optimism-sepolia" => "https://sepolia-optimism.etherscan.io",
                     _ => "https://optimism.etherscan.io",
                 };
-                println!("  {}", format!("{}/tx/{}", explorer_url, tx_hash).cyan());
+                println!("  {}", format!("{explorer_url}/tx/{tx_hash}").cyan());
             }
         }
     }
@@ -310,14 +309,12 @@ fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {
             for (idx, element) in plonk_proof.proof.iter().enumerate() {
                 if element.is_empty() {
                     return Err(anyhow::anyhow!(
-                        "Invalid Plonk proof: element at index {} is empty",
-                        idx
+                        "Invalid Plonk proof: element at index {idx} is empty"
                     ));
                 }
                 if !element.starts_with("0x") {
                     return Err(anyhow::anyhow!(
-                        "Invalid Plonk proof: element at index {} must be hex string starting with 0x",
-                        idx
+                        "Invalid Plonk proof: element at index {idx} must be hex string starting with 0x"
                     ));
                 }
             }
@@ -345,14 +342,12 @@ fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {
     for (idx, signal) in proof_data.public_signals.iter().enumerate() {
         if signal.is_empty() {
             return Err(anyhow::anyhow!(
-                "Invalid proof: public_signal at index {} is empty",
-                idx
+                "Invalid proof: public_signal at index {idx} is empty"
             ));
         }
         if !signal.starts_with("0x") {
             return Err(anyhow::anyhow!(
-                "Invalid proof: public_signal at index {} must be hex string starting with 0x",
-                idx
+                "Invalid proof: public_signal at index {idx} must be hex string starting with 0x"
             ));
         }
     }

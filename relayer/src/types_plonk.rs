@@ -2,7 +2,7 @@ use ethers::contract::abigen;
 use serde::{Deserialize, Serialize};
 
 /// Maximum number of field elements in a PLONK proof
-/// PLONK proofs for this circuit contain 8 elements: A, B, C, Z, T1, T2, T3, WXi
+/// PLONK proofs for this circuit contain 8 elements: A, B, C, Z, T1, T2, T3, `WXi`
 const MAX_PROOF_SIZE: usize = 8;
 
 /// Maximum length of a single proof element string (in characters)
@@ -112,7 +112,7 @@ impl Proof {
                     }
                 }
 
-                let total_bytes: usize = proof.proof.iter().map(|s| s.len()).sum();
+                let total_bytes: usize = proof.proof.iter().map(std::string::String::len).sum();
                 if total_bytes > MAX_PROOF_BYTES {
                     return false;
                 }

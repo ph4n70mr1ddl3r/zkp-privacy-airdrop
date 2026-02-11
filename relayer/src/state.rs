@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::types_plonk::*;
+use crate::types_plonk::{RateLimitType, SubmitClaimRequest, CheckStatusResponse, MerklePathResponse, StatsResponse, ResponseTime};
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Address;
@@ -119,11 +119,11 @@ impl Default for RelayerStats {
 }
 
 impl AppState {
-    /// Create a new AppState instance with the given configuration and connections.
+    /// Create a new `AppState` instance with the given configuration and connections.
     ///
     /// # Arguments
     /// * `config` - Application configuration
-    /// * `db` - PostgreSQL database connection pool
+    /// * `db` - `PostgreSQL` database connection pool
     /// * `redis_conn` - Redis connection manager
     pub async fn new(
         config: Config,
@@ -302,7 +302,7 @@ impl AppState {
             )
             .await
             .ok()
-            .and_then(|r| r.ok())
+            .and_then(std::result::Result::ok)
             .is_some(),
             Err(_) => false,
         }
@@ -364,7 +364,7 @@ impl AppState {
             RateLimitType::CheckStatus => "check_status",
             RateLimitType::HealthCheck => "health_check",
         };
-        let redis_key = format!("rate_limit:{}:{}", nullifier_prefix, key);
+        let redis_key = format!("rate_limit:{nullifier_prefix}:{key}");
 
         let current_time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -372,7 +372,7 @@ impl AppState {
             .as_secs();
         let window_start = current_time - (current_time % 60);
 
-        let count_key = format!("{}:{}", redis_key, window_start);
+        let count_key = format!("{redis_key}:{window_start}");
         let mut redis = self.redis.lock().await;
 
         let result: (bool, u64) = RATE_LIMIT_SCRIPT
@@ -384,7 +384,7 @@ impl AppState {
             .map_err(|e| e.to_string())?;
 
         if !result.0 {
-            let exponential_backoff_key = format!("{}:backoff", redis_key);
+            let exponential_backoff_key = format!("{redis_key}:backoff");
             let backoff_count: Option<u64> =
                 redis.get(&exponential_backoff_key).await.ok().flatten();
 
@@ -392,18 +392,17 @@ impl AppState {
             let multiplier = backoff_count.unwrap_or(0).min(5);
             let wait_seconds = base_wait_seconds * (1 << multiplier);
 
-            let new_backoff_count = backoff_count.map(|c| c + 1).unwrap_or(1);
+            let new_backoff_count = backoff_count.map_or(1, |c| c + 1);
             let _: Result<(), _> = redis
                 .set_ex(&exponential_backoff_key, new_backoff_count, 300)
                 .await;
 
             return Err(format!(
-                "Rate limit exceeded: {}/min. Please wait {} seconds before retrying.",
-                limit, wait_seconds
+                "Rate limit exceeded: {limit}/min. Please wait {wait_seconds} seconds before retrying."
             ));
         }
 
-        let exponential_backoff_key = format!("{}:backoff", redis_key);
+        let exponential_backoff_key = format!("{redis_key}:backoff");
         let _: Result<(), _> = redis.del(&exponential_backoff_key).await;
 
         Ok(())
@@ -419,14 +418,14 @@ impl AppState {
                     e
                 );
             })
-            .map_err(|e| format!("Failed to connect to RPC provider: {}", e))?;
+            .map_err(|e| format!("Failed to connect to RPC provider: {e}"))?;
 
         let provider = Arc::new(provider);
 
         let wallet =
             LocalWallet::from_str(self.config.relayer.private_key.as_str()).map_err(|e| {
                 self.increment_failed_claims();
-                format!("Failed to create wallet from private key: {}", e)
+                format!("Failed to create wallet from private key: {e}")
             })?;
 
         let airdrop_address = Address::from_str(&self.config.network.contracts.airdrop_address)
@@ -459,12 +458,12 @@ impl AppState {
 
         let nullifier_bytes = hex::decode(&nullifier_str[2..]).map_err(|e| {
             self.increment_failed_claims();
-            format!("Invalid nullifier hex encoding: {}", e)
+            format!("Invalid nullifier hex encoding: {e}")
         })?;
 
         let nullifier_array: [u8; 32] = nullifier_bytes[..].try_into().map_err(|e| {
             self.increment_failed_claims();
-            format!("Invalid nullifier length: expected 32 bytes, got {}", e)
+            format!("Invalid nullifier length: expected 32 bytes, got {e}")
         })?;
 
         let zero_nullifier = [0u8; 32];
@@ -483,7 +482,7 @@ impl AppState {
             .await
             .map_err(|e| {
                 self.increment_failed_claims();
-                format!("Redis error during nullifier check: {}", e)
+                format!("Redis error during nullifier check: {e}")
             })?;
 
         if result != 1 {
@@ -513,13 +512,12 @@ impl AppState {
                 .map_err(|_| {
                     self.increment_failed_claims();
                     format!(
-                        "Failed to get chain ID: timeout after {} seconds",
-                        RPC_TIMEOUT_SECONDS
+                        "Failed to get chain ID: timeout after {RPC_TIMEOUT_SECONDS} seconds"
                     )
                 })?
                 .map_err(|e| {
                     self.increment_failed_claims();
-                    format!("Failed to get chain ID: {}", e)
+                    format!("Failed to get chain ID: {e}")
                 })?;
 
                 let wallet_with_chain = wallet.with_chain_id(chain_id.as_u32());
@@ -540,15 +538,13 @@ impl AppState {
                     if s.len() > MAX_PROOF_STRING_LENGTH {
                         self.increment_failed_claims();
                         return Err(format!(
-                            "Proof element at index {} exceeds maximum length of {}",
-                            i, MAX_PROOF_STRING_LENGTH
+                            "Proof element at index {i} exceeds maximum length of {MAX_PROOF_STRING_LENGTH}"
                         ));
                     }
                     if s.len() < 3 || !s.starts_with("0x") && !s.starts_with("0X") {
                         self.increment_failed_claims();
                         return Err(format!(
-                            "Invalid proof element at index {}: must start with 0x",
-                            i
+                            "Invalid proof element at index {i}: must start with 0x"
                         ));
                     }
                 }
@@ -559,7 +555,7 @@ impl AppState {
                     .enumerate()
                     .map(|(i, s)| {
                         ethers::types::U256::from_str_radix(s, 16).map_err(|e| {
-                            format!("Invalid proof element at index {}: '{}': {}", i, s, e)
+                            format!("Invalid proof element at index {i}: '{s}': {e}")
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()
@@ -572,8 +568,7 @@ impl AppState {
                 if parsed_len != 8 {
                     self.increment_failed_claims();
                     return Err(format!(
-                        "Invalid PLONK proof length: expected 8 elements, got {} after parsing",
-                        parsed_len
+                        "Invalid PLONK proof length: expected 8 elements, got {parsed_len} after parsing"
                     ));
                 }
 
@@ -581,8 +576,7 @@ impl AppState {
                     parsed_elements.try_into().map_err(|_e| {
                         self.increment_failed_claims();
                         format!(
-                            "Failed to convert proof to array: expected 8 elements, got {}",
-                            parsed_len
+                            "Failed to convert proof to array: expected 8 elements, got {parsed_len}"
                         )
                     })?;
 
@@ -594,13 +588,12 @@ impl AppState {
                 .map_err(|_| {
                     self.increment_failed_claims();
                     format!(
-                        "Failed to get transaction nonce: timeout after {} seconds",
-                        RPC_TIMEOUT_SECONDS
+                        "Failed to get transaction nonce: timeout after {RPC_TIMEOUT_SECONDS} seconds"
                     )
                 })?
                 .map_err(|e| {
                     self.increment_failed_claims();
-                    format!("Failed to get transaction nonce: {}", e)
+                    format!("Failed to get transaction nonce: {e}")
                 })?;
 
                 let mut retry_count = 0;
@@ -611,8 +604,7 @@ impl AppState {
                     if total_start_time.elapsed().as_secs() > TOTAL_TRANSACTION_TIMEOUT_SECONDS {
                         self.increment_failed_claims();
                         return Err(format!(
-                            "Transaction submission exceeded total timeout of {} seconds",
-                            TOTAL_TRANSACTION_TIMEOUT_SECONDS
+                            "Transaction submission exceeded total timeout of {TOTAL_TRANSACTION_TIMEOUT_SECONDS} seconds"
                         ));
                     }
 
@@ -630,13 +622,12 @@ impl AppState {
                         .map_err(|_| {
                             self.increment_failed_claims();
                             format!(
-                                "Failed to get transaction nonce on retry: timeout after {} seconds",
-                                RPC_TIMEOUT_SECONDS
+                                "Failed to get transaction nonce on retry: timeout after {RPC_TIMEOUT_SECONDS} seconds"
                             )
                         })?
                         .map_err(|e| {
                             self.increment_failed_claims();
-                            format!("Failed to get transaction nonce on retry: {}", e)
+                            format!("Failed to get transaction nonce on retry: {e}")
                         })?;
                     }
 
@@ -654,13 +645,12 @@ impl AppState {
                     .map_err(|_e| {
                         self.increment_failed_claims();
                         format!(
-                            "Failed to get gas price: timeout after {} seconds",
-                            RPC_TIMEOUT_SECONDS
+                            "Failed to get gas price: timeout after {RPC_TIMEOUT_SECONDS} seconds"
                         )
                     })?
                     .map_err(|e| {
                         self.increment_failed_claims();
-                        format!("Failed to get gas price: {}", e)
+                        format!("Failed to get gas price: {e}")
                     })?;
 
                     let base_gas_price_u128 = base_gas_price.as_u128();
@@ -685,7 +675,7 @@ impl AppState {
                     let adjustment_multiplier = 100u64 + random_factor;
 
                     let adjusted_price = base_gas_price_u128
-                        .saturating_mul(adjustment_multiplier as u128)
+                        .saturating_mul(u128::from(adjustment_multiplier))
                         .saturating_div(100)
                         .min(MAX_SAFE_GAS_PRICE)
                         .max(MIN_GAS_PRICE_WEI);
@@ -719,8 +709,7 @@ impl AppState {
                             if retry_count >= MAX_TRANSACTION_RETRIES {
                                 self.increment_failed_claims();
                                 return Err(format!(
-                                    "Failed to submit PLONK claim after {} retries: {}",
-                                    MAX_TRANSACTION_RETRIES, e
+                                    "Failed to submit PLONK claim after {MAX_TRANSACTION_RETRIES} retries: {e}"
                                 ));
                             }
                             tracing::warn!(
@@ -738,8 +727,7 @@ impl AppState {
                             if retry_count >= MAX_TRANSACTION_RETRIES {
                                 self.increment_failed_claims();
                                 return Err(format!(
-                                    "Failed to submit PLONK claim after {} retries: timeout after {} seconds",
-                                    MAX_TRANSACTION_RETRIES, RPC_TIMEOUT_SECONDS));
+                                    "Failed to submit PLONK claim after {MAX_TRANSACTION_RETRIES} retries: timeout after {RPC_TIMEOUT_SECONDS} seconds"));
                             }
                             tracing::warn!(
                                 "Transaction timed out (attempt {}/{}), retrying in {}ms",
@@ -766,8 +754,8 @@ impl AppState {
             use redis::AsyncCommands;
             let timestamp = chrono::Utc::now().to_rfc3339();
 
-            let tx_key = format!("{}:tx_hash", key);
-            let timestamp_key = format!("{}:timestamp", key);
+            let tx_key = format!("{key}:tx_hash");
+            let timestamp_key = format!("{key}:timestamp");
 
             redis
                 .set::<_, _, ()>(&tx_key, tx_hash.to_string())
@@ -795,18 +783,18 @@ impl AppState {
 
     pub async fn get_claim_status(&self, nullifier: &str) -> Option<CheckStatusResponse> {
         use redis::AsyncCommands;
-        let key = format!("nullifier:{}", nullifier);
+        let key = format!("nullifier:{nullifier}");
         let mut redis = self.redis.lock().await;
 
         let recipient: Option<String> = redis.get(&key).await.ok().flatten()?;
 
-        let tx_key = format!("{}:tx_hash", key);
+        let tx_key = format!("{key}:tx_hash");
         let tx_hash: Option<String> = redis.get(&tx_key).await.ok().flatten();
 
-        let block_key = format!("{}:block", key);
+        let block_key = format!("{key}:block");
         let block_number: Option<u64> = redis.get(&block_key).await.ok().flatten();
 
-        let timestamp_key = format!("{}:timestamp", key);
+        let timestamp_key = format!("{key}:timestamp");
         let timestamp: Option<String> = redis.get(&timestamp_key).await.ok().flatten();
 
         Some(CheckStatusResponse {
@@ -821,14 +809,14 @@ impl AppState {
 
     pub async fn get_merkle_path(&self, address: &str) -> Option<MerklePathResponse> {
         use redis::AsyncCommands;
-        let key = format!("merkle_path:{}", address);
+        let key = format!("merkle_path:{address}");
         let mut redis = self.redis.lock().await;
 
-        let leaf_index: Option<u64> = redis.get(format!("{}:index", key)).await.ok().flatten()?;
+        let leaf_index: Option<u64> = redis.get(format!("{key}:index")).await.ok().flatten()?;
         let merkle_path: Option<String> =
-            redis.get(format!("{}:path", key)).await.ok().flatten()?;
+            redis.get(format!("{key}:path")).await.ok().flatten()?;
         let path_indices: Option<String> =
-            redis.get(format!("{}:indices", key)).await.ok().flatten()?;
+            redis.get(format!("{key}:indices")).await.ok().flatten()?;
 
         let path_data: Vec<String> = serde_json::from_str(&merkle_path?).ok()?;
         let indices_data: Vec<u8> = serde_json::from_str(&path_indices?).ok()?;
@@ -888,9 +876,8 @@ impl AppState {
             )
             .await
             .ok()
-            .and_then(|r| r.ok())
-            .map(|p| p.as_u128())
-            .unwrap_or(25_000_000_000),
+            .and_then(std::result::Result::ok)
+            .map_or(25_000_000_000, |p| p.as_u128()),
             Err(_) => 25_000_000_000,
         }
     }

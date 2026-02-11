@@ -64,13 +64,13 @@ fn has_weak_key_pattern(key_bytes: &[u8]) -> bool {
     }
 
     let mut has_sequential_bytes = true;
-    let diff = if key_bytes[1] as i16 - key_bytes[0] as i16 != 0 {
-        key_bytes[1] as i16 - key_bytes[0] as i16
+    let diff = if i16::from(key_bytes[1]) - i16::from(key_bytes[0]) != 0 {
+        i16::from(key_bytes[1]) - i16::from(key_bytes[0])
     } else {
         1
     };
     for i in 2..key_bytes.len() {
-        if key_bytes[i] as i16 - key_bytes[i - 1] as i16 != diff {
+        if i16::from(key_bytes[i]) - i16::from(key_bytes[i - 1]) != diff {
             has_sequential_bytes = false;
             break;
         }
@@ -183,13 +183,12 @@ impl NetworkConfig {
 
         if !url.starts_with("https://") && !url.starts_with("http://") {
             return Err(anyhow::anyhow!(
-                "RPC_URL must start with https:// or http://, got: {}",
-                url
+                "RPC_URL must start with https:// or http://, got: {url}"
             ));
         }
 
         let parsed = url::Url::parse(url)
-            .map_err(|e| anyhow::anyhow!("Invalid RPC URL format '{}': {}", url, e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid RPC URL format '{url}': {e}"))?;
 
         if parsed.scheme() != "https" && parsed.scheme() != "http" {
             return Err(anyhow::anyhow!(
@@ -198,15 +197,14 @@ impl NetworkConfig {
             ));
         }
 
-        if parsed.host_str().is_none_or(|h| h.is_empty()) {
+        if parsed.host_str().is_none_or(str::is_empty) {
             return Err(anyhow::anyhow!("RPC_URL must have a valid host"));
         }
 
         let is_development = url.contains("localhost") || url.contains("127.0.0.1");
         if !is_development && parsed.scheme() != "https" {
             return Err(anyhow::anyhow!(
-                "RPC_URL must use HTTPS in production. Got: {}. If this is a local development endpoint, use localhost or 127.0.0.1",
-                url
+                "RPC_URL must use HTTPS in production. Got: {url}. If this is a local development endpoint, use localhost or 127.0.0.1"
             ));
         }
 
@@ -397,10 +395,8 @@ impl MerkleTreeConfig {
             const MAX_FUTURE_SECONDS: i64 = 86400;
             if ts > current_ts + MAX_FUTURE_SECONDS {
                 return Err(anyhow::anyhow!(
-                    "MERKLE_TREE_TIMESTAMP {} is more than {} seconds in the future. \
-                     This may indicate a configuration error.",
-                    ts,
-                    MAX_FUTURE_SECONDS
+                    "MERKLE_TREE_TIMESTAMP {ts} is more than {MAX_FUTURE_SECONDS} seconds in the future. \
+                     This may indicate a configuration error."
                 ));
             }
 
@@ -457,9 +453,9 @@ impl Config {
                     .unwrap_or(10),
                 contracts: ContractsConfig {
                     airdrop_address: std::env::var("AIRDROP_CONTRACT_ADDRESS")
-                        .unwrap_or_else(|_| "".to_string()),
+                        .unwrap_or_else(|_| String::new()),
                     token_address: std::env::var("TOKEN_CONTRACT_ADDRESS")
-                        .unwrap_or_else(|_| "".to_string()),
+                        .unwrap_or_else(|_| String::new()),
                     relayer_registry_address: std::env::var("RELAYER_REGISTRY_ADDRESS").ok(),
                 },
             },
@@ -479,7 +475,7 @@ impl Config {
                     let mut decoded = hex::decode(normalized_key.trim_start_matches("0x"))
                         .map_err(|e| {
                             normalized_key.zeroize();
-                            anyhow::anyhow!("Invalid hex private key: encoding error - {}", e)
+                            anyhow::anyhow!("Invalid hex private key: encoding error - {e}")
                         })?;
 
                     if decoded.len() != 32 {
@@ -504,7 +500,7 @@ impl Config {
                     zkp_airdrop_utils::validate_private_key(decoded.as_slice()).map_err(|e| {
                         normalized_key.zeroize();
                         decoded.zeroize();
-                        anyhow::anyhow!("{}", e)
+                        anyhow::anyhow!("{e}")
                     })?;
 
                     SecretKey::new(normalized_key)
@@ -514,8 +510,7 @@ impl Config {
                         .unwrap_or_else(|_| "1000000000000000000".to_string()); // 1 ETH
                     min_balance_warning_str.parse().map_err(|_| {
                         anyhow::anyhow!(
-                            "Invalid RELAYER_MIN_BALANCE_WARNING '{}': must be a valid positive integer",
-                            min_balance_warning_str
+                            "Invalid RELAYER_MIN_BALANCE_WARNING '{min_balance_warning_str}': must be a valid positive integer"
                         )
                     })?
                 },
@@ -524,8 +519,7 @@ impl Config {
                         .unwrap_or_else(|_| "500000000000000000".to_string()); // 0.5 ETH
                     min_balance_critical_str.parse().map_err(|_| {
                         anyhow::anyhow!(
-                            "Invalid RELAYER_MIN_BALANCE_CRITICAL '{}': must be a valid positive integer",
-                            min_balance_critical_str
+                            "Invalid RELAYER_MIN_BALANCE_CRITICAL '{min_balance_critical_str}': must be a valid positive integer"
                         )
                     })?
                 },
@@ -538,10 +532,7 @@ impl Config {
                     const MIN_GAS_MULTIPLIER: f64 = 0.1;
                     if !(MIN_GAS_MULTIPLIER..=MAX_GAS_MULTIPLIER).contains(&multiplier) {
                         return Err(anyhow::anyhow!(
-                            "RELAYER_GAS_MULTIPLIER must be between {} and {}, got {}",
-                            MIN_GAS_MULTIPLIER,
-                            MAX_GAS_MULTIPLIER,
-                            multiplier
+                            "RELAYER_GAS_MULTIPLIER must be between {MIN_GAS_MULTIPLIER} and {MAX_GAS_MULTIPLIER}, got {multiplier}"
                         ));
                     }
                     multiplier
@@ -553,10 +544,7 @@ impl Config {
                         .unwrap_or(0.05);
                     if !(MIN_GAS_RANDOMIZATION..=MAX_GAS_RANDOMIZATION).contains(&randomization) {
                         return Err(anyhow::anyhow!(
-                            "RELAYER_GAS_RANDOMIZATION must be between {} and {}, got {}",
-                            MIN_GAS_RANDOMIZATION,
-                            MAX_GAS_RANDOMIZATION,
-                            randomization
+                            "RELAYER_GAS_RANDOMIZATION must be between {MIN_GAS_RANDOMIZATION} and {MAX_GAS_RANDOMIZATION}, got {randomization}"
                         ));
                     }
                     randomization
@@ -566,8 +554,7 @@ impl Config {
                         .unwrap_or_else(|_| "50000000000".to_string()); // 50 gwei
                     let max_gas_price: u128 = max_gas_price_str.parse().map_err(|_| {
                         anyhow::anyhow!(
-                            "Invalid RELAYER_MAX_GAS_PRICE '{}': must be a valid positive integer",
-                            max_gas_price_str
+                            "Invalid RELAYER_MAX_GAS_PRICE '{max_gas_price_str}': must be a valid positive integer"
                         )
                     })?;
 
@@ -624,10 +611,10 @@ impl Config {
                     .unwrap_or(100),
             },
             merkle_tree: MerkleTreeConfig {
-                source: std::env::var("MERKLE_TREE_SOURCE").unwrap_or_else(|_| "".to_string()),
+                source: std::env::var("MERKLE_TREE_SOURCE").unwrap_or_else(|_| String::new()),
                 cache_path: std::env::var("MERKLE_TREE_CACHE_PATH")
                     .unwrap_or_else(|_| "/data/merkle_tree.bin".to_string()),
-                merkle_root: std::env::var("MERKLE_TREE_ROOT").unwrap_or_else(|_| "".to_string()),
+                merkle_root: std::env::var("MERKLE_TREE_ROOT").unwrap_or_else(|_| String::new()),
                 block_number: std::env::var("MERKLE_TREE_BLOCK_NUMBER")
                     .unwrap_or_else(|_| "0".to_string())
                     .parse()

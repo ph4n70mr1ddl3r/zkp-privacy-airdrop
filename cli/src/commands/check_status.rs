@@ -42,7 +42,7 @@ async fn check_status_via_relayer(
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))
         .build()
         .context("Failed to create HTTP client")?;
-    let url = format!("{}/api/v1/check-status/{}", relayer_url, nullifier);
+    let url = format!("{relayer_url}/api/v1/check-status/{nullifier}");
 
     let response = client
         .get(&url)
@@ -76,8 +76,7 @@ async fn check_status_via_relayer(
         println!("  {} Not claimed", "Status:".yellow());
         println!("\n{}", "You can submit a claim using:".yellow());
         println!(
-            "  zkp-airdrop submit --proof <PROOF> --relayer-url {}",
-            relayer_url
+            "  zkp-airdrop submit --proof <PROOF> --relayer-url {relayer_url}"
         );
     }
 

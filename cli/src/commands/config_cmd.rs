@@ -52,7 +52,7 @@ fn set_config(config_path: &PathBuf, config: &Config, key: &str, value: &str) ->
             new_config.chain_id = match value {
                 "optimism" => 10,
                 "optimism-sepolia" => 11155420,
-                _ => return Err(anyhow::anyhow!("Unknown network: {}", value)),
+                _ => return Err(anyhow::anyhow!("Unknown network: {value}")),
             };
         }
         "relayer_url" => {
@@ -66,8 +66,7 @@ fn set_config(config_path: &PathBuf, config: &Config, key: &str, value: &str) ->
         }
         _ => {
             return Err(anyhow::anyhow!(
-                "Unknown config key: {}. Valid keys: network, relayer_url, merkle_tree_source, rpc_url",
-                key
+                "Unknown config key: {key}. Valid keys: network, relayer_url, merkle_tree_source, rpc_url"
             ));
         }
     }

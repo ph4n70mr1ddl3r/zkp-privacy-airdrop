@@ -157,7 +157,7 @@ pub fn generate_plonk_proof(
     };
 
     let recipient_biguint = BigUint::from_str_radix(&recipient_field, 10)
-        .with_context(|| format!("Failed to parse recipient field: {}", recipient_field))?;
+        .with_context(|| format!("Failed to parse recipient field: {recipient_field}"))?;
     let recipient_bytes = recipient_biguint.to_bytes_be();
     let mut recipient_array = [0u8; 32];
     let offset = 32 - recipient_bytes.len();

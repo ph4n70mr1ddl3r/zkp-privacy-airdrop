@@ -68,8 +68,7 @@ pub async fn execute(
     {
         while let Some(chunk_result) = stream.next().await {
             let chunk = chunk_result.context(format!(
-                "Download error: Failed to read chunk at position {}",
-                downloaded
+                "Download error: Failed to read chunk at position {downloaded}"
             ))?;
             file.write_all(&chunk)?;
             downloaded += chunk.len() as u64;

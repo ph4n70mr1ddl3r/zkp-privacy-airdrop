@@ -1,13 +1,12 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use ethers::types::Address;
-use once_cell::sync::Lazy;
 use regex::Regex;
 use std::str::FromStr;
 use tracing::{error, info, warn};
 
 /// Compiled regex patterns for sensitive data filtering (pre-compiled for performance)
-/// Patterns are more specific to avoid false positives with legitimate hashes (tx_hash, merkle_root)
-static SENSITIVE_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
+/// Patterns are more specific to avoid false positives with legitimate hashes (`tx_hash`, `merkle_root`)
+static SENSITIVE_PATTERNS: std::sync::LazyLock<Vec<(Regex, &'static str)>> = std::sync::LazyLock::new(|| {
     vec![
         (
             Regex::new(r"(?i)(private[-_]?key|priv[-_]?key)[\s:=]+[0-9a-f]{64}").unwrap(),
@@ -50,7 +49,7 @@ static SENSITIVE_PATTERNS: Lazy<Vec<(Regex, &'static str)>> = Lazy::new(|| {
 });
 
 use crate::state::AppState;
-use crate::types_plonk::*;
+use crate::types_plonk::{SubmitClaimRequest, ErrorResponse, RateLimitType, HealthResponse, Services, RelayerWalletInfo, Proof, SubmitClaimResponse, CheckStatusResponse, MerkleRootResponse, ContractInfoResponse, ContractsInfo, ContractDetails, TokenDetails, DonateRequest};
 use zkp_airdrop_utils::sanitize_nullifier;
 
 /// Validates claim input parameters and returns an error response if invalid
@@ -223,9 +222,7 @@ fn is_valid_hex_bytes(input: &str, expected_len: usize, reject_zero: bool) -> bo
 pub async fn health(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
     let client_ip = req
         .connection_info()
-        .realip_remote_addr()
-        .map(|addr| addr.to_string())
-        .unwrap_or_else(|| "unknown".to_string());
+        .realip_remote_addr().map_or_else(|| "unknown".to_string(), std::string::ToString::to_string);
 
     if let Err(e) = state
         .check_rate_limit(&client_ip, RateLimitType::HealthCheck)
@@ -439,7 +436,7 @@ pub async fn submit_claim(
                 warn!("Proof verification failed: {}", e);
                 return HttpResponse::BadRequest().json(ErrorResponse {
                     success: false,
-                    error: sanitize_error_message(&format!("Proof verification failed: {}", e)),
+                    error: sanitize_error_message(&format!("Proof verification failed: {e}")),
                     code: Some("PROOF_INVALID".to_string()),
                     retry_after: None,
                 });
@@ -448,8 +445,7 @@ pub async fn submit_claim(
             HttpResponse::InternalServerError().json(ErrorResponse {
                 success: false,
                 error: sanitize_error_message(&format!(
-                    "Unexpected error during claim submission: {}",
-                    e
+                    "Unexpected error during claim submission: {e}"
                 )),
                 code: Some("SUBMIT_FAILED".to_string()),
                 retry_after: Some(60),
