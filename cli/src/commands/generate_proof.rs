@@ -39,7 +39,7 @@ pub async fn execute(
     tracing::debug!("Address: {}", address_str);
 
     let nullifier = generate_nullifier(&private_key).context("Failed to generate nullifier")?;
-    let _nullifier_hex = format!("0x{}", hex::encode(&nullifier.as_bytes()));
+    let _nullifier_hex = format!("0x{}", hex::encode(nullifier.as_bytes()));
 
     tracing::debug!("Recipient: {}", recipient);
 
@@ -68,8 +68,8 @@ pub async fn execute(
     let tree = crate::tree::MerkleTree::from_file(&std::path::PathBuf::from(&merkle_tree))
         .context("Failed to load Merkle tree")?;
 
-    let merkle_root = tree.root.clone();
-    let _merkle_root_hex = format!("0x{}", hex::encode(&merkle_root));
+    let merkle_root = tree.root;
+    let _merkle_root_hex = format!("0x{}", hex::encode(merkle_root));
 
     pb.finish();
 

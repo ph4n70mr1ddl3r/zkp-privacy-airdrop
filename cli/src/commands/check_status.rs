@@ -49,7 +49,7 @@ async fn check_status_via_relayer(
     println!("\n{}", "Claim Status:".green().bold());
 
     if status.claimed {
-        println!("  {} {}", "Status:".green(), "Claimed");
+        println!("  {} Claimed", "Status:".green());
         println!(
             "  {} {}",
             "Recipient:".green(),
@@ -67,7 +67,7 @@ async fn check_status_via_relayer(
             println!("  {} {}", "Timestamp:".green(), timestamp);
         }
     } else {
-        println!("  {} {}", "Status:".yellow(), "Not claimed");
+        println!("  {} Not claimed", "Status:".yellow());
         println!("\n{}", "You can submit a claim using:".yellow());
         println!(
             "  zkp-airdrop submit --proof <PROOF> --relayer-url {}",

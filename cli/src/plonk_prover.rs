@@ -105,9 +105,9 @@ impl PlonkProof {
     /// Flatten proof for serialization
     pub fn to_flat_array(&self) -> Vec<String> {
         let mut proof_vec = Vec::with_capacity(8);
-        proof_vec.extend_from_slice(&self.a);
-        proof_vec.extend(self.b.iter().flatten());
-        proof_vec.extend_from_slice(&self.c);
+        proof_vec.extend(self.a.iter().map(|f| f.to_string()));
+        proof_vec.extend(self.b.iter().flatten().map(|f| f.to_string()));
+        proof_vec.extend(self.c.iter().map(|f| f.to_string()));
         proof_vec
     }
 }

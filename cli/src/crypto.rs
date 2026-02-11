@@ -35,11 +35,9 @@ impl PrivateKey {
         &mut self.0
     }
 
-    pub fn try_into_array<const N: usize>(mut self) -> Result<[u8; N]> {
-        let bytes = self.0;
-        self.0.zeroize();
-        bytes.try_into().map_err(|e: Vec<u8>| {
-            anyhow::anyhow!("Invalid array length: expected {}, got {}", N, e.len())
+    pub fn try_into_array<const N: usize>(&self) -> Result<[u8; N]> {
+        self.0.as_slice().try_into().map_err(|_| {
+            anyhow::anyhow!("Invalid array length: expected {}, got {}", N, self.0.len())
         })
     }
 }
@@ -98,7 +96,7 @@ fn get_bn254_field_modulus() -> &'static num_bigint::BigUint {
 fn get_nullifier_salt() -> ark_bn254::Fr {
     use num_traits::Num;
     static NULLIFIER_SALT: OnceLock<ark_bn254::Fr> = OnceLock::new();
-    NULLIFIER_SALT
+    *NULLIFIER_SALT
         .get_or_init(|| {
             let salt_biguint = num_bigint::BigUint::from_str_radix(NULLIFIER_SALT_STR, 10)
                 .expect("Invalid nullifier salt constant");
@@ -108,7 +106,6 @@ fn get_nullifier_salt() -> ark_bn254::Fr {
             salt_array[offset..].copy_from_slice(&salt_bytes);
             ark_bn254::Fr::from_be_bytes_mod_order(&salt_array)
         })
-        .clone()
 }
 
 /// Generates a nullifier from a private key using Poseidon hash.
@@ -135,7 +132,7 @@ pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
     let private_key_field = field_element_from_bytes(private_key)?;
 
     let poseidon_input = vec![
-        private_key_field.clone(),
+        private_key_field,
         get_nullifier_salt(),
         ark_bn254::Fr::from(0u64),
     ];

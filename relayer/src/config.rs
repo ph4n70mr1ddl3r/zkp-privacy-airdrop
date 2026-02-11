@@ -45,6 +45,8 @@ impl SecretKey {
 /// - Repeated bytes (e.g., 0xaaaaaa...)
 /// - Sequential bytes (e.g., 0x010203...)
 /// - High frequency of the same byte (>8 occurrences)
+/// - Known suspicious hex patterns (deadbeef, cafebabe, etc.)
+/// - Alternating patterns (e.g., 0xAA, 0x55, 0xAA, 0x55...)
 fn _has_weak_key_pattern(key_bytes: &[u8]) -> bool {
     if key_bytes.len() != 32 {
         return true;
@@ -75,6 +77,34 @@ fn _has_weak_key_pattern(key_bytes: &[u8]) -> bool {
     }
     if has_sequential_bytes {
         return true;
+    }
+
+    let mut has_alternating = true;
+    for i in 2..key_bytes.len() {
+        if key_bytes[i] != key_bytes[i % 2] {
+            has_alternating = false;
+            break;
+        }
+    }
+    if has_alternating {
+        return true;
+    }
+
+    let suspicious_patterns: &[&[u8]] = &[
+        &[0xde, 0xad, 0xbe, 0xef],
+        &[0xca, 0xfe, 0xba, 0xbe],
+        &[0xde, 0xc0, 0xde],
+        &[0xfe, 0xed, 0xfa, 0xce],
+        &[0xc0, 0xff, 0xee],
+        &[0x13, 0x37],
+    ];
+    for pattern in suspicious_patterns {
+        if key_bytes.len() >= pattern.len()
+            && (&key_bytes[..pattern.len()] == *pattern
+                || &key_bytes[key_bytes.len() - pattern.len()..] == *pattern)
+        {
+            return true;
+        }
     }
 
     let mut byte_counts = [0u8; 256];

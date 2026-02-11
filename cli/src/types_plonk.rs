@@ -200,15 +200,15 @@ pub struct ResponseTime {
 
 impl fmt::Display for ProofData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Proof Data:\n")?;
-        write!(f, "  Nullifier: {}\n", self.nullifier)?;
-        write!(f, "  Recipient: {}\n", self.recipient)?;
-        write!(f, "  Merkle Root: {}\n", self.merkle_root)?;
-        write!(f, "  Generated At: {}\n", self.generated_at)?;
-        write!(f, "  Proof Type: {}\n", self.proof.type_name())?;
-        write!(
+        writeln!(f, "Proof Data:")?;
+        writeln!(f, "  Nullifier: {}", self.nullifier)?;
+        writeln!(f, "  Recipient: {}", self.recipient)?;
+        writeln!(f, "  Merkle Root: {}", self.merkle_root)?;
+        writeln!(f, "  Generated At: {}", self.generated_at)?;
+        writeln!(f, "  Proof Type: {}", self.proof.type_name())?;
+        writeln!(
             f,
-            "  Estimated Size: {} bytes\n",
+            "  Estimated Size: {} bytes",
             self.proof.estimated_size_bytes()
         )
     }

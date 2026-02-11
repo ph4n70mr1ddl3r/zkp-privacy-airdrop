@@ -59,7 +59,7 @@ pub async fn execute(
         ));
     }
 
-    let recipient_addr = validate_address(&recipient).context("Invalid recipient address")?;
+    let _recipient_addr = validate_address(&recipient).context("Invalid recipient address")?;
 
     let mut proof_content =
         std::fs::read_to_string(&proof_path).context("Failed to read proof file")?;
@@ -261,9 +261,7 @@ pub async fn execute(
         "\n{} {}",
         "✓ Claim submitted successfully!".green(),
         submit_response
-            .tx_hash
-            .as_ref()
-            .map(|s| s.as_str())
+            .tx_hash.as_deref()
             .unwrap_or("N/A")
     );
 
@@ -296,12 +294,11 @@ pub async fn execute(
             println!();
 
             if confirmed {
-                println!("{} {}", "✓".green(), "Transaction confirmed successfully!");
+                println!("{} Transaction confirmed successfully!", "✓".green());
             } else {
                 println!(
-                    "\n{} {}",
-                    "Timeout:".yellow(),
-                    "Transaction not confirmed within timeout. Check manually:"
+                    "\n{} Transaction not confirmed within timeout. Check manually:",
+                    "Timeout:".yellow()
                 );
                 let explorer_url = match config.network.as_str() {
                     "optimism" => "https://optimism.etherscan.io",

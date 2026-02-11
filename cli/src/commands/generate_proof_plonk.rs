@@ -13,7 +13,7 @@ pub async fn execute(
     recipient: String,
     merkle_tree: String,
     output: Option<PathBuf>,
-    format: String,
+    _format: String,
     proof_system: String,
     config: &Config,
 ) -> Result<()> {
@@ -26,7 +26,7 @@ pub async fn execute(
         crate::crypto::read_private_key(private_key_opt, private_key_file, private_key_stdin)?;
     let private_key: [u8; 32] = private_key_wrapper
         .try_into_array()
-        .map_err(|e| anyhow::anyhow!("Invalid private key length: expected 32 bytes",))?;
+        .map_err(|_| anyhow::anyhow!("Invalid private key length: expected 32 bytes"))?;
 
     let address = crate::crypto::derive_address(&private_key)
         .context("Failed to derive address from private key")?;

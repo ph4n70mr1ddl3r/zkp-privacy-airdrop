@@ -39,7 +39,7 @@ pub fn execute(
     crate::crypto::validate_merkle_root(&merkle_root).context("Invalid merkle_root format")?;
 
     if proof_root.to_lowercase() != merkle_root.to_lowercase() {
-        println!("\n{} {}", "Error:".red(), "Merkle root mismatch!");
+        println!("\n{} Merkle root mismatch!", "Error:".red());
         return Err(anyhow::anyhow!(
             "Merkle root mismatch: expected {}, got {}",
             merkle_root,
@@ -47,17 +47,16 @@ pub fn execute(
         ));
     }
 
-    println!("\n{} {}", "✓".green(), "Merkle root matches");
-    println!("{} {}", "✓".green(), "Proof structure is valid");
+    println!("\n{} Merkle root matches", "✓".green());
+    println!("{} Proof structure is valid", "✓".green());
 
     if let Some(vk_path) = verification_key {
         println!("\n{} {}", "Verifying with VK:".cyan(), vk_path.display());
-        println!("{} {}", "✓".green(), "Proof verified successfully");
+        println!("{} Proof verified successfully", "✓".green());
     } else {
         println!(
-            "\n{} {}",
-            "Note:".yellow(),
-            "Full ZK verification requires verification key"
+            "\n{} Full ZK verification requires verification key",
+            "Note:".yellow()
         );
         println!("  Use --verification-key <PATH> for complete verification");
     }

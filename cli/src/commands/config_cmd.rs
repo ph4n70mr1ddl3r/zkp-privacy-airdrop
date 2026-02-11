@@ -73,7 +73,7 @@ fn set_config(config_path: &PathBuf, config: &Config, key: &str, value: &str) ->
     }
 
     new_config.save(config_path)?;
-    println!("{} {}", "✓".green(), "Configuration saved");
+    println!("{} Configuration saved", "✓".green());
     Ok(())
 }
 
@@ -83,6 +83,6 @@ fn reset_config(config_path: &PathBuf) -> Result<()> {
     let default_config = Config::default();
     default_config.save(config_path)?;
 
-    println!("{} {}", "✓".green(), "Configuration reset");
+    println!("{} Configuration reset", "✓".green());
     Ok(())
 }

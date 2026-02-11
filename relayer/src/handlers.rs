@@ -369,10 +369,31 @@ pub async fn submit_claim(
                     retry_after: Some(30),
                 });
             }
+            if e.contains("connection") || e.contains("timeout") || e.contains("network") {
+                warn!("Network error during claim submission: {}", e);
+                return HttpResponse::ServiceUnavailable().json(ErrorResponse {
+                    success: false,
+                    error: "Network connectivity issue. Please try again.".to_string(),
+                    code: Some("NETWORK_ERROR".to_string()),
+                    retry_after: Some(30),
+                });
+            }
+            if e.contains("proof verification") || e.contains("invalid proof") {
+                warn!("Proof verification failed: {}", e);
+                return HttpResponse::BadRequest().json(ErrorResponse {
+                    success: false,
+                    error: sanitize_error_message(&format!("Proof verification failed: {}", e)),
+                    code: Some("PROOF_INVALID".to_string()),
+                    retry_after: None,
+                });
+            }
             error!("Failed to submit claim - Error: {}", e);
             HttpResponse::InternalServerError().json(ErrorResponse {
                 success: false,
-                error: sanitize_error_message(&format!("Failed to submit claim: {}", e)),
+                error: sanitize_error_message(&format!(
+                    "Unexpected error during claim submission: {}",
+                    e
+                )),
                 code: Some("SUBMIT_FAILED".to_string()),
                 retry_after: Some(60),
             })
