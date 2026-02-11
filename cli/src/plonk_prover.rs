@@ -40,6 +40,12 @@ pub struct PrivateInputs {
     pub merkle_path_indices: F,
 }
 
+impl Drop for PrivateInputs {
+    fn drop(&mut self) {
+        self.private_key.zeroize();
+    }
+}
+
 /// Plonk proof structure
 #[derive(Debug, Clone)]
 pub struct PlonkProof {
@@ -201,12 +207,8 @@ pub fn generate_plonk_proof(
 
     // Step 7: Generate Plonk proof
     // Note: This is a simplified version
-    // In production, this would use the actual proving key
+    // In production, this would use actual proving key
     let proof = generate_plonk_proof_internal(&private_inputs, &public_inputs)?;
-
-    // Step 8: Zeroize sensitive data
-    let mut key_copy = *private_key;
-    key_copy.zeroize();
 
     let elapsed = start.elapsed();
     tracing::info!("Plonk proof generated in {:?}", elapsed);

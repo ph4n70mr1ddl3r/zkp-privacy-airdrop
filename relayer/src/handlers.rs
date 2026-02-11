@@ -329,13 +329,7 @@ pub async fn submit_claim(
     state: web::Data<AppState>,
     claim: web::Json<SubmitClaimRequest>,
 ) -> impl Responder {
-    let start_time = std::time::Instant::now();
-
     if let Err(response) = validate_claim_input(&claim, &state.config.merkle_tree.merkle_root) {
-        let elapsed = start_time.elapsed();
-        if elapsed < std::time::Duration::from_millis(100) {
-            tokio::time::sleep(std::time::Duration::from_millis(100) - elapsed).await;
-        }
         return response;
     }
 
@@ -346,10 +340,6 @@ pub async fn submit_claim(
         .check_rate_limit(&claim.nullifier, RateLimitType::SubmitClaim)
         .await
     {
-        let elapsed = start_time.elapsed();
-        if elapsed < std::time::Duration::from_millis(100) {
-            tokio::time::sleep(std::time::Duration::from_millis(100) - elapsed).await;
-        }
         warn!("Rate limit exceeded: {}", e);
         return HttpResponse::TooManyRequests().json(ErrorResponse {
             success: false,

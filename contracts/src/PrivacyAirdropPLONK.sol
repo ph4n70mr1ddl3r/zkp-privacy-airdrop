@@ -80,7 +80,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
         _validatePLONKProof(proof);
-        _validateRecipientAddress(recipient);
 
         nullifiers[nullifier] = true;
 
@@ -98,12 +97,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         // solhint-disable not-rely-on-time
         emit Claimed(nullifier, recipient, block.timestamp);
         // solhint-enable not-rely-on-time
-    }
-
-    function _validateRecipientAddress(address recipient) private pure {
-        if (recipient == address(0)) {
-            revert InvalidRecipient();
-        }
     }
 
     function _validatePLONKProof(PLONKProof calldata proof) private pure {

@@ -45,6 +45,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     uint256 public immutable MAX_WITHDRAWAL_PERCENT;
     uint256 public immutable WITHDRAWAL_COOLDOWN;
     uint256 public constant EMERGENCY_WITHDRAWAL_DELAY = 30 days;
+    uint256 public immutable DEPLOY_TIMESTAMP;
 
     event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
     event TokensTransferred(address indexed recipient, uint256 amount, uint256 timestamp);
@@ -110,6 +111,10 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         CLAIM_DEADLINE = _claimDeadline;
         MAX_WITHDRAWAL_PERCENT = _maxWithdrawalPercent;
         WITHDRAWAL_COOLDOWN = _withdrawalCooldown;
+        // solhint-disable not-rely-on-time
+        lastWithdrawalTime = block.timestamp;
+        DEPLOY_TIMESTAMP = block.timestamp;
+        // solhint-enable not-rely-on-time
     }
 
     /**
