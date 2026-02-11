@@ -6,8 +6,9 @@ use tracing::{error, info, warn};
 
 /// Compiled regex patterns for sensitive data filtering (pre-compiled for performance)
 /// Patterns are more specific to avoid false positives with legitimate hashes (`tx_hash`, `merkle_root`)
-static SENSITIVE_PATTERNS: std::sync::LazyLock<Vec<(Regex, &'static str)>> = std::sync::LazyLock::new(|| {
-    vec![
+static SENSITIVE_PATTERNS: std::sync::LazyLock<Vec<(Regex, &'static str)>> =
+    std::sync::LazyLock::new(|| {
+        vec![
         (
             Regex::new(r"(?i)(private[-_]?key|priv[-_]?key)[\s:=]+[0-9a-f]{64}").unwrap(),
             "private key",
@@ -46,10 +47,14 @@ static SENSITIVE_PATTERNS: std::sync::LazyLock<Vec<(Regex, &'static str)>> = std
             "base64 encoded secret",
         ),
     ]
-});
+    });
 
 use crate::state::AppState;
-use crate::types_plonk::{SubmitClaimRequest, ErrorResponse, RateLimitType, HealthResponse, Services, RelayerWalletInfo, Proof, SubmitClaimResponse, CheckStatusResponse, MerkleRootResponse, ContractInfoResponse, ContractsInfo, ContractDetails, TokenDetails, DonateRequest};
+use crate::types_plonk::{
+    CheckStatusResponse, ContractDetails, ContractInfoResponse, ContractsInfo, DonateRequest,
+    ErrorResponse, HealthResponse, MerkleRootResponse, RateLimitType, RelayerWalletInfo, Services,
+    SubmitClaimRequest, SubmitClaimResponse, TokenDetails,
+};
 use zkp_airdrop_utils::sanitize_nullifier;
 
 /// Validates claim input parameters and returns an error response if invalid
@@ -222,7 +227,8 @@ fn is_valid_hex_bytes(input: &str, expected_len: usize, reject_zero: bool) -> bo
 pub async fn health(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
     let client_ip = req
         .connection_info()
-        .realip_remote_addr().map_or_else(|| "unknown".to_string(), std::string::ToString::to_string);
+        .realip_remote_addr()
+        .map_or_else(|| "unknown".to_string(), std::string::ToString::to_string);
 
     if let Err(e) = state
         .check_rate_limit(&client_ip, RateLimitType::HealthCheck)
@@ -335,28 +341,17 @@ pub async fn submit_claim(
 
     if !claim.proof.is_valid_structure() {
         warn!("Invalid {} proof structure", claim.proof.type_name());
-        let error_code = match claim.proof {
-            Proof::Plonk(_) => "PLONK_FORMAT_ERROR".to_string(),
-            Proof::Groth16(_) => "GROTH16_FORMAT_ERROR".to_string(),
-        };
-        let error_message = match &claim.proof {
-            Proof::Plonk(_) => "Plonk proof format is invalid. Expected at least 8 field elements.".to_string(),
-            Proof::Groth16(_) => "The provided Groth16 proof is invalid. Please regenerate proof with correct inputs.".to_string(),
-        };
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
-            error: error_message,
-            code: Some(error_code),
+            error: "Plonk proof format is invalid. Expected at least 8 field elements.".to_string(),
+            code: Some("PLONK_FORMAT_ERROR".to_string()),
             retry_after: None,
         });
     }
 
     info!("Validated {} proof successfully", claim.proof.type_name());
 
-    // Plonk-specific warning
-    if claim.proof.is_plonk() {
-        info!("Plonk proof detected - verification gas estimate: ~1.3M");
-    }
+    info!("Plonk proof detected - verification gas estimate: ~1.3M");
 
     // Check relayer balance
     if !state.has_sufficient_balance().await {

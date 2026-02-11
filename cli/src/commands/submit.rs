@@ -319,11 +319,6 @@ fn validate_proof_structure(proof_data: &ProofData) -> Result<()> {
                 }
             }
         }
-        Proof::Groth16(_) => {
-            return Err(anyhow::anyhow!(
-                "Groth16 proofs are no longer supported. Please use PLONK proofs."
-            ));
-        }
     }
 
     if proof_data.public_signals.is_empty() {

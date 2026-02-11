@@ -164,17 +164,20 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
 
         uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
 
+        uint256 maxWithdrawalThisPeriod;
         if (timeSinceLastWithdrawal >= WITHDRAWAL_COOLDOWN) {
-            totalWithdrawn = 0;
+            maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
+            totalWithdrawn = amount;
+            lastWithdrawalTime = block.timestamp;
+        } else {
+            maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
+            require(totalWithdrawn + amount <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
+            totalWithdrawn += amount;
         }
 
-        uint256 maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
-        require(amount + totalWithdrawn <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
-        require(amount + cumulativeWithdrawn <= unclaimedAmount, "Cumulative withdrawals exceed available tokens");
+        require(cumulativeWithdrawn + amount <= unclaimedAmount, "Cumulative withdrawals exceed available tokens");
 
-        totalWithdrawn += amount;
         cumulativeWithdrawn += amount;
-        lastWithdrawalTime = block.timestamp;
 
         emit EmergencyWithdraw(recipient, amount, cumulativeWithdrawn, block.timestamp);
         TOKEN.safeTransfer(recipient, amount);

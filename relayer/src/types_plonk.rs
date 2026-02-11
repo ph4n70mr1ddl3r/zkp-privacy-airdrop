@@ -24,14 +24,6 @@ abigen!(
     ]"#,
 );
 
-/// Groth16 proof format (deprecated, kept for backward compatibility)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Groth16Proof {
-    pub a: [String; 2],
-    pub b: [[String; 2]; 2],
-    pub c: [String; 2],
-}
-
 /// PLONK proof format (new format for universal trusted setup)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlonkProof {
@@ -42,7 +34,6 @@ pub struct PlonkProof {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Proof {
-    Groth16(Groth16Proof),
     Plonk(PlonkProof),
 }
 
@@ -50,34 +41,13 @@ impl Proof {
     #[must_use]
     pub fn type_name(&self) -> &str {
         match self {
-            Proof::Groth16(_) => "Groth16",
             Proof::Plonk(_) => "Plonk",
         }
     }
 
     #[must_use]
-    pub fn is_plonk(&self) -> bool {
-        matches!(self, Proof::Plonk(_))
-    }
-
-    #[must_use]
     pub fn is_valid_structure(&self) -> bool {
         match self {
-            Proof::Groth16(ref proof) => {
-                let valid_a = proof
-                    .a
-                    .iter()
-                    .all(|s| zkp_airdrop_utils::is_valid_field_element(s));
-                let valid_c = proof
-                    .c
-                    .iter()
-                    .all(|s| zkp_airdrop_utils::is_valid_field_element(s));
-                let valid_b = proof.b.iter().all(|row| {
-                    row.iter()
-                        .all(|s| zkp_airdrop_utils::is_valid_field_element(s))
-                });
-                valid_a && valid_c && valid_b
-            }
             Proof::Plonk(ref proof) => {
                 if proof.proof.is_empty() {
                     return false;

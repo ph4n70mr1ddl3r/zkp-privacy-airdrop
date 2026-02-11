@@ -678,7 +678,7 @@ impl AppState {
                         * 100.0) as u64)
                         .min(MAX_GAS_RANDOMIZATION);
                     let random_factor = OsRng.gen_range(0..=gas_randomization_percent);
-                    let adjustment_multiplier = 100u64 + random_factor;
+                    let adjustment_multiplier = 100u64.saturating_add(random_factor);
 
                     let adjusted_price = base_gas_price_u128
                         .saturating_mul(u128::from(adjustment_multiplier))
@@ -745,12 +745,6 @@ impl AppState {
                         }
                     }
                 }
-            }
-            crate::types_plonk::Proof::Groth16(_) => {
-                self.increment_failed_claims();
-                return Err(
-                    "Groth16 proofs are no longer supported. Please use PLONK proofs.".to_string(),
-                );
             }
         };
 

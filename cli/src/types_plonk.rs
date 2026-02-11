@@ -5,14 +5,6 @@ use std::fmt;
 /// PLONK proofs for this circuit contain 8 elements: A, B, C, Z, T1, T2, T3, `WXi`
 const MIN_PLONK_PROOF_SIZE: usize = 8;
 
-/// Groth16 proof format (deprecated, kept for backward compatibility)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Groth16Proof {
-    pub a: [String; 2],
-    pub b: [[String; 2]; 2],
-    pub c: [String; 2],
-}
-
 /// Plonk proof format (new format for universal trusted setup)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlonkProof {
@@ -92,7 +84,6 @@ pub struct ProofData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Proof {
-    Groth16(Groth16Proof),
     Plonk(PlonkProof),
 }
 
@@ -100,7 +91,6 @@ impl Proof {
     /// Get proof type name
     pub fn type_name(&self) -> &str {
         match self {
-            Proof::Groth16(_) => "Groth16",
             Proof::Plonk(_) => "Plonk",
         }
     }
@@ -108,7 +98,6 @@ impl Proof {
     /// Get proof size in bytes (estimated)
     pub fn estimated_size_bytes(&self) -> usize {
         match self {
-            Proof::Groth16(_) => 200, // ~200 bytes for Groth16
             Proof::Plonk(p) => p.proof.iter().map(std::string::String::len).sum::<usize>() + 100, // ~500 bytes for Plonk
         }
     }
