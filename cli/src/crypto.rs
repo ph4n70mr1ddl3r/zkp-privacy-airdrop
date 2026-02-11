@@ -130,7 +130,6 @@ fn get_nullifier_salt() -> ark_bn254::Fr {
 /// # Implementation Details
 /// Matches circuit nullifier generation: Poseidon(private_key, NULLIFIER_SALT, 0)
 /// This ensures consistency across CLI, circuit, and specification.
-#[must_use]
 pub fn generate_nullifier(private_key: &[u8; 32]) -> Result<String> {
     let private_key_field = field_element_from_bytes(private_key)?;
 
@@ -263,7 +262,6 @@ fn poseidon_constants_seed() -> Result<[u8; 32]> {
 ///
 /// # Errors
 /// Returns an error if the private key is invalid
-#[must_use]
 pub fn derive_address(private_key: &[u8; 32]) -> Result<Address> {
     let secret_key = SecretKey::from_slice(private_key).context("Invalid private key")?;
 

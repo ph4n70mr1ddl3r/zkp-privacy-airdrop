@@ -65,39 +65,18 @@ pub async fn execute(
     pb.set_message("Generating zero-knowledge proof...");
     pb.set_position(90);
 
-    let tree = crate::tree::MerkleTree::load_from_csv(&merkle_tree)
-        .await
+    let tree = crate::tree::MerkleTree::from_file(&std::path::PathBuf::from(&merkle_tree))
         .context("Failed to load Merkle tree")?;
 
     let merkle_root = tree.root.clone();
     let merkle_root_hex = format!("0x{}", hex::encode(&merkle_root));
 
-    return Err(anyhow::anyhow!(
-        "PLONK proof generation is not yet implemented. \
-         Please use the Groth16 proof system or set up PLONK proving infrastructure as documented in PLONK-README.md.\n\n\
-         To enable PLONK proof generation:\n\
-         1) Compile the circom circuit to generate PLONK proving key (.ptau)\n\
-         2) Integrate with a PLONK proving library (snarkjs or arkworks-plonk)\n\
-         3) Use the proving key to generate proofs from witness computation"
-    ));
+    pb.finish();
 
-    let output_path = output.unwrap_or_else(|| PathBuf::from("proof.json"));
-
-    let json =
-        serde_json::to_string_pretty(&proof_data).context("Failed to serialize proof data")?;
-
-    std::fs::write(&output_path, json).context("Failed to write proof file")?;
-
-    println!("\n{} {}", "Proof saved to:".cyan(), output_path.display());
-    println!("\n{}", proof_data);
-    println!("\n{}", "Next steps:".yellow().bold());
-    println!("  Submit via relayer:");
-    println!(
-        "    zkp-airdrop submit --proof {} --relayer-url {} --recipient {}",
-        output_path.display(),
-        config.relayer_url.as_deref().unwrap_or("<RELAYER_URL>"),
-        recipient
-    );
-
-    Ok(())
+    Err(anyhow::anyhow!(
+        "This command is deprecated. Groth16 proof system is no longer supported. \
+         Please use the PLONK proof system instead with the 'generate-proof-plonk' command.\n\n\
+         Example:\n\
+         zkp-airdrop generate-proof-plonk --private-key $PRIVATE_KEY --recipient $RECIPIENT --merkle-tree $MERKLE_TREE"
+    ))
 }
