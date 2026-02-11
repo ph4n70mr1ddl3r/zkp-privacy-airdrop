@@ -84,7 +84,7 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
     ) external nonReentrant validClaim(recipient, nullifier) {
         uint256[3] memory publicSignals;
         publicSignals[0] = uint256(MERKLE_ROOT);
-        publicSignals[1] = uint160(recipient);
+        publicSignals[1] = uint256(uint160(recipient));
         publicSignals[2] = uint256(nullifier);
 
         require(VERIFIER.verifyProof(proof.a, proof.b, proof.c, publicSignals), "Invalid proof");

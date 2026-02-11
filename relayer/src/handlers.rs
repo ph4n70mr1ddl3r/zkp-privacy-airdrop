@@ -111,11 +111,11 @@ fn validate_claim_input(
 fn sanitize_nullifier(nullifier: &str) -> String {
     let chars: Vec<char> = nullifier.chars().collect();
     if chars.len() > 16 {
-        format!(
-            "{}...{}",
-            &chars[..10].iter().collect::<String>(),
-            &chars[chars.len() - 6..].iter().collect::<String>()
-        )
+        let first_part: String = chars[..10].iter().collect();
+        let second_part: String = chars[chars.len() - 6..].iter().collect();
+        format!("{}...{}", first_part, second_part)
+    } else if chars.len() > 6 {
+        format!("{}***", &chars[..3].iter().collect::<String>())
     } else {
         "***".to_string()
     }

@@ -15,7 +15,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     bytes32 public immutable MERKLE_ROOT;
-    uint256 private constant MAX_CLAIM_DEADLINE = 5 * 365 days;
+    uint256 private constant MAX_CLAIM_DEADLINE = 365 days;
     mapping(bytes32 => bool) public nullifiers;
     IERC20 public immutable TOKEN;
     uint256 public immutable CLAIM_AMOUNT;

@@ -74,7 +74,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         uint256[3] memory instances;
         instances[0] = uint256(MERKLE_ROOT);
-        instances[1] = uint160(recipient);
+        instances[1] = uint256(uint160(recipient));
         instances[2] = uint256(nullifier);
 
         require(
@@ -94,7 +94,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         for (uint256 i = 0; i < 8; i++) {
             require(proof.proof[i] != 0, "Invalid PLONK proof: element at index is zero");
-            require(proof.proof[i] != 1, "Invalid PLONK proof: element at index is one (weak)");
             require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element exceeds field modulus");
         }
     }

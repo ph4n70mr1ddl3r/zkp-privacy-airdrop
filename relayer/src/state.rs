@@ -503,7 +503,7 @@ impl AppState {
                     .iter()
                     .enumerate()
                     .map(|(i, s)| {
-                        ethers::types::U256::from_dec_str(s).map_err(|e| {
+                        ethers::types::U256::from_str_radix(s, 16).map_err(|e| {
                             format!("Invalid proof element at index {}: '{}': {}", i, s, e)
                         })
                     })

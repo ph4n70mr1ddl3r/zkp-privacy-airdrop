@@ -31,9 +31,6 @@ struct Cli {
 
     #[arg(short, long, global = true)]
     config: Option<PathBuf>,
-
-    #[arg(short, long, global = true)]
-    proof_system: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -195,7 +192,7 @@ async fn main() -> Result<()> {
                         merkle_tree,
                         output,
                         format,
-                        cli.proof_system.unwrap_or_else(|| "groth16".to_string()),
+                        "plonk".to_string(),
                         &config,
                     )
                     .await
