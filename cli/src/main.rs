@@ -3,8 +3,7 @@ use clap::{Parser, Subcommand};
 use colored::Colorize;
 use std::path::PathBuf;
 use tokio::signal;
-use tracing::{error, info, warn};
-use tracing_subscriber;
+use tracing::info;
 
 mod commands;
 mod config;
@@ -12,6 +11,7 @@ mod crypto;
 mod plonk_prover;
 mod tree;
 mod types;
+mod types_plonk;
 
 use config::Config;
 
@@ -110,7 +110,7 @@ enum Commands {
         chunk_size: u64,
     },
     Config {
-        #[arg(subcommand)]
+        #[command(subcommand)]
         action: ConfigAction,
     },
 }

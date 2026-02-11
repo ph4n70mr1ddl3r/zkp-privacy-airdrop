@@ -1,10 +1,9 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use colored::Colorize;
 use std::path::PathBuf;
 
 use crate::config::Config;
-
-use super::ConfigAction;
+use crate::ConfigAction;
 
 pub fn execute(action: ConfigAction, config_path: &PathBuf, config: &Config) -> Result<()> {
     match action {

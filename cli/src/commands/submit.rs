@@ -43,6 +43,19 @@ pub async fn execute(
             .unwrap_or_else(|_| "https://relayer.zkp-airdrop.io".to_string())
     });
 
+    if !relayer_url.starts_with("http://") && !relayer_url.starts_with("https://") {
+        return Err(anyhow::anyhow!(
+            "Invalid relayer URL: must start with http:// or https://, got: {}",
+            relayer_url
+        ));
+    }
+
+    if relayer_url.contains('\0') || relayer_url.len() > 2048 {
+        return Err(anyhow::anyhow!(
+            "Invalid relayer URL: contains null byte or exceeds maximum length"
+        ));
+    }
+
     let recipient_addr = validate_address(&recipient).context("Invalid recipient address")?;
 
     let proof_content = std::fs::read_to_string(&proof_path)
@@ -309,17 +322,19 @@ pub async fn execute(
 async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
     use ethers::providers::{Http, Provider};
 
-    if let Ok(provider) = Provider::<Http>::try_from(rpc_url) {
-        match provider.get_transaction_receipt(tx_hash).await {
+    match Provider::<Http>::try_from(rpc_url) {
+        Ok(provider) => match provider.get_transaction_receipt(tx_hash).await {
             Ok(Some(_receipt)) => true,
             Ok(None) => false,
             Err(e) => {
                 tracing::warn!("Failed to check transaction status for {}: {}", tx_hash, e);
                 false
             }
+        },
+        Err(e) => {
+            tracing::warn!("Failed to create RPC provider from {}: {}", rpc_url, e);
+            false
         }
-    } else {
-        false
     }
 }
 

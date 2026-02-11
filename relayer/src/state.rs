@@ -146,20 +146,22 @@ impl AppState {
             }
         }
 
-        let address_str = match self.relayer_address() {
-            Ok(addr) => addr,
+        let address = match self.relayer_address() {
+            Ok(addr_str) => match Address::from_str(&addr_str) {
+                Ok(addr) => addr,
+                Err(e) => {
+                    tracing::warn!(
+                        "Invalid relayer address derived: {}, using fallback balance 0",
+                        e
+                    );
+                    return 0;
+                }
+            },
             Err(e) => {
                 tracing::warn!(
                     "Failed to get relayer address: {}, using fallback balance 0",
                     e
                 );
-                return 0;
-            }
-        };
-        let address = match Address::from_str(&address_str) {
-            Ok(addr) => addr,
-            Err(e) => {
-                tracing::warn!("Invalid relayer address: {}, using fallback balance 0", e);
                 return 0;
             }
         };
@@ -386,7 +388,7 @@ impl AppState {
                     e
                 );
             })
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Failed to connect to RPC provider: {}", e))?;
 
         let provider = Arc::new(provider);
 
@@ -400,7 +402,7 @@ impl AppState {
             .map_err(|e| {
                 self.increment_failed_claims();
                 format!(
-                    "Invalid airdrop address '{}': {}",
+                    "Invalid airdrop contract address '{}': {}",
                     self.config.network.contracts.airdrop_address, e
                 )
             })?;

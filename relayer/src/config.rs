@@ -5,6 +5,8 @@ use std::str::FromStr;
 use tracing::warn;
 use zeroize::Zeroize;
 
+/// Calculates entropy score for byte array to detect weak private keys.
+/// NOTE: This function is duplicated in cli/src/crypto.rs - keep both in sync.
 fn calculate_entropy_score(bytes: &[u8]) -> u32 {
     if bytes.is_empty() {
         return 0;
@@ -382,9 +384,9 @@ impl Config {
                     }
 
                     let mut decoded = hex::decode(normalized_key.trim_start_matches("0x"))
-                        .map_err(|_| {
+                        .map_err(|e| {
                             normalized_key.zeroize();
-                            anyhow::anyhow!("Invalid hex private key: encoding error")
+                            anyhow::anyhow!("Invalid hex private key: encoding error - {}", e)
                         })?;
 
                     if decoded.len() != 32 {

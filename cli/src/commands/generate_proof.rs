@@ -6,7 +6,6 @@ use tracing::info;
 
 use crate::config::Config;
 use crate::crypto::{derive_address, generate_nullifier, read_private_key};
-use crate::types_plonk::{Proof, ProofData};
 
 pub async fn execute(
     private_key_opt: Option<String>,

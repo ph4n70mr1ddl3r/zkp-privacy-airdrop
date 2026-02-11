@@ -1,10 +1,7 @@
 use anyhow::{Context, Result};
-use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
-use toml;
-use zeroize::Zeroize;
+use std::path::Path;
 
 const SUPPORTED_NETWORKS: &[&str] = &["optimism", "optimism-sepolia", "mainnet", "sepolia"];
 

@@ -5,7 +5,6 @@ use tracing::info;
 
 use crate::config::Config;
 use crate::plonk_prover::generate_plonk_proof;
-use crate::types_plonk::{Proof, ProofData};
 
 pub async fn execute(
     private_key_opt: Option<String>,
