@@ -4,6 +4,7 @@ use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Address;
 use parking_lot::RwLock;
+use rand::rngs::OsRng;
 use rand::Rng;
 use redis::aio::ConnectionManager;
 use redis::Script;
@@ -618,7 +619,7 @@ impl AppState {
                     let gas_randomization_percent = ((self.config.relayer.gas_price_randomization
                         * 100.0) as u64)
                         .min(MAX_GAS_RANDOMIZATION_PERCENT);
-                    let random_factor = rand::thread_rng().gen_range(0..=gas_randomization_percent);
+                    let random_factor = OsRng.gen_range(0..=gas_randomization_percent);
                     let adjustment_multiplier = 100u64 + random_factor;
 
                     let adjusted_price = base_gas_price_u128

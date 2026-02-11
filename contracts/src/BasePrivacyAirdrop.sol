@@ -148,13 +148,13 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
             totalWithdrawn = 0;
         }
 
-        uint256 maxWithdrawalThisPeriod = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
+        uint256 maxWithdrawalThisPeriod = (unclaimedAmount / 100) * MAX_WITHDRAWAL_PERCENT;
         require(amount + totalWithdrawn <= maxWithdrawalThisPeriod, "Withdrawal amount exceeds per-period limit");
 
         totalWithdrawn += amount;
         lastWithdrawalTime = block.timestamp;
 
-        TOKEN.safeTransfer(recipient, amount);
         emit EmergencyWithdraw(recipient, amount, block.timestamp);
+        TOKEN.safeTransfer(recipient, amount);
     }
 }

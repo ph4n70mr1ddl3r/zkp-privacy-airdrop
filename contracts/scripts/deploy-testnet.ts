@@ -41,8 +41,7 @@ async function main() {
   } catch (error) {
     console.error("   Failed to generate Merkle root:", error);
     console.error("   Ensure ACCOUNTS_CSV_PATH is set or accounts.csv exists in contracts/data/");
-    console.log("   Using zero hash as fallback (no one will be able to claim)");
-    MERKLE_ROOT = ethers.ZeroHash;
+    throw new Error("Failed to generate Merkle root - deployment aborted");
   }
 
   const CLAIM_AMOUNT = ethers.parseUnits("1000", 18);

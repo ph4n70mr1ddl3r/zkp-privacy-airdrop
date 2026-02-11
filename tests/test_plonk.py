@@ -63,9 +63,12 @@ def test_plonk_proof_structure_validation(
     relayer_url: str, valid_plonk_proof: Dict[str, Any]
 ) -> None:
     """Test that PLONK proof structure is correctly validated"""
-    response = requests.post(
-        f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof
-    )
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof, timeout=30
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
 
     # Note: This will fail at the proof validation step since we don't have actual verification
     # but should pass structure validation
@@ -77,9 +80,14 @@ def test_plonk_proof_insufficient_elements(
     relayer_url: str, invalid_plonk_proof_too_few_elements: Dict[str, Any]
 ) -> None:
     """Test that PLONK proof with insufficient elements is rejected"""
-    response = requests.post(
-        f"{relayer_url}/api/v1/submit-claim", json=invalid_plonk_proof_too_few_elements
-    )
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim",
+            json=invalid_plonk_proof_too_few_elements,
+            timeout=30,
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
 
     assert response.status_code == 400
 
@@ -93,9 +101,14 @@ def test_plonk_proof_empty_elements(
     relayer_url: str, invalid_plonk_proof_empty_elements: Dict[str, Any]
 ) -> None:
     """Test that PLONK proof with empty elements is rejected"""
-    response = requests.post(
-        f"{relayer_url}/api/v1/submit-claim", json=invalid_plonk_proof_empty_elements
-    )
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim",
+            json=invalid_plonk_proof_empty_elements,
+            timeout=30,
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
 
     assert response.status_code == 400
 
@@ -108,9 +121,12 @@ def test_plonk_proof_type_detection(
     relayer_url: str, valid_plonk_proof: Dict[str, Any]
 ) -> None:
     """Test that PLONK proof type is correctly detected and logged"""
-    response = requests.post(
-        f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof
-    )
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof, timeout=30
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
 
     # The request should be processed (even if it fails later)
     assert response.status_code in [200, 400, 500]
@@ -120,9 +136,12 @@ def test_plonk_gas_estimate_logging(
     relayer_url: str, valid_plonk_proof: Dict[str, Any]
 ) -> None:
     """Test that PLONK gas estimate is logged (~1.3M)"""
-    response = requests.post(
-        f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof
-    )
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof, timeout=30
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
 
     # Verify is response
     data = response.json()
@@ -195,7 +214,12 @@ def test_plonk_proof_with_invalid_nullifier(
     invalid_proof = valid_plonk_proof.copy()
     invalid_proof["nullifier"] = "invalid"
 
-    response = requests.post(f"{relayer_url}/api/v1/submit-claim", json=invalid_proof)
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim", json=invalid_proof, timeout=30
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
 
     # Should fail validation
     assert response.status_code in [400, 500]
@@ -208,7 +232,12 @@ def test_plonk_proof_with_invalid_recipient(
     invalid_proof = valid_plonk_proof.copy()
     invalid_proof["recipient"] = "not-an-address"
 
-    response = requests.post(f"{relayer_url}/api/v1/submit-claim", json=invalid_proof)
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim", json=invalid_proof, timeout=30
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
 
     # Should fail validation
     assert response.status_code in [400, 500]
@@ -228,7 +257,12 @@ def test_plonk_backwards_compatibility_with_groth16(relayer_url: str) -> None:
         "merkle_root": "0x" + "0" * 64,
     }
 
-    response = requests.post(f"{relayer_url}/api/v1/submit-claim", json=groth16_proof)
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim", json=groth16_proof, timeout=30
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
 
     # Should accept request (even if it fails later)
     assert response.status_code in [200, 400, 500]
@@ -244,21 +278,33 @@ def test_plonk_integration_with_existing_endpoints(
 ) -> None:
     """Test that PLONK proofs work with existing API endpoints"""
     # Test health endpoint
-    health_response = requests.get(f"{relayer_url}/api/v1/health")
+    try:
+        health_response = requests.get(f"{relayer_url}/api/v1/health", timeout=5)
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
     assert health_response.status_code == 200
 
     # Test merkle root endpoint
-    root_response = requests.get(f"{relayer_url}/api/v1/merkle-root")
+    try:
+        root_response = requests.get(f"{relayer_url}/api/v1/merkle-root", timeout=5)
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
     assert root_response.status_code == 200
 
     # Test contract info endpoint
-    info_response = requests.get(f"{relayer_url}/api/v1/contract-info")
+    try:
+        info_response = requests.get(f"{relayer_url}/api/v1/contract-info", timeout=5)
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
     assert info_response.status_code == 200
 
     # Test PLONK submission
-    submit_response = requests.post(
-        f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof
-    )
+    try:
+        submit_response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim", json=valid_plonk_proof, timeout=30
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
     assert submit_response.status_code in [200, 400, 500]
 
 
@@ -266,9 +312,14 @@ def test_plonk_error_message_clarity(
     relayer_url: str, invalid_plonk_proof_too_few_elements: Dict[str, Any]
 ) -> None:
     """Test that PLONK error messages are clear and helpful"""
-    response = requests.post(
-        f"{relayer_url}/api/v1/submit-claim", json=invalid_plonk_proof_too_few_elements
-    )
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim",
+            json=invalid_plonk_proof_too_few_elements,
+            timeout=30,
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
 
     data = response.json()
 

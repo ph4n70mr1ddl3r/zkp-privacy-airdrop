@@ -382,9 +382,9 @@ impl Config {
                     }
 
                     let mut decoded = hex::decode(normalized_key.trim_start_matches("0x"))
-                        .map_err(|e| {
+                        .map_err(|_| {
                             normalized_key.zeroize();
-                            anyhow::anyhow!("Invalid hex private key: {}", e)
+                            anyhow::anyhow!("Invalid hex private key: encoding error")
                         })?;
 
                     if decoded.len() != 32 {

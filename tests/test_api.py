@@ -12,18 +12,23 @@ def relayer_url():
 
 
 def test_health_endpoint(relayer_url):
-    """Test the health check endpoint"""
-    response = requests.get(f"{relayer_url}/api/v1/health")
+    """Test that health endpoint returns correct response"""
+    try:
+        response = requests.get(f"{relayer_url}/api/v1/health", timeout=5)
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
     assert response.status_code == 200
-
     data = response.json()
     assert data["status"] in ["healthy", "unhealthy"]
     assert "version" in data
 
 
 def test_get_merkle_root(relayer_url):
-    """Test getting the Merkle root"""
-    response = requests.get(f"{relayer_url}/api/v1/merkle-root")
+    """Test getting Merkle root"""
+    try:
+        response = requests.get(f"{relayer_url}/api/v1/merkle-root", timeout=5)
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
     assert response.status_code == 200
 
     data = response.json()
@@ -34,7 +39,10 @@ def test_get_merkle_root(relayer_url):
 
 def test_get_contract_info(relayer_url):
     """Test getting contract information"""
-    response = requests.get(f"{relayer_url}/api/v1/contract-info")
+    try:
+        response = requests.get(f"{relayer_url}/api/v1/contract-info", timeout=5)
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
     assert response.status_code == 200
 
     data = response.json()
@@ -45,7 +53,10 @@ def test_get_contract_info(relayer_url):
 
 def test_get_stats(relayer_url):
     """Test getting relayer statistics"""
-    response = requests.get(f"{relayer_url}/api/v1/stats")
+    try:
+        response = requests.get(f"{relayer_url}/api/v1/stats", timeout=5)
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
     assert response.status_code == 200
 
     data = response.json()
@@ -57,7 +68,12 @@ def test_get_stats(relayer_url):
 def test_check_status_not_claimed(relayer_url):
     """Test checking status for an unclaimed nullifier"""
     nullifier = "0x" + "0" * 64
-    response = requests.get(f"{relayer_url}/api/v1/check-status/{nullifier}")
+    try:
+        response = requests.get(
+            f"{relayer_url}/api/v1/check-status/{nullifier}", timeout=5
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
     assert response.status_code == 200
 
     data = response.json()
@@ -79,6 +95,11 @@ def test_invalid_proof_submission(relayer_url):
         "merkle_root": "0x" + "0" * 64,
     }
 
-    response = requests.post(f"{relayer_url}/api/v1/submit-claim", json=payload)
+    try:
+        response = requests.post(
+            f"{relayer_url}/api/v1/submit-claim", json=payload, timeout=30
+        )
+    except requests.exceptions.RequestException as e:
+        pytest.fail(f"Network error: {e}")
     # Should fail with invalid proof
     assert response.status_code in [400, 500]
