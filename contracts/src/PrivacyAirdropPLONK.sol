@@ -16,7 +16,8 @@ import {BasePrivacyAirdrop} from "./BasePrivacyAirdrop.sol";
 contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     uint256 private constant PLONK_GAS_ESTIMATE = 1_300_000;
     IPLONKVerifier public immutable VERIFIER;
-    uint256 private constant BN254_FIELD_PRIME = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    uint256 private constant BN254_FIELD_PRIME =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     /**
      * @notice PLONK proof structure
@@ -100,25 +101,11 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
     /**
       * @notice Estimate gas required for a PLONK claim transaction
-      * @dev PLONK verification requires more gas than Groth16 (~900K vs ~300K)
+      * @dev PLONK verification requires more gas than Groth16
       * @return Estimated gas in wei (conservative 1.3M with buffer)
       */
     function estimateClaimGas() external pure returns (uint256) {
         return PLONK_GAS_ESTIMATE;
-    }
-
-    /**
-     * @dev Internal function to validate PLONK proof structure and values
-     * @param proof The PLONK proof to validate
-     */
-    function _validatePLONKProof(PLONKProof calldata proof) private pure {
-        require(proof.proof.length == 8, "Invalid PLONK proof: expected 8 elements");
-
-        for (uint256 i = 0; i < 8; i++) {
-            require(proof.proof[i] != 0, "Invalid PLONK proof: element at index is zero");
-            require(proof.proof[i] != 1, "Invalid PLONK proof: element at index is one (weak)");
-            require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element exceeds field modulus");
-        }
     }
 }
 

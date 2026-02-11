@@ -9,13 +9,13 @@ import {BasePrivacyAirdrop} from "./BasePrivacyAirdrop.sol";
  */
 interface IVerifier {
     /**
-     * @notice Verify a Groth16 zero-knowledge proof
-     * @param _pA First proof value (2 elements)
-     * @param _pB Second proof value (2x2 matrix)
-     * @param _pC Third proof value (2 elements)
-     * @param _pubSignals Public signals (3 elements: merkle_root, recipient, nullifier)
-     * @return True if proof is valid
-     */
+      * @notice Verify a Groth16 zero-knowledge proof
+      * @param _pA First proof value (2 elements)
+      * @param _pB Second proof value (2x2 matrix)
+      * @param _pC Third proof value (2 elements)
+      * @param _pubSignals Public signals (3 elements: merkle_root, recipient, nullifier)
+      * @return True if proof is valid
+      */
     function verifyProof(
         uint[2] calldata _pA,
         uint[2][2] calldata _pB,
@@ -97,34 +97,13 @@ contract PrivacyAirdrop is BasePrivacyAirdrop {
     }
 
     /**
-     * @notice Estimate gas required for a claim transaction
-     * @dev This returns a conservative estimate. In production, consider using gasleft()
-     *      to measure actual gas consumption or estimate dynamically based on current gas prices.
-     *      The actual gas cost depends on gas price and network congestion.
-     * @return Estimated gas in wei (conservative 700K with buffer for Groth16 verification)
-     */
+      * @notice Estimate gas required for a claim transaction
+      * @dev This returns a conservative estimate. In production, consider using gasleft()
+      *      to measure actual gas consumption or estimate dynamically based on current gas prices.
+      *      The actual gas cost depends on gas price and network congestion.
+      * @return Estimated gas in wei (conservative 700K with buffer for Groth16 verification)
+      */
     function estimateClaimGas() external pure returns (uint256) {
         return GROTH16_GAS_ESTIMATE;
     }
-}
-
-/**
- * @title IVerifier
- * @notice Interface for Groth16 proof verification
- */
-interface IVerifier {
-    /**
-     * @notice Verify a Groth16 zero-knowledge proof
-     * @param _pA First proof value (2 elements)
-     * @param _pB Second proof value (2x2 matrix)
-     * @param _pC Third proof value (2 elements)
-     * @param _pubSignals Public signals (3 elements: merkle_root, recipient, nullifier)
-     * @return True if proof is valid
-     */
-    function verifyProof(
-        uint[2] calldata _pA,
-        uint[2][2] calldata _pB,
-        uint[2] calldata _pC,
-        uint[3] calldata _pubSignals
-    ) external view returns (bool);
 }

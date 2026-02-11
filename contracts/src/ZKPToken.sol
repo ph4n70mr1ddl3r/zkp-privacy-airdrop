@@ -49,14 +49,12 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
         return DECIMALS;
     }
 
-
-
     /**
-     * @notice Mint new tokens to a specified address
-     * @param to Address to receive the minted tokens
-     * @param amount Amount of tokens to mint
-     * @dev Only callable by owner, enforces MAX_SUPPLY cap
-     */
+      * @notice Mint new tokens to a specified address
+      * @param to Address to receive the minted tokens
+      * @param amount Amount of tokens to mint
+      * @dev Only callable by owner, enforces MAX_SUPPLY cap
+      */
     function mint(address to, uint256 amount) external onlyOwner nonReentrant {
         require(!mintingPaused, "Minting is paused");
         require(to != address(0), "Invalid recipient address");
