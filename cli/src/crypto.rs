@@ -74,8 +74,7 @@ const PRIVATE_KEY_LEN: usize = 32;
 const POSEIDON_ROUNDS: usize = 64;
 
 /// BN254 scalar field modulus
-const BN254_SCALAR_FIELD_MODULUS: &str =
-    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
+const BN254_SCALAR_FIELD_MODULUS: &str = zkp_airdrop_utils::BN254_FIELD_MODULUS;
 
 /// Salt used for nullifier generation to prevent precomputation attacks
 /// Matches circuit value at circuits/src/merkle_membership.circom:61-63
@@ -353,58 +352,13 @@ pub fn read_private_key(
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
 
-    const MIN_ENTROPY_SCORE: u32 = 750;
-    let entropy_score = calculate_entropy_score(&key_bytes);
+    zkp_airdrop_utils::validate_private_key(&key_bytes).map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    use num_bigint::BigUint;
-    use num_traits::{Num, One};
-    let max_key = BigUint::from_str_radix(BN254_SCALAR_FIELD_MODULUS, 10)
-        .map_err(|e| anyhow::anyhow!("Failed to parse field modulus: {}", e))?;
-    let key_biguint = BigUint::from_bytes_be(&key_bytes);
-    if key_biguint >= max_key {
-        key_str.zeroize();
-        key_bytes.zeroize();
-        anyhow::bail!("Private key exceeds field modulus");
-    }
-
-    if entropy_score < MIN_ENTROPY_SCORE {
-        key_str.zeroize();
-        key_bytes.zeroize();
-        anyhow::bail!(
-            "Private key has insufficient entropy score ({}), may be weak. \
-             Please use a securely generated random private key.",
-            entropy_score
-        );
-    }
+    key_str.zeroize();
 
     key_str.zeroize();
 
     Ok(PrivateKey::new(key_bytes))
-}
-
-/// Calculates entropy score for byte array to detect weak private keys.
-/// NOTE: This function is duplicated in relayer/src/config.rs - keep both in sync.
-pub fn calculate_entropy_score(bytes: &[u8]) -> u32 {
-    if bytes.is_empty() {
-        return 0;
-    }
-
-    let mut freq = [0u32; 256];
-    for &byte in bytes {
-        freq[byte as usize] += 1;
-    }
-
-    let len = bytes.len() as f64;
-    let mut entropy = 0.0f64;
-
-    for &count in &freq {
-        if count > 0 {
-            let p = count as f64 / len;
-            entropy -= p * p.log2();
-        }
-    }
-
-    (entropy * 10.0) as u32
 }
 
 /// Validates an Ethereum address.

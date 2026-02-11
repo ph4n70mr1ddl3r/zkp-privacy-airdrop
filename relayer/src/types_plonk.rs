@@ -1,23 +1,9 @@
 use ethers::contract::abigen;
-use num_bigint::BigUint;
-use num_traits::Num;
 use serde::{Deserialize, Serialize};
-use std::sync::OnceLock;
 
 const MAX_PROOF_SIZE: usize = 8;
 const MAX_ELEMENT_LENGTH: usize = 78;
 const MAX_PROOF_BYTES: usize = MAX_PROOF_SIZE * MAX_ELEMENT_LENGTH;
-
-const BN254_FIELD_MODULUS: &str =
-    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
-
-static FIELD_MODULUS: OnceLock<BigUint> = OnceLock::new();
-
-fn get_field_modulus() -> &'static BigUint {
-    FIELD_MODULUS.get_or_init(|| {
-        BigUint::from_str_radix(BN254_FIELD_MODULUS, 10).expect("Invalid field modulus constant")
-    })
-}
 
 abigen!(
     IPLONKVerifier,
@@ -45,27 +31,7 @@ pub struct PlonkProof {
 
 /// Validates that a string represents a valid field element in BN254 scalar field
 fn is_valid_field_element(hex_str: &str) -> bool {
-    let trimmed = hex_str.trim();
-    if trimmed.is_empty() {
-        return false;
-    }
-
-    let hex = trimmed.trim_start_matches("0x");
-    if hex.is_empty() || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
-        return false;
-    }
-
-    let bytes = match hex::decode(hex) {
-        Ok(b) => b,
-        Err(_) => return false,
-    };
-
-    if bytes.len() != 32 {
-        return false;
-    }
-
-    let value = BigUint::from_bytes_be(&bytes);
-    value < *get_field_modulus()
+    zkp_airdrop_utils::is_valid_field_element(hex_str)
 }
 
 /// Union type for different proof systems
@@ -83,6 +49,11 @@ impl Proof {
             Proof::Groth16(_) => "Groth16",
             Proof::Plonk(_) => "Plonk",
         }
+    }
+
+    #[must_use]
+    pub fn is_plonk(&self) -> bool {
+        matches!(self, Proof::Plonk(_))
     }
 
     #[must_use]

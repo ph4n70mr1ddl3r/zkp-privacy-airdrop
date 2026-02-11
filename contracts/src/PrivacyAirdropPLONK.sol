@@ -76,6 +76,8 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         instances[1] = uint256(uint160(recipient));
         instances[2] = uint256(nullifier);
 
+        require(recipient == address(uint160(recipient)), "Invalid recipient address: cannot be cast safely");
+
         require(
             VERIFIER.verifyProof(proof.proof, instances),
             "PLONK proof verification failed"
@@ -92,6 +94,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         for (uint256 i = 0; i < 8; i++) {
             require(proof.proof[i] < BN254_FIELD_PRIME, "Invalid PLONK proof: element at index exceeds field modulus");
+            require(proof.proof[i] > 0, "Invalid PLONK proof: element at index cannot be zero");
         }
     }
 

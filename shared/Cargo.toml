@@ -1,0 +1,15 @@
+[package]
+name = "zkp-airdrop-utils"
+version = "0.1.0"
+edition = "2021"
+description = "Shared utilities for ZKP Privacy Airdrop"
+license = "MIT"
+
+[dependencies]
+num-bigint = "0.4"
+num-traits = "0.2"
+hex = "0.4"
+
+[dev-dependencies]
+hex = "0.4"
+rand = "0.8"

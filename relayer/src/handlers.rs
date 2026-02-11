@@ -281,23 +281,20 @@ pub async fn submit_claim(
 
     if !claim.proof.is_valid_structure() {
         warn!("Invalid {} proof structure", claim.proof.type_name());
-        let error_code = if claim.proof.type_name() == "Plonk" {
-            "PLONK_FORMAT_ERROR"
-        } else {
-            "INVALID_PROOF"
+        let error_code = match claim.proof {
+            Proof::Plonk(_) => "PLONK_FORMAT_ERROR".to_string(),
+            Proof::Groth16(_) => "GROTH16_FORMAT_ERROR".to_string(),
         };
-        let error_message = if claim.proof.type_name() == "Plonk" {
-            "Plonk proof format is invalid. Expected at least 8 field elements.".to_string()
-        } else {
-            format!(
-                "The provided {} proof is invalid. Please regenerate proof with correct inputs.",
-                claim.proof.type_name()
-            )
+        let error_message = match &claim.proof {
+            Proof::Plonk(_) => "Plonk proof format is invalid. Expected at least 8 field elements.".to_string(),
+            Proof::Groth16(_) => format!(
+                "The provided Groth16 proof is invalid. Please regenerate proof with correct inputs."
+            ),
         };
         return HttpResponse::BadRequest().json(ErrorResponse {
             success: false,
             error: error_message,
-            code: Some(error_code.to_string()),
+            code: Some(error_code),
             retry_after: None,
         });
     }
@@ -305,7 +302,7 @@ pub async fn submit_claim(
     info!("Validated {} proof successfully", claim.proof.type_name());
 
     // Plonk-specific warning
-    if claim.proof.type_name() == "Plonk" {
+    if claim.proof.is_plonk() {
         info!("Plonk proof detected - verification gas estimate: ~1.3M");
     }
 

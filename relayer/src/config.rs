@@ -5,31 +5,6 @@ use std::str::FromStr;
 use tracing::warn;
 use zeroize::Zeroize;
 
-/// Calculates entropy score for byte array to detect weak private keys.
-/// NOTE: This function is duplicated in cli/src/crypto.rs - keep both in sync.
-fn calculate_entropy_score(bytes: &[u8]) -> u32 {
-    if bytes.is_empty() {
-        return 0;
-    }
-
-    let mut freq = [0u32; 256];
-    for &byte in bytes {
-        freq[byte as usize] += 1;
-    }
-
-    let len = bytes.len() as f64;
-    let mut entropy = 0.0f64;
-
-    for &count in &freq {
-        if count > 0 {
-            let p = count as f64 / len;
-            entropy -= p * p.log2();
-        }
-    }
-
-    (entropy * 10.0) as u32
-}
-
 /// Wrapper for private key string that zeroizes on drop
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct SecretKey(String);
@@ -398,26 +373,11 @@ impl Config {
                         ));
                     }
 
-                    let decoded_slice = decoded.as_slice();
-                    if decoded_slice.iter().all(|&b| b == 0) {
+                    zkp_airdrop_utils::validate_private_key(decoded.as_slice()).map_err(|e| {
                         normalized_key.zeroize();
                         decoded.zeroize();
-                        return Err(anyhow::anyhow!(
-                            "Private key cannot be all zeros - this is an invalid key"
-                        ));
-                    }
-
-                    let entropy_score = calculate_entropy_score(decoded_slice);
-                    const MIN_ENTROPY_SCORE: u32 = 450;
-                    if entropy_score < MIN_ENTROPY_SCORE {
-                        normalized_key.zeroize();
-                        decoded.zeroize();
-                        return Err(anyhow::anyhow!(
-                            "Private key has insufficient entropy score ({}), may be weak. \
-                             Please use a securely generated random private key.",
-                            entropy_score
-                        ));
-                    }
+                        anyhow::anyhow!("{}", e)
+                    })?;
 
                     SecretKey::new(normalized_key)
                 },
