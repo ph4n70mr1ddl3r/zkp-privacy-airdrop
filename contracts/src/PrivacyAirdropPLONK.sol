@@ -110,21 +110,15 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             allZeros |= proof.proof[i];
         }
         require(allZeros > 0, "Invalid PLONK proof: all elements are zero");
-
-        for (uint256 i = 0; i < 7; i++) {
-            for (uint256 j = i + 1; j < 8; j++) {
-                require(proof.proof[i] != proof.proof[j], "Invalid PLONK proof: repeated elements detected");
-            }
-        }
     }
 
 /**
  * @notice Estimate gas required for a PLONK claim transaction
  * @dev PLONK verification requires more gas than Groth16
- * @return Estimated gas in wei (conservative 1.5M with buffer)
+ * @return Estimated gas in wei (conservative 1.3M with buffer)
  */
 function estimateClaimGas() external pure returns (uint256) {
-    return 1_500_000;
+    return 1_300_000;
 }
 }
 

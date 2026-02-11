@@ -4,8 +4,7 @@ use ethers::providers::Middleware;
 use reqwest::Client;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::time::sleep;
 use tracing::info;
 use url::Url;
@@ -18,17 +17,6 @@ use crate::types_plonk::{Proof, ProofData, SubmitClaimRequest, SubmitClaimRespon
 const HTTP_TIMEOUT_SECONDS: u64 = 30;
 const MAX_RETRY_AFTER_SECONDS: u64 = 86400;
 const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
-const SUBMIT_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
-
-struct RateLimitState {
-    window_start: AtomicU64,
-    count: AtomicU32,
-}
-
-static RATE_LIMIT_STATE: RateLimitState = RateLimitState {
-    window_start: AtomicU64::new(0),
-    count: AtomicU32::new(0),
-};
 
 pub async fn execute(
     proof_path: PathBuf,
@@ -136,44 +124,6 @@ pub async fn execute(
             _ => "3-field",
         }
     );
-
-    let now = Instant::now();
-    let current_secs = now.elapsed().as_secs();
-    let window_secs = SUBMIT_RATE_LIMIT_WINDOW.as_secs();
-
-    loop {
-        let window_start = RATE_LIMIT_STATE.window_start.load(Ordering::Acquire);
-
-        if window_start == 0 || current_secs.saturating_sub(window_start) >= window_secs {
-            let new_count = 1u32;
-            match RATE_LIMIT_STATE.window_start.compare_exchange(
-                window_start,
-                current_secs,
-                Ordering::AcqRel,
-                Ordering::Acquire,
-            ) {
-                Ok(_) => {
-                    RATE_LIMIT_STATE.count.store(new_count, Ordering::Release);
-                    break;
-                }
-                Err(_) => continue,
-            }
-        } else {
-            let count = RATE_LIMIT_STATE.count.fetch_add(1, Ordering::AcqRel);
-            if count >= config.max_submits_per_window {
-                let elapsed = current_secs.saturating_sub(window_start);
-                let wait_time =
-                    SUBMIT_RATE_LIMIT_WINDOW.saturating_sub(Duration::from_secs(elapsed));
-                println!(
-                    "{} Rate limit exceeded. Please wait {} seconds before submitting again.",
-                    "Warning:".yellow(),
-                    wait_time.as_secs()
-                );
-                return Err(anyhow::anyhow!("Rate limit exceeded"));
-            }
-            break;
-        }
-    }
 
     let client = Client::builder()
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))

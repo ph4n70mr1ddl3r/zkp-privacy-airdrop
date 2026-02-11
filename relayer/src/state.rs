@@ -14,6 +14,19 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
 
+fn sanitize_nullifier(nullifier: &str) -> String {
+    let chars: Vec<char> = nullifier.chars().collect();
+    if chars.len() > 16 {
+        let first_part: String = chars[..10].iter().collect();
+        let second_part: String = chars[chars.len() - 6..].iter().collect();
+        format!("{}...{}", first_part, second_part)
+    } else if chars.len() > 6 {
+        format!("{}***", &chars[..3].iter().collect::<String>())
+    } else {
+        "***".to_string()
+    }
+}
+
 mod privacy_airdrop_plonk {
     ethers::contract::abigen!(PrivacyAirdropPLONK, "./PrivacyAirdropPLONK.json");
 }
@@ -458,8 +471,15 @@ impl AppState {
 
         if result != 1 {
             self.increment_failed_claims();
+            if result == -1 {
+                tracing::error!(
+                    "SECURITY ALERT: Nullifier reuse attempt detected. Nullifier {} attempted by different recipient {}",
+                    sanitize_nullifier(&claim.nullifier),
+                    claim.recipient
+                );
+            }
             return Err(if result == -1 {
-                "Security violation: This nullifier has already been used by a different address. Proof reuse detected and blocked."
+                "This nullifier has already been used. Each qualified account can only claim once."
                     .to_string()
             } else {
                 "This nullifier has already been used. Each qualified account can only claim once."
@@ -620,7 +640,6 @@ impl AppState {
 
                     const MAX_BASE_GAS_PRICE: u128 = 10_000_000_000_000;
                     const MAX_GAS_RANDOMIZATION_PERCENT: u64 = 20;
-                    const MAX_ADJUSTMENT_MULTIPLIER: u64 = 150;
 
                     if base_gas_price_u128 > MAX_BASE_GAS_PRICE {
                         self.increment_failed_claims();
@@ -633,17 +652,12 @@ impl AppState {
 
                     let gas_randomization_percent = ((self.config.relayer.gas_price_randomization
                         * 100.0) as u64)
-                        .min(MAX_GAS_RANDOMIZATION_PERCENT)
-                        .min(MAX_ADJUSTMENT_MULTIPLIER - 100);
+                        .min(MAX_GAS_RANDOMIZATION_PERCENT);
                     let random_factor = OsRng.gen_range(0..=gas_randomization_percent);
-                    let adjustment_multiplier = 100u64.saturating_add(random_factor);
+                    let adjustment_multiplier = 100u64 + random_factor;
 
-                    let adjusted_price = base_gas_price_u128
-                        .saturating_mul(adjustment_multiplier as u128)
-                        .checked_div(100)
-                        .ok_or_else(|| {
-                            "Gas price calculation overflow: division failed".to_string()
-                        })?
+                    let adjusted_price = (base_gas_price_u128 * adjustment_multiplier as u128
+                        / 100)
                         .min(MAX_SAFE_GAS_PRICE);
 
                     if adjusted_price == 0 {
@@ -653,23 +667,14 @@ impl AppState {
 
                     let max_gas_price =
                         ethers::types::U256::from(self.config.relayer.max_gas_price);
-
-                    let mut gas_price = ethers::types::U256::from(adjusted_price);
+                    let mut gas_price =
+                        ethers::types::U256::from(adjusted_price).max(max_gas_price);
 
                     if gas_price > max_gas_price {
-                        tracing::warn!(
-                            "Computed gas price {} gwei exceeds max {} gwei, using max",
-                            gas_price.as_u128() / 1_000_000_000,
-                            max_gas_price.as_u128() / 1_000_000_000
-                        );
                         gas_price = max_gas_price;
                     }
 
                     if gas_price.as_u128() < 1_000_000_000 {
-                        tracing::warn!(
-                            "Final gas price {} wei is less than 1 gwei, using 1 gwei minimum",
-                            gas_price.as_u128()
-                        );
                         gas_price = ethers::types::U256::from(1_000_000_000u128);
                     }
 

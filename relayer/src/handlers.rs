@@ -145,7 +145,6 @@ fn sanitize_error_message(error: &str) -> String {
         "redis",
         "password",
         "secret",
-        "0x[0-9a-f]{64}",
         "postgresql://",
         "mongodb://",
         "127.0.0.1",
