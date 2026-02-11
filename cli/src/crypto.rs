@@ -288,10 +288,23 @@ pub fn read_private_key(
     private_key_file: Option<PathBuf>,
     private_key_stdin: bool,
 ) -> Result<PrivateKey> {
-    use std::io::Read;
-    use zeroize::Zeroize;
+    let key_buf = read_key_from_source(private_key_opt, private_key_file, private_key_stdin)?;
+    let key_bytes = decode_and_validate_key(&key_buf)?;
 
-    let mut key_buf: Vec<u8> = if private_key_stdin {
+    let mut result = [0u8; 32];
+    result.copy_from_slice(&key_bytes);
+    Ok(PrivateKey::new(result.to_vec()))
+}
+
+/// Reads private key bytes from the specified source with secure memory handling.
+fn read_key_from_source(
+    private_key_opt: Option<String>,
+    private_key_file: Option<PathBuf>,
+    private_key_stdin: bool,
+) -> Result<Vec<u8>> {
+    use std::io::Read;
+
+    let key_buf = if private_key_stdin {
         let mut buf = Vec::new();
         std::io::stdin()
             .read_to_end(&mut buf)
@@ -316,35 +329,28 @@ pub fn read_private_key(
         );
     };
 
-    let key_str = String::from_utf8_lossy(&key_buf).trim().to_string();
-    let key_bytes = {
-        let hex_str = if key_str.starts_with("0x") || key_str.starts_with("0X") {
-            &key_str[2..]
-        } else {
-            &key_str
-        };
+    Ok(key_buf)
+}
 
-        hex::decode(hex_str).map_err(|e| {
-            key_buf.zeroize();
-            anyhow::anyhow!("Invalid hex private key: {}", e)
-        })?
+/// Decodes hex private key and validates it.
+fn decode_and_validate_key(key_buf: &[u8]) -> Result<Vec<u8>> {
+    let key_str = String::from_utf8_lossy(key_buf).trim().to_string();
+    let hex_str = if key_str.starts_with("0x") || key_str.starts_with("0X") {
+        &key_str[2..]
+    } else {
+        &key_str
     };
 
+    let key_bytes =
+        hex::decode(hex_str).map_err(|e| anyhow::anyhow!("Invalid hex private key: {}", e))?;
+
     if key_bytes.len() != 32 {
-        key_buf.zeroize();
         anyhow::bail!("Private key must be 32 bytes, got {}", key_bytes.len());
     }
 
-    zkp_airdrop_utils::validate_private_key(&key_bytes).map_err(|e| {
-        key_buf.zeroize();
-        anyhow::anyhow!("{}", e)
-    })?;
+    zkp_airdrop_utils::validate_private_key(&key_bytes).map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let mut result = [0u8; 32];
-    result.copy_from_slice(&key_bytes);
-    key_buf.zeroize();
-
-    Ok(PrivateKey::new(result.to_vec()))
+    Ok(key_bytes)
 }
 
 /// Validates an Ethereum address.

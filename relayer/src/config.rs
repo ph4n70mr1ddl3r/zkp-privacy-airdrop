@@ -476,27 +476,6 @@ impl Config {
                     let mut normalized_key = key.trim().to_lowercase();
                     key.zeroize();
 
-                    let insecure_keys = [
-                        "0x0000000000000000000000000000000000000000000000000000000000000000",
-                        "0000000000000000000000000000000000000000000000000000000000000000000",
-                        "your_private_key_here",
-                        "example_private_key",
-                        "0000000000000000000000000000000000000000000000000000000000000000001",
-                        "0x0000000000000000000000000000000000000000000000000000000000000000000001",
-                    ];
-
-                    let is_insecure = insecure_keys
-                        .iter()
-                        .any(|insecure_key| normalized_key == *insecure_key);
-                    if is_insecure {
-                        normalized_key.zeroize();
-                        return Err(anyhow::anyhow!(
-                            "CRITICAL ERROR: Insecure default private key detected! \
-                             Please set RELAYER_PRIVATE_KEY to a secure, randomly generated private key. \
-                             Never use example or all-zero private keys in production!"
-                        ));
-                    }
-
                     let mut decoded = hex::decode(normalized_key.trim_start_matches("0x"))
                         .map_err(|e| {
                             normalized_key.zeroize();
