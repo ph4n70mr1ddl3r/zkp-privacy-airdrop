@@ -457,8 +457,9 @@ impl AppState {
         if nullifier_str.len() != 66 {
             self.increment_failed_claims();
             return Err(format!(
-                "Invalid nullifier length: expected 66 characters, got {}",
-                nullifier_str.len()
+                "Invalid nullifier length: expected 66 characters, got {}. Sanitized: {}",
+                nullifier_str.len(),
+                sanitize_nullifier(nullifier_str)
             ));
         }
 
@@ -477,8 +478,7 @@ impl AppState {
             format!("Invalid nullifier length: expected 32 bytes, got {e}")
         })?;
 
-        let zero_nullifier = [0u8; 32];
-        if nullifier_array == zero_nullifier {
+        if nullifier_array == [0u8; 32] {
             self.increment_failed_claims();
             return Err("Invalid nullifier: cannot be all zeros".to_string());
         }

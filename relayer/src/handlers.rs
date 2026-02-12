@@ -193,7 +193,10 @@ fn sanitize_error_message(error: &str) -> String {
 }
 
 pub fn is_valid_address(address: &str) -> bool {
-    Address::from_str(address).is_ok()
+    match Address::from_str(address) {
+        Ok(addr) => !addr.is_zero(),
+        Err(_) => false,
+    }
 }
 
 pub fn is_valid_nullifier(nullifier: &str) -> bool {

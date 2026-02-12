@@ -69,12 +69,19 @@ async fn main() -> anyhow::Result<()> {
                     .allowed_origin_fn(move |origin, _req_head| {
                         if let Ok(origin_str) = origin.to_str() {
                             if origin_str.len() > 2048 {
+                                tracing::warn!("Origin exceeds maximum length of 2048");
                                 return false;
                             }
-                            allowed_origins
-                                .iter()
-                                .filter(|allowed| *allowed != "*")
-                                .any(|allowed| origin_str == *allowed)
+                            allowed_origins.iter().any(|allowed| {
+                                if *allowed == "*" {
+                                    tracing::warn!(
+                                        "Wildcard origin '*' requested - rejecting for security"
+                                    );
+                                    false
+                                } else {
+                                    origin_str == *allowed
+                                }
+                            })
                         } else {
                             false
                         }

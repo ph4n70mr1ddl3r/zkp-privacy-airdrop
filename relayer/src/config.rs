@@ -21,8 +21,14 @@ use zeroize::Zeroize;
 /// // Avoid clones - use by reference:
 /// use_key(&key);  // Pass by reference instead of key.clone()
 /// ```
-#[derive(Clone, Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct SecretKey(String);
+
+impl Clone for SecretKey {
+    fn clone(&self) -> Self {
+        SecretKey(self.0.clone())
+    }
+}
 
 impl SecretKey {
     pub fn new(key: String) -> Self {
@@ -36,6 +42,11 @@ impl SecretKey {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    #[allow(dead_code)]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 /// Detects weak private key patterns to prevent use of low-entropy keys
@@ -46,7 +57,7 @@ impl SecretKey {
 /// - High frequency of the same byte (>8 occurrences)
 /// - Known suspicious hex patterns (deadbeef, cafebabe, etc.)
 /// - Alternating patterns (e.g., 0xAA, 0x55, 0xAA, 0x55...)
-fn has_weak_key_pattern(key_bytes: &[u8]) -> bool {
+pub fn has_weak_key_pattern(key_bytes: &[u8]) -> bool {
     if key_bytes.len() != 32 {
         return true;
     }
