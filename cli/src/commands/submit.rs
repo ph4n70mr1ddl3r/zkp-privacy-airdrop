@@ -17,6 +17,15 @@ use crate::types_plonk::{Proof, ProofData, SubmitClaimRequest, SubmitClaimRespon
 const HTTP_TIMEOUT_SECONDS: u64 = 30;
 const MAX_RETRY_AFTER_SECONDS: u64 = 86400;
 const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
+const MAX_URL_LENGTH: usize = 2048;
+
+fn sanitize_output(input: &str) -> String {
+    input
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || *c == '.' || *c == ':')
+        .take(50)
+        .collect::<String>()
+}
 
 pub async fn execute(
     proof_path: PathBuf,
@@ -51,9 +60,9 @@ pub async fn execute(
         tracing::warn!("Connecting to localhost - ensure this is intentional");
     }
 
-    if relayer_url.len() > 2048 {
+    if relayer_url.len() > MAX_URL_LENGTH {
         return Err(anyhow::anyhow!(
-            "Invalid relayer URL: exceeds maximum length of 2048 characters"
+            "Invalid relayer URL: exceeds maximum length of {MAX_URL_LENGTH} characters"
         ));
     }
 
@@ -96,16 +105,6 @@ pub async fn execute(
     );
 
     let proof_type = proof_data.proof.type_name().to_string();
-
-    fn sanitize_output(input: &str) -> String {
-        input
-            .chars()
-            .filter(|c| {
-                c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || *c == '.' || *c == ':'
-            })
-            .take(50)
-            .collect::<String>()
-    }
 
     let request = SubmitClaimRequest {
         proof: proof_data.proof,
@@ -279,11 +278,15 @@ pub async fn execute(
 async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
     use ethers::providers::{Http, Provider};
     use ethers::types::H256;
+    use std::str::FromStr;
 
-    let tx_hash_parsed: H256 = tx_hash.parse().unwrap_or_else(|e| {
-        tracing::warn!("Invalid transaction hash format: {}, using default", e);
-        H256::default()
-    });
+    let tx_hash_parsed = match H256::from_str(tx_hash) {
+        Ok(hash) => hash,
+        Err(e) => {
+            tracing::error!("Invalid transaction hash format '{}': {}", tx_hash, e);
+            return false;
+        }
+    };
 
     match Provider::<Http>::try_from(rpc_url) {
         Ok(provider) => match provider.get_transaction_receipt(tx_hash_parsed).await {

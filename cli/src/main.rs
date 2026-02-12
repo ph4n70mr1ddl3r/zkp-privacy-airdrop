@@ -129,6 +129,8 @@ async fn main() -> Result<()> {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(if cli.verbose {
             tracing::Level::DEBUG
+        } else if cli.quiet {
+            tracing::Level::WARN
         } else {
             tracing::Level::INFO
         })
