@@ -6,6 +6,14 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/**
+ * @title BasePrivacyAirdrop
+ * @author ZKP Airdrop Team
+ * @notice Base contract for privacy-preserving ERC20 token airdrops
+ * @dev Implements common functionality for airdrop contracts using ZK proofs
+ *      Provides Merkle tree verification, nullifier tracking, and token distribution
+ *      Designed to be inherited by specific proof system implementations (e.g., PLONK)
+ */
 abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
@@ -32,25 +40,43 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     error CumulativeWithdrawalExceedsAvailable();
 
     bytes32 public immutable MERKLE_ROOT;
+
     uint256 private constant MAX_CLAIM_DEADLINE = 365 days;
+
     mapping(bytes32 => bool) public nullifiers;
+
     IERC20 public immutable TOKEN;
+
     uint256 public immutable CLAIM_AMOUNT;
+
     uint256 public immutable CLAIM_DEADLINE;
+
     bool public paused;
+
     uint256 public totalClaimed;
+
     uint256 public totalWithdrawn;
+
     uint256 public cumulativeWithdrawn;
+
     uint256 public lastWithdrawalTime;
+
     uint256 public immutable MAX_WITHDRAWAL_PERCENT;
+
     uint256 public immutable WITHDRAWAL_COOLDOWN;
+
     uint256 public constant EMERGENCY_WITHDRAWAL_DELAY = 30 days;
+
     uint256 public immutable DEPLOY_TIMESTAMP;
 
     event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
+
     event TokensTransferred(address indexed recipient, uint256 amount, uint256 timestamp);
+
     event Paused(address indexed account);
+
     event Unpaused(address indexed account);
+
     event EmergencyWithdraw(address indexed recipient, uint256 amount, uint256 cumulativeWithdrawn, uint256 timestamp);
 
     /**
@@ -70,40 +96,11 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         uint256 _maxWithdrawalPercent,
         uint256 _withdrawalCooldown
     ) Ownable(msg.sender) {
-        if (_token == address(0)) {
-            revert InvalidTokenAddress();
-        }
-
-        bytes32 zeroRoot = bytes32(0);
-        bytes32 onesRoot = bytes32(type(uint256).max);
-        if (_merkleRoot == zeroRoot || _merkleRoot == onesRoot) {
-            revert InvalidMerkleRoot();
-        }
-
-        bytes4 prefix = bytes4(_merkleRoot);
-        if (prefix == bytes4(0) || prefix == bytes4(type(uint32).max)) {
-            revert InvalidMerkleRootPrefix();
-        }
-
-        if (_claimAmount == 0) {
-            revert InvalidClaimAmount();
-        }
-        // solhint-disable not-rely-on-time
-        if (_claimDeadline <= block.timestamp) {
-            revert InvalidClaimDeadline();
-        }
-        // solhint-enable not-rely-on-time
-        // solhint-disable not-rely-on-time
-        if (_claimDeadline >= block.timestamp + MAX_CLAIM_DEADLINE) {
-            revert InvalidClaimDeadline();
-        }
-        // solhint-enable not-rely-on-time
-        if (_maxWithdrawalPercent == 0 || _maxWithdrawalPercent > 100) {
-            revert InvalidWithdrawalPercentage();
-        }
-        if (_withdrawalCooldown == 0) {
-            revert InvalidWithdrawalCooldown();
-        }
+        _validateTokenAddress(_token);
+        _validateMerkleRoot(_merkleRoot);
+        _validateClaimAmount(_claimAmount);
+        _validateClaimDeadline(_claimDeadline);
+        _validateWithdrawalSettings(_maxWithdrawalPercent, _withdrawalCooldown);
 
         TOKEN = IERC20(_token);
         MERKLE_ROOT = _merkleRoot;
@@ -115,6 +112,51 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         lastWithdrawalTime = block.timestamp;
         DEPLOY_TIMESTAMP = block.timestamp;
         // solhint-enable not-rely-on-time
+    }
+
+    function _validateTokenAddress(address _token) private pure {
+        if (_token == address(0)) {
+            revert InvalidTokenAddress();
+        }
+    }
+
+    function _validateMerkleRoot(bytes32 _merkleRoot) private pure {
+        bytes32 zeroRoot = bytes32(0);
+        bytes32 onesRoot = bytes32(type(uint256).max);
+        if (_merkleRoot == zeroRoot || _merkleRoot == onesRoot) {
+            revert InvalidMerkleRoot();
+        }
+
+        bytes4 prefix = bytes4(_merkleRoot);
+        if (prefix == bytes4(0) || prefix == bytes4(type(uint32).max)) {
+            revert InvalidMerkleRootPrefix();
+        }
+    }
+
+    function _validateClaimAmount(uint256 _claimAmount) private pure {
+        if (_claimAmount == 0) {
+            revert InvalidClaimAmount();
+        }
+    }
+
+    function _validateClaimDeadline(uint256 _claimDeadline) private view {
+        // solhint-disable not-rely-on-time
+        if (_claimDeadline <= block.timestamp) {
+            revert InvalidClaimDeadline();
+        }
+        if (_claimDeadline >= block.timestamp + MAX_CLAIM_DEADLINE) {
+            revert InvalidClaimDeadline();
+        }
+        // solhint-enable not-rely-on-time
+    }
+
+    function _validateWithdrawalSettings(uint256 _maxWithdrawalPercent, uint256 _withdrawalCooldown) private pure {
+        if (_maxWithdrawalPercent == 0 || _maxWithdrawalPercent > 100) {
+            revert InvalidWithdrawalPercentage();
+        }
+        if (_withdrawalCooldown == 0) {
+            revert InvalidWithdrawalCooldown();
+        }
     }
 
     /**
@@ -202,18 +244,39 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
      * @dev Uses nonReentrant modifier to prevent reentrancy attacks
      */
     function emergencyWithdraw(address recipient, uint256 amount) external onlyOwner nonReentrant {
+        _validateEmergencyWithdrawTiming();
+        _validateWithdrawalParameters(recipient, amount);
+
+        uint256 unclaimedAmount = _getUnclaimedAmount();
+        _validateWithdrawalAmount(amount, unclaimedAmount);
+        _updateWithdrawalTracking(amount, unclaimedAmount);
+
+        cumulativeWithdrawn += amount;
+
+        // solhint-disable not-rely-on-time
+        emit EmergencyWithdraw(recipient, amount, cumulativeWithdrawn, block.timestamp);
+        // solhint-enable not-rely-on-time
+        TOKEN.safeTransfer(recipient, amount);
+    }
+
+    function _validateEmergencyWithdrawTiming() private view {
         // solhint-disable not-rely-on-time
         if (block.timestamp <= CLAIM_DEADLINE + EMERGENCY_WITHDRAWAL_DELAY) {
             revert EmergencyWithdrawalNotAvailable();
         }
         // solhint-enable not-rely-on-time
+    }
+
+    function _validateWithdrawalParameters(address recipient, uint256 amount) private pure {
         if (recipient == address(0)) {
             revert InvalidRecipient();
         }
         if (amount == 0) {
             revert InvalidWithdrawalAmount();
         }
+    }
 
+    function _getUnclaimedAmount() private view returns (uint256) {
         uint256 contractBalance = TOKEN.balanceOf(address(this));
         if (contractBalance == 0) {
             revert NoContractBalance();
@@ -223,14 +286,22 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         if (contractBalance < claimed) {
             revert BalanceInconsistent();
         }
+
         uint256 unclaimedAmount = contractBalance - claimed;
         if (unclaimedAmount == 0) {
             revert NoUnclaimedTokens();
         }
+
+        return unclaimedAmount;
+    }
+
+    function _validateWithdrawalAmount(uint256 amount, uint256 unclaimedAmount) private pure {
         if (amount > unclaimedAmount) {
             revert WithdrawalExceedsUnclaimed();
         }
+    }
 
+    function _updateWithdrawalTracking(uint256 amount, uint256 unclaimedAmount) private {
         // solhint-disable not-rely-on-time
         uint256 timeSinceLastWithdrawal = block.timestamp - lastWithdrawalTime;
         // solhint-enable not-rely-on-time
@@ -252,12 +323,5 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         if (cumulativeWithdrawn + amount > unclaimedAmount) {
             revert CumulativeWithdrawalExceedsAvailable();
         }
-
-        cumulativeWithdrawn += amount;
-
-        // solhint-disable not-rely-on-time
-        emit EmergencyWithdraw(recipient, amount, cumulativeWithdrawn, block.timestamp);
-        // solhint-enable not-rely-on-time
-        TOKEN.safeTransfer(recipient, amount);
     }
 }

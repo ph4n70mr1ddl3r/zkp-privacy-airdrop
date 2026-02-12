@@ -10,7 +10,6 @@ use zeroize::Zeroize;
 use crate::crypto::{address_to_field, derive_address, generate_nullifier};
 use crate::tree::MerkleTree;
 use std::time::Instant;
-use zkp_airdrop_utils::types::PlonkProof;
 
 /// BN128 field element
 type F = ark_bn254::Fq;
