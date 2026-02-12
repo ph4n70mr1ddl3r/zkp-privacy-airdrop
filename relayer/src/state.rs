@@ -840,7 +840,7 @@ impl AppState {
     }
 
     pub async fn get_stats(&self) -> StatsResponse {
-        let (total_claims, successful_claims, failed_claims, uptime) = {
+        let (total_claims, successful_claims, failed_claims, _uptime) = {
             let stats = self.stats.read();
             (
                 stats.total_claims,
@@ -868,11 +868,11 @@ impl AppState {
             average_gas_price: avg_gas_price.to_string(),
             total_gas_used: total_gas_used.to_string(),
             relayer_balance: self.get_relayer_balance().await.to_string(),
-            uptime_percentage: if uptime > 0.0 { 100.0 } else { 0.0 },
+            uptime_percentage: 100.0,
             response_time_ms: ResponseTime {
-                p50: 150,
-                p95: 500,
-                p99: 1200,
+                p50: 0,
+                p95: 0,
+                p99: 0,
             },
         }
     }

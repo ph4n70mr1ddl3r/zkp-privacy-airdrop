@@ -9,17 +9,16 @@ use zeroize::Zeroize;
 ///
 /// # Security Considerations
 ///
-/// This struct implements `Clone` for convenience, but cloning a sensitive value
-/// increases its exposure in memory. When cloning:
-/// - The original and clone both contain the same private key
-/// - Both will be zeroized when dropped, but there may be a time gap
-/// - Consider using references (`&SecretKey`) instead of cloning where possible
+/// ⚠️ **WARNING**: This struct implements `Clone` for serialization purposes only.
+/// Cloning a private key increases its exposure in memory. Always prefer using
+/// references (`&SecretKey`) instead of cloning to minimize sensitive data exposure.
+/// When cloning is unavoidable, ensure clones are dropped promptly.
 ///
 /// # Example
 ///
 /// ```ignore
 /// let key = SecretKey::new("0x1234...".to_string());
-/// // Avoid unnecessary clones:
+/// // Avoid clones - use by reference:
 /// use_key(&key);  // Pass by reference instead of key.clone()
 /// ```
 #[derive(Clone, Serialize, Deserialize, Default)]

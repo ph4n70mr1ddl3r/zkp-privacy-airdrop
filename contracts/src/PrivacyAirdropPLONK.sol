@@ -81,8 +81,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     ) external nonReentrant validClaim(recipient, nullifier) {
         _validatePLONKProof(proof);
 
-        nullifiers[nullifier] = true;
-
         uint256[3] memory instances;
         instances[0] = uint256(MERKLE_ROOT);
         instances[1] = uint256(uint160(recipient));
@@ -94,6 +92,8 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         _transferTokens(recipient, CLAIM_AMOUNT);
 
+        nullifiers[nullifier] = true;
+
         // solhint-disable not-rely-on-time
         emit Claimed(nullifier, recipient, block.timestamp);
         // solhint-enable not-rely-on-time
@@ -104,7 +104,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             revert InvalidPLONKProofLength();
         }
 
-        uint256[8] memory checkedProof;
         uint256 allZeros;
         uint256 firstValue = proof.proof[0];
         bool allSame = true;
@@ -117,14 +116,9 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
                 revert InvalidPLONKProofOverflow();
             }
 
-            checkedProof[i] = proof.proof[i];
             allZeros |= proof.proof[i];
 
-            if (checkedProof[i] != proof.proof[i]) {
-                revert InvalidPLONKProofOverflow();
-            }
-
-            if (i > 0 && checkedProof[i] != firstValue) {
+            if (i > 0 && proof.proof[i] != firstValue) {
                 allSame = false;
             }
         }

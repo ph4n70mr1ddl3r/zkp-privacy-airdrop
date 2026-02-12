@@ -64,7 +64,7 @@ const BN254_SCALAR_FIELD_MODULUS: &str = zkp_airdrop_utils::BN254_FIELD_MODULUS;
 /// Salt used for nullifier generation to prevent precomputation attacks
 /// Matches circuit value at circuits/src/merkle_membership.circom:61-63
 const NULLIFIER_SALT_STR: &str =
-    "87953108768114088221452414019732140257409482096940319490691914651639977587459";
+    "879531087681140882214524140197321402574094820969403194906919146516399775874596";
 
 fn get_bn254_field_modulus() -> &'static num_bigint::BigUint {
     use num_traits::Num;

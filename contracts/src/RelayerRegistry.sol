@@ -209,10 +209,18 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     }
 
     /**
-     * @notice Receive ETH as a donation
-     * @dev ETH is added to default relayer's balance
-     */
+      * @notice Receive ETH as a donation
+      * @dev ETH is added to default relayer's balance
+      */
     receive() external payable {
+        _handleDonation(msg.sender, msg.value);
+    }
+
+    /**
+      * @notice Fallback function for receiving ETH as a donation
+      * @dev ETH is added to default relayer's balance
+      */
+    fallback() external payable {
         _handleDonation(msg.sender, msg.value);
     }
 }
