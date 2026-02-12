@@ -214,6 +214,7 @@ fn is_valid_hex_bytes(input: &str, expected_len: usize, reject_zero: bool) -> bo
     }
 
     let hex = &input[2..];
+
     let bytes = match hex::decode(hex) {
         Ok(b) => b,
         Err(_) => return false,

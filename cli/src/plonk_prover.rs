@@ -10,6 +10,7 @@ use zeroize::Zeroize;
 use crate::crypto::{address_to_field, derive_address, generate_nullifier};
 use crate::tree::MerkleTree;
 use std::time::Instant;
+use zkp_airdrop_utils::types::PlonkProof;
 
 /// BN128 field element
 type F = ark_bn254::Fq;
@@ -46,9 +47,9 @@ impl Drop for PrivateInputs {
     }
 }
 
-/// Plonk proof structure
+/// Internal Plonk proof structure for proof generation
 #[derive(Debug, Clone)]
-pub struct PlonkProof {
+pub struct InternalPlonkProof {
     /// A[2] elements
     pub a: [F; 2],
     /// B[2][2] elements
@@ -60,7 +61,7 @@ pub struct PlonkProof {
 /// Plonk proof data ready for API submission
 #[derive(Debug, Clone)]
 pub struct PlonkProofData {
-    pub proof: PlonkProof,
+    pub proof: InternalPlonkProof,
     pub public_inputs: PublicInputs,
     pub nullifier: H256,
     pub recipient: Address,
@@ -71,7 +72,7 @@ pub struct PlonkProofData {
 impl From<PlonkProofData> for crate::types_plonk::ProofData {
     fn from(data: PlonkProofData) -> Self {
         Self {
-            proof: crate::types_plonk::Proof::Plonk(crate::types_plonk::PlonkProof {
+            proof: crate::types_plonk::Proof::Plonk(zkp_airdrop_utils::types::PlonkProof {
                 proof: vec![
                     data.proof.a[0].to_string(),
                     data.proof.a[1].to_string(),
@@ -96,7 +97,7 @@ impl From<PlonkProofData> for crate::types_plonk::ProofData {
     }
 }
 
-impl PlonkProof {
+impl InternalPlonkProof {
     #[cfg(test)]
     /// Create a minimal Plonk proof for testing
     ///
@@ -230,7 +231,7 @@ pub fn generate_plonk_proof(
 fn generate_plonk_proof_internal(
     _private_inputs: &PrivateInputs,
     _public_inputs: &PublicInputs,
-) -> Result<PlonkProof> {
+) -> Result<InternalPlonkProof> {
     Err(anyhow::anyhow!(
         "PLONK proof generation requires a proving key and circuit integration. \
          To enable PLONK proof generation:\n\
@@ -250,7 +251,7 @@ mod tests {
 
     #[test]
     fn test_plonk_proof_structure() {
-        let proof = PlonkProof::minimal();
+        let proof = InternalPlonkProof::minimal();
 
         assert_eq!(proof.a.len(), 2);
         assert_eq!(proof.b.len(), 2);

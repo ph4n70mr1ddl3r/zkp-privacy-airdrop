@@ -252,6 +252,8 @@ pub fn sanitize_nullifier(nullifier: &str) -> String {
     }
 }
 
+pub mod types;
+
 #[cfg(test)]
 mod tests {
     use super::*;
