@@ -152,28 +152,29 @@ fn sanitize_error_message(error: &str) -> String {
         }
     }
 
-    let sensitive_indicators = [
-        "database",
-        "redis",
-        "password",
-        "secret",
-        "postgresql://",
-        "mongodb://",
-        "127.0.0.1",
-        "localhost",
-        "private[-_]?key",
-        "priv[-_]?key",
-        "api[-_]?key",
-        "auth[-_]?token",
-    ];
+    let sensitive_indicators: std::sync::LazyLock<Vec<regex::Regex>> =
+        std::sync::LazyLock::new(|| {
+            vec![
+                regex::Regex::new(r"database").unwrap(),
+                regex::Regex::new(r"redis").unwrap(),
+                regex::Regex::new(r"password").unwrap(),
+                regex::Regex::new(r"secret").unwrap(),
+                regex::Regex::new(r"postgresql://").unwrap(),
+                regex::Regex::new(r"mongodb://").unwrap(),
+                regex::Regex::new(r"127\.0\.0\.1").unwrap(),
+                regex::Regex::new(r"localhost").unwrap(),
+                regex::Regex::new(r"private[-_]?key").unwrap(),
+                regex::Regex::new(r"priv[-_]?key").unwrap(),
+                regex::Regex::new(r"api[-_]?key").unwrap(),
+                regex::Regex::new(r"auth[-_]?token").unwrap(),
+            ]
+        });
 
     let lower = error.to_lowercase();
-    for indicator in &sensitive_indicators {
-        if let Ok(re) = regex::Regex::new(indicator) {
-            if re.is_match(&lower) {
-                tracing::warn!("Filtered sensitive error message: error='{}'", error);
-                return "Transaction failed. Please check your inputs and try again.".to_string();
-            }
+    for re in &*sensitive_indicators {
+        if re.is_match(&lower) {
+            tracing::warn!("Filtered sensitive error message: error='{}'", error);
+            return "Transaction failed. Please check your inputs and try again.".to_string();
         }
     }
 

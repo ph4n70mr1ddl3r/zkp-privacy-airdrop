@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use tracing::info;
 
 use crate::config::Config;
-use crate::crypto::{derive_address, generate_nullifier, read_private_key};
+use crate::crypto::{derive_address, read_private_key};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn execute(
@@ -38,9 +38,6 @@ pub async fn execute(
 
     let address_str = format!("{address:#x}");
     tracing::debug!("Address: {}", address_str);
-
-    let nullifier = generate_nullifier(&private_key).context("Failed to generate nullifier")?;
-    let _nullifier_hex = format!("0x{}", hex::encode(nullifier.as_bytes()));
 
     tracing::debug!("Recipient: {}", recipient);
 

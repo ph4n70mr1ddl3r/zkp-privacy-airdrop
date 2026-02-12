@@ -57,7 +57,7 @@ pub async fn execute(
         ));
     }
 
-    let _recipient_addr = validate_address(&recipient).context("Invalid recipient address")?;
+    validate_address(&recipient).context("Invalid recipient address")?;
 
     let mut proof_content =
         std::fs::read_to_string(&proof_path).context("Failed to read proof file")?;

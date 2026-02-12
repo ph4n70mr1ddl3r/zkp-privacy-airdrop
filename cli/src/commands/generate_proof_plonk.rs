@@ -18,10 +18,9 @@ pub async fn execute(
     proof_system: String,
     config: &Config,
 ) -> Result<()> {
-    let proof_system_lower = proof_system.to_lowercase();
-    let use_plonk = proof_system_lower == "plonk";
-
     info!("Generating {} proof...", proof_system);
+
+    let use_plonk = proof_system.to_lowercase() == "plonk";
 
     let private_key_wrapper =
         crate::crypto::read_private_key(private_key_opt, private_key_file, private_key_stdin)?;
