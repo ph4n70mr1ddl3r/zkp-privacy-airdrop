@@ -25,6 +25,33 @@ mod privacy_airdrop_plonk {
 const RPC_TIMEOUT_SECONDS: u64 = 10;
 const RPC_HEALTH_CHECK_TIMEOUT_SECONDS: u64 = 5;
 const MAX_PROOF_STRING_LENGTH: usize = 256;
+const BALANCE_CACHE_TTL_SECONDS: u64 = 30;
+const RATE_LIMIT_WINDOW_SECONDS: u64 = 120;
+const MAX_TRANSACTION_RETRIES: u32 = 3;
+const TRANSACTION_RETRY_DELAY_MS: u64 = 1000;
+const TOTAL_TRANSACTION_TIMEOUT_SECONDS: u64 = 60;
+
+// Timeout constants (in seconds)
+// RPC_TIMEOUT_SECONDS: Maximum time to wait for RPC responses (10s)
+// RPC_HEALTH_CHECK_TIMEOUT_SECONDS: Maximum time for health check RPC calls (5s)
+// TOTAL_TRANSACTION_TIMEOUT_SECONDS: Maximum total time for transaction submission attempts (60s)
+//
+// Size limits
+// MAX_PROOF_STRING_LENGTH: Maximum allowed length for proof field element strings (256 chars)
+//   - PLONK proof elements as hex strings should be ~64 chars
+//   - 256 provides reasonable buffer against malformed input
+//
+// Cache durations
+// BALANCE_CACHE_TTL_SECONDS: Balance cache validity period (30s)
+//   - Balances don't change frequently on normal operation
+//   - 30s balance between freshness and RPC load
+// RATE_LIMIT_WINDOW_SECONDS: Rate limiting time window (120s)
+//   - 2-minute rolling window for rate limiting
+//   - Allows some burst while preventing abuse
+//
+// Retry behavior
+// MAX_TRANSACTION_RETRIES: Maximum retry attempts for failed transactions (3)
+// TRANSACTION_RETRY_DELAY_MS: Base delay between retries in milliseconds (1000ms)
 
 /// Pre-compiled Lua script for rate limiting
 static RATE_LIMIT_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
@@ -77,11 +104,6 @@ static NULLIFIER_CHECK_SCRIPT: LazyLock<Script> = LazyLock::new(|| {
     "#,
     )
 });
-const RATE_LIMIT_WINDOW_SECONDS: u64 = 120;
-const MAX_TRANSACTION_RETRIES: u32 = 3;
-const TRANSACTION_RETRY_DELAY_MS: u64 = 1000;
-const TOTAL_TRANSACTION_TIMEOUT_SECONDS: u64 = 60;
-const BALANCE_CACHE_TTL_SECONDS: u64 = 30;
 
 // Gas price constants (in wei)
 // 1 gwei = 1_000_000_000 wei

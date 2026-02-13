@@ -404,7 +404,7 @@ impl MerkleTreeConfig {
             }
 
             let current_ts = chrono::Utc::now().timestamp();
-            const MAX_FUTURE_SECONDS: i64 = 86400;
+            const MAX_FUTURE_SECONDS: i64 = 300;
             if ts > current_ts + MAX_FUTURE_SECONDS {
                 return Err(anyhow::anyhow!(
                     "MERKLE_TREE_TIMESTAMP {ts} is more than {MAX_FUTURE_SECONDS} seconds in the future. \

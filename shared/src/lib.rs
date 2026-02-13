@@ -5,6 +5,95 @@ use num_traits::{Num, Zero};
 /// A score of 790 indicates sufficient randomness for cryptographic security
 pub const MIN_ENTROPY_SCORE: u32 = 790;
 
+/// Validates that a string is a properly formatted hex byte string of expected length.
+///
+/// This function performs comprehensive validation of hex strings commonly used in Ethereum
+/// operations (addresses, hashes, nullifiers, merkle roots).
+///
+/// # Arguments
+/// * `input` - The hex string to validate
+/// * `expected_len` - Expected total length including "0x" prefix (e.g., 66 for 32-byte values)
+/// * `expected_bytes` - Expected number of bytes after decoding (e.g., 32)
+/// * `reject_zero` - If true, rejects zero-valued inputs
+/// * `field_name` - Name of the field for error messages
+///
+/// # Returns
+/// `Ok(())` if valid, `Err` with description otherwise
+///
+/// # Validation Rules
+/// - Must start with "0x" or "0X"
+/// - Must have exact expected length
+/// - Must contain valid hexadecimal characters
+/// - Must decode to exact expected number of bytes
+/// - Must not be zero if `reject_zero` is true
+///
+/// # Examples
+/// ```
+/// use zkp_airdrop_utils::validate_hex_bytes;
+///
+/// // Valid 32-byte hex string
+/// assert!(validate_hex_bytes(
+///     "0x0000000000000000000000000000000000000000000000000000000000000001",
+///     66, 32, false, "test"
+/// ).is_ok());
+///
+/// // Missing 0x prefix
+/// assert!(validate_hex_bytes(
+///     "0000000000000000000000000000000000000000000000000000000000000001",
+///     66, 32, false, "test"
+/// ).is_err());
+///
+/// // Zero value with reject_zero=true
+/// assert!(validate_hex_bytes(
+///     "0x0000000000000000000000000000000000000000000000000000000000000000",
+///     66, 32, true, "test"
+/// ).is_err());
+/// ```
+pub fn validate_hex_bytes(
+    input: &str,
+    expected_len: usize,
+    expected_bytes: usize,
+    reject_zero: bool,
+    field_name: &str,
+) -> Result<(), String> {
+    if input.len() != expected_len {
+        return Err(format!(
+            "Invalid {} length: expected {} chars (0x + {} hex), got {}",
+            field_name,
+            expected_len,
+            expected_bytes * 2,
+            input.len()
+        ));
+    }
+
+    if !input.starts_with("0x") && !input.starts_with("0X") {
+        return Err(format!("Invalid {field_name} format: must start with 0x"));
+    }
+
+    let decoded = hex::decode(&input[2..])
+        .map_err(|e| format!("Invalid {field_name}: invalid hex encoding: {e}"))?;
+
+    if decoded.len() != expected_bytes {
+        return Err(format!(
+            "Invalid {}: expected {} bytes, got {}",
+            field_name,
+            expected_bytes,
+            decoded.len()
+        ));
+    }
+
+    if !reject_zero {
+        return Ok(());
+    }
+
+    let zero_value = vec![0u8; expected_bytes];
+    if decoded == zero_value.as_slice() {
+        return Err(format!("Invalid {field_name}: cannot be all zeros"));
+    }
+
+    Ok(())
+}
+
 /// BN254 scalar field modulus
 pub const BN254_FIELD_MODULUS: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";

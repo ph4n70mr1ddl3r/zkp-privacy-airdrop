@@ -577,7 +577,6 @@ pub async fn get_merkle_path(
 
     info!("Getting Merkle path for address: {}", address);
 
-    // Rate limiting
     if state
         .check_rate_limit(&address, RateLimitType::GetMerklePath)
         .await
@@ -599,5 +598,88 @@ pub async fn get_merkle_path(
             code: Some("ADDRESS_NOT_FOUND".to_string()),
             retry_after: None,
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_valid_address_valid() {
+        let valid_address = "0x0000000000000000000000000000000000000001";
+        assert!(is_valid_address(valid_address));
+    }
+
+    #[test]
+    fn test_is_valid_address_invalid_format() {
+        let invalid_address = "not_an_address";
+        assert!(!is_valid_address(invalid_address));
+    }
+
+    #[test]
+    fn test_is_valid_address_zero_address() {
+        let zero_address = "0x0000000000000000000000000000000000000000";
+        assert!(!is_valid_address(zero_address));
+    }
+
+    #[test]
+    fn test_is_valid_nullifier_valid() {
+        let valid_nullifier = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        assert!(is_valid_nullifier(valid_nullifier));
+    }
+
+    #[test]
+    fn test_is_valid_nullifier_wrong_length() {
+        let short_nullifier = "0x1234";
+        assert!(!is_valid_nullifier(short_nullifier));
+    }
+
+    #[test]
+    fn test_is_valid_nullifier_no_prefix() {
+        let no_prefix = "0000000000000000000000000000000000000000000000000000000000000001";
+        assert!(!is_valid_nullifier(no_prefix));
+    }
+
+    #[test]
+    fn test_is_valid_nullifier_zero_value() {
+        let zero_nullifier = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        assert!(!is_valid_nullifier(zero_nullifier));
+    }
+
+    #[test]
+    fn test_is_valid_merkle_root_valid() {
+        let valid_root = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        assert!(is_valid_merkle_root(valid_root));
+    }
+
+    #[test]
+    fn test_is_valid_merkle_root_invalid_length() {
+        let invalid_root = "0x1234";
+        assert!(!is_valid_merkle_root(invalid_root));
+    }
+
+    #[test]
+    fn test_sanitize_error_message_safe_message() {
+        let safe_msg = "nullifier already used";
+        assert_eq!(sanitize_error_message(safe_msg), safe_msg);
+    }
+
+    #[test]
+    fn test_sanitize_error_message_sensitive_keyword() {
+        let sensitive_msg = "database connection failed: password=secret123";
+        let sanitized = sanitize_error_message(sensitive_msg);
+        assert!(!sanitized.contains("password"));
+        assert!(!sanitized.contains("secret123"));
+    }
+
+    #[test]
+    fn test_sanitize_error_message_database_keyword() {
+        let db_msg = "error connecting to postgresql://user:pass@localhost/db";
+        let sanitized = sanitize_error_message(db_msg);
+        assert_eq!(
+            sanitized,
+            "Transaction failed. Please check your inputs and try again."
+        );
     }
 }
