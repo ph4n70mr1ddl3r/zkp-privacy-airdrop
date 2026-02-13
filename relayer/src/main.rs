@@ -20,7 +20,8 @@ async fn main() -> anyhow::Result<()> {
         .with_max_level(tracing::Level::INFO)
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
+    tracing::subscriber::set_global_default(subscriber)
+        .map_err(|e| anyhow::anyhow!("Failed to set tracing subscriber: {e}"))?;
 
     info!("Starting ZKP Airdrop Relayer...");
 

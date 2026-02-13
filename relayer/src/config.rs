@@ -483,6 +483,7 @@ impl Config {
 
                     let mut normalized_key = key.trim().to_lowercase();
                     key.zeroize();
+                    drop(key);
 
                     let mut decoded = hex::decode(normalized_key.trim_start_matches("0x"))
                         .map_err(|e| {
@@ -515,7 +516,10 @@ impl Config {
                         anyhow::anyhow!("{e}")
                     })?;
 
-                    SecretKey::new(normalized_key)
+                    let result = SecretKey::new(normalized_key.clone());
+                    normalized_key.zeroize();
+                    decoded.zeroize();
+                    result
                 },
                 min_balance_warning: {
                     let min_balance_warning_str = std::env::var("RELAYER_MIN_BALANCE_WARNING")

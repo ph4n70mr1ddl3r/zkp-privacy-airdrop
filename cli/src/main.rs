@@ -15,6 +15,43 @@ mod types_plonk;
 
 use config::Config;
 
+fn validate_private_key_source(
+    private_key: &Option<String>,
+    private_key_file: &Option<PathBuf>,
+    private_key_stdin: bool,
+) -> Result<()> {
+    let sources = [
+        private_key.is_some(),
+        private_key_file.is_some(),
+        private_key_stdin,
+        std::env::var("ZKP_AIRDROP_PRIVATE_KEY").is_ok(),
+    ];
+
+    let active_count = sources.iter().filter(|&&x| x).count();
+
+    if active_count == 0 {
+        return Err(anyhow::anyhow!(
+            "No private key source provided. Use one of:\n\
+             --private-key <KEY>\n\
+             --private-key-file <PATH>\n\
+             --private-key-stdin\n\
+             ZKP_AIRDROP_PRIVATE_KEY environment variable"
+        ));
+    }
+
+    if active_count > 1 {
+        return Err(anyhow::anyhow!(
+            "Multiple private key sources provided. Please use exactly one of:\n\
+             --private-key <KEY>\n\
+             --private-key-file <PATH>\n\
+             --private-key-stdin\n\
+             ZKP_AIRDROP_PRIVATE_KEY environment variable"
+        ));
+    }
+
+    Ok(())
+}
+
 #[derive(Parser)]
 #[command(name = "zkp-airdrop")]
 #[command(about = "ZKP Privacy Airdrop CLI", long_about = None)]
@@ -126,6 +163,10 @@ enum ConfigAction {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    if cli.verbose && cli.quiet {
+        return Err(anyhow::anyhow!("Cannot specify both --verbose and --quiet"));
+    }
+
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(if cli.verbose {
             tracing::Level::DEBUG
@@ -165,6 +206,7 @@ async fn main() -> Result<()> {
                     output,
                     format,
                 } => {
+                    validate_private_key_source(&private_key, &private_key_file, private_key_stdin)?;
                     commands::generate_proof::execute(
                         private_key,
                         private_key_file,
@@ -186,6 +228,7 @@ async fn main() -> Result<()> {
                     output,
                     format,
                 } => {
+                    validate_private_key_source(&private_key, &private_key_file, private_key_stdin)?;
                     commands::generate_proof_plonk::execute(
                         private_key,
                         private_key_file,

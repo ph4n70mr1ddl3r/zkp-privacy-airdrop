@@ -18,6 +18,7 @@ const HTTP_TIMEOUT_SECONDS: u64 = 30;
 const MAX_RETRY_AFTER_SECONDS: u64 = 86400;
 const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
 const MAX_URL_LENGTH: usize = 2048;
+const RPC_TIMEOUT_SECONDS: u64 = 30;
 
 fn sanitize_output(input: &str) -> String {
     input
@@ -279,6 +280,7 @@ async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
     use ethers::providers::{Http, Provider};
     use ethers::types::H256;
     use std::str::FromStr;
+    use std::time::Duration;
 
     let tx_hash_parsed = match H256::from_str(tx_hash) {
         Ok(hash) => hash,
@@ -289,14 +291,20 @@ async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
     };
 
     match Provider::<Http>::try_from(rpc_url) {
-        Ok(provider) => match provider.get_transaction_receipt(tx_hash_parsed).await {
-            Ok(Some(_receipt)) => true,
-            Ok(None) => false,
-            Err(e) => {
-                tracing::warn!("Failed to check transaction status for {}: {}", tx_hash, e);
-                false
+        Ok(provider) => {
+            let provider_with_timeout = provider.interval(Duration::from_secs(RPC_TIMEOUT_SECONDS));
+            match provider_with_timeout
+                .get_transaction_receipt(tx_hash_parsed)
+                .await
+            {
+                Ok(Some(_receipt)) => true,
+                Ok(None) => false,
+                Err(e) => {
+                    tracing::warn!("Failed to check transaction status for {}: {}", tx_hash, e);
+                    false
+                }
             }
-        },
+        }
         Err(e) => {
             tracing::warn!("Failed to create RPC provider from {}: {}", rpc_url, e);
             false

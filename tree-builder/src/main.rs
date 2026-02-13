@@ -34,7 +34,8 @@ fn main() -> Result<()> {
         .with_max_level(tracing::Level::INFO)
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber)?;
+    tracing::subscriber::set_global_default(subscriber)
+        .context("Failed to set tracing subscriber")?;
 
     let cli = Cli::parse();
 
@@ -49,7 +50,7 @@ fn main() -> Result<()> {
     pb.set_style(
         ProgressStyle::default_bar()
             .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_bar())
+            .expect("Failed to create progress style")
             .progress_chars("=>-"),
     );
 

@@ -335,11 +335,20 @@ fn read_key_from_source(
 /// Decodes hex private key and validates it.
 fn decode_and_validate_key(key_buf: &[u8]) -> Result<Vec<u8>> {
     let key_str = String::from_utf8_lossy(key_buf).trim().to_string();
+
+    if key_str.is_empty() {
+        anyhow::bail!("Private key cannot be empty");
+    }
+
     let hex_str = if key_str.starts_with("0x") || key_str.starts_with("0X") {
         &key_str[2..]
     } else {
         &key_str
     };
+
+    if hex_str.is_empty() {
+        anyhow::bail!("Private key cannot be empty after removing prefix");
+    }
 
     let key_bytes =
         hex::decode(hex_str).map_err(|e| anyhow::anyhow!("Invalid hex private key: {e}"))?;

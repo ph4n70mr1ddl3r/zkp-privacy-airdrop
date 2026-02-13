@@ -163,10 +163,6 @@ fn sanitize_error_message(error: &str) -> String {
                 regex::Regex::new(r"mongodb://").unwrap(),
                 regex::Regex::new(r"127\.0\.0\.1").unwrap(),
                 regex::Regex::new(r"localhost").unwrap(),
-                regex::Regex::new(r"private[-_]?key").unwrap(),
-                regex::Regex::new(r"priv[-_]?key").unwrap(),
-                regex::Regex::new(r"api[-_]?key").unwrap(),
-                regex::Regex::new(r"auth[-_]?token").unwrap(),
             ]
         });
 
