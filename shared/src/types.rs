@@ -20,6 +20,16 @@ pub struct PlonkProof {
 }
 
 impl PlonkProof {
+    /// Validates the structure of the PLONK proof.
+    ///
+    /// Checks that:
+    /// - Proof is not empty
+    /// - Proof has exactly PLONK_PROOF_SIZE elements
+    /// - Each element is a valid field element
+    /// - Total size is within limits
+    ///
+    /// # Returns
+    /// `true` if the proof structure is valid, `false` otherwise
     #[must_use]
     pub fn is_valid_structure(&self) -> bool {
         if self.proof.is_empty() {
@@ -82,6 +92,10 @@ pub enum Proof {
 }
 
 impl Proof {
+    /// Returns the proof type name.
+    ///
+    /// # Returns
+    /// String identifier for the proof type (e.g., "Plonk")
     #[must_use]
     pub fn type_name(&self) -> &str {
         match self {
@@ -89,6 +103,10 @@ impl Proof {
         }
     }
 
+    /// Estimates the size of the proof in bytes.
+    ///
+    /// # Returns
+    /// Estimated size including overhead for serialization
     #[must_use]
     pub fn estimated_size_bytes(&self) -> usize {
         match self {
@@ -96,6 +114,10 @@ impl Proof {
         }
     }
 
+    /// Validates the structure of the proof.
+    ///
+    /// # Returns
+    /// `true` if the proof structure is valid, `false` otherwise
     #[must_use]
     pub fn is_valid_structure(&self) -> bool {
         match self {
