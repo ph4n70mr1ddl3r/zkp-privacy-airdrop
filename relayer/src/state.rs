@@ -513,6 +513,12 @@ impl AppState {
 
         drop(redis);
 
+        // SECURITY NOTE: There is a small time window between Redis check and blockchain submission
+        // where a race condition could theoretically occur. However, the contract's nullifier
+        // tracking provides a second layer of protection, so any duplicate submissions would
+        // be rejected by the blockchain. Future improvement: Consider adding transaction pre-validation
+        // or using a transaction pool to serialize submissions.
+
         let tx_hash: ethers::types::H256 = match &claim.proof {
             crate::types_plonk::Proof::Plonk(proof) => {
                 let chain_id = tokio::time::timeout(

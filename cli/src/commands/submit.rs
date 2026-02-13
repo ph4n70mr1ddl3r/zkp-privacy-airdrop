@@ -19,6 +19,7 @@ const MAX_RETRY_AFTER_SECONDS: u64 = 86400;
 const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
 const MAX_URL_LENGTH: usize = 2048;
 const RPC_TIMEOUT_SECONDS: u64 = 30;
+const MAX_PROOF_FILE_SIZE: u64 = 10 * 1024 * 1024;
 
 fn sanitize_output(input: &str) -> String {
     if input.is_empty() {
@@ -84,6 +85,15 @@ pub async fn execute(
     }
 
     validate_address(&recipient).context("Invalid recipient address")?;
+
+    let metadata = std::fs::metadata(&proof_path).context("Failed to read proof file metadata")?;
+    if metadata.len() > MAX_PROOF_FILE_SIZE {
+        return Err(anyhow::anyhow!(
+            "Proof file too large: {} bytes exceeds maximum of {} bytes",
+            metadata.len(),
+            MAX_PROOF_FILE_SIZE
+        ));
+    }
 
     let mut proof_content =
         std::fs::read_to_string(&proof_path).context("Failed to read proof file")?;

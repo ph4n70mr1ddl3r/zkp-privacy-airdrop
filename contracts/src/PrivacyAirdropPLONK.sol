@@ -60,7 +60,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         _maxWithdrawalPercent,
         _withdrawalCooldown
     ) {
-        if (_verifier == address(0)) {
+        if (_verifier == address(0) || _verifier == address(this)) {
             revert InvalidVerifierAddress();
         }
         VERIFIER = IPLONKVerifier(_verifier);
@@ -99,12 +99,20 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         // solhint-enable not-rely-on-time
     }
 
+    /**
+     * @notice Validate PLONK proof structure and values
+     * @dev Performs comprehensive validation of proof elements to prevent:
+     *      - Empty or zero values that could bypass verification
+     *      - Values exceeding the BN254 field prime causing overflow
+     *      - Uniform proofs that are trivially invalid
+     * @param proof The PLONK proof to validate (8 field elements)
+     * @dev Reverts if any validation fails
+     */
     function _validatePLONKProof(PLONKProof calldata proof) private pure {
         if (proof.proof.length != 8) {
             revert InvalidPLONKProofLength();
         }
 
-        uint256 allZeros;
         uint256 firstValue = proof.proof[0];
         bool allSame = true;
 
@@ -116,15 +124,9 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
                 revert InvalidPLONKProofOverflow();
             }
 
-            allZeros |= proof.proof[i];
-
             if (i > 0 && proof.proof[i] != firstValue) {
                 allSame = false;
             }
-        }
-
-        if (allZeros == 0) {
-            revert InvalidPLONKProofAllZeros();
         }
 
         if (allSame) {

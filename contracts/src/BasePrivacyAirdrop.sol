@@ -213,14 +213,14 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     }
 
     /**
-      * @notice Internal function to transfer tokens safely
-      * @param recipient Address to receive tokens
-      * @param amount Amount of tokens to transfer
-      * @dev Uses SafeERC20 to prevent token transfer failures
-      */
+       * @notice Internal function to transfer tokens safely
+       * @param recipient Address to receive tokens
+       * @param amount Amount of tokens to transfer
+       * @dev Uses SafeERC20 to prevent token transfer failures
+       * @dev Updates state only after successful transfer verification to prevent reentrancy
+       */
     function _transferTokens(address recipient, uint256 amount) internal {
         uint256 balanceBefore = TOKEN.balanceOf(recipient);
-        totalClaimed += amount;
         TOKEN.safeTransfer(recipient, amount);
         uint256 balanceAfter = TOKEN.balanceOf(recipient);
 
@@ -228,6 +228,8 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         if (actualReceived < amount) {
             revert InsufficientTokensReceived();
         }
+
+        totalClaimed += amount;
         // solhint-disable not-rely-on-time
         emit TokensTransferred(recipient, amount, block.timestamp);
         // solhint-enable not-rely-on-time
