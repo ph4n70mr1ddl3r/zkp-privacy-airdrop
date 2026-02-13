@@ -21,10 +21,26 @@ const MAX_URL_LENGTH: usize = 2048;
 const RPC_TIMEOUT_SECONDS: u64 = 30;
 
 fn sanitize_output(input: &str) -> String {
-    input
+    if input.is_empty() {
+        return String::new();
+    }
+
+    let truncated = if input.len() > 50 {
+        &input[..50]
+    } else {
+        input
+    };
+
+    truncated
         .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || *c == '.' || *c == ':')
-        .take(50)
+        .filter(|c| {
+            c.is_ascii_alphanumeric()
+                || *c == '-'
+                || *c == '_'
+                || *c == '.'
+                || *c == ':'
+                || *c == '#'
+        })
         .collect::<String>()
 }
 

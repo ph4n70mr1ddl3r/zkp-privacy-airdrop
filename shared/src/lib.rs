@@ -72,6 +72,13 @@ pub fn calculate_entropy_score(bytes: &[u8]) -> u32 {
 /// - Key is all zeros
 /// - Key equals the field modulus
 /// - Key has insufficient entropy (below `MIN_ENTROPY_SCORE`)
+/// - Key contains weak patterns (sequential, repeated, known weak values)
+///
+/// # Security Notes
+/// This validation helps prevent:
+/// - Use of weak or compromised private keys
+/// - Accidental use of test/development keys in production
+/// - Predictable keys that could be guessed by attackers
 pub fn validate_private_key(key_bytes: &[u8]) -> Result<(), String> {
     if key_bytes.len() != 32 {
         return Err(format!(

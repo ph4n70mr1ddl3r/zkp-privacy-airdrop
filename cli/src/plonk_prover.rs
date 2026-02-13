@@ -188,9 +188,10 @@ pub fn generate_plonk_proof(
     let mut indices_bytes = [0u8; 32];
 
     // Explicit bounds check before iteration to prevent panic on malformed input
-    if indices.len() < 26 {
+    // PLONK circuit requires exactly 26 path indices for a 2^26 tree
+    if indices.len() != 26 {
         return Err(anyhow::anyhow!(
-            "Merkle path indices must have at least 26 elements, got {}",
+            "Merkle path indices must have exactly 26 elements for 2^26 tree, got {}",
             indices.len()
         ));
     }
