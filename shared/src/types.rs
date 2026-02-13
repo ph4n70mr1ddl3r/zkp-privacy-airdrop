@@ -244,6 +244,17 @@ pub enum RateLimitType {
     HealthCheck,
 }
 
+impl std::fmt::Display for RateLimitType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RateLimitType::SubmitClaim => write!(f, "submit_claim"),
+            RateLimitType::GetMerklePath => write!(f, "get_merkle_path"),
+            RateLimitType::CheckStatus => write!(f, "check_status"),
+            RateLimitType::HealthCheck => write!(f, "health_check"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
