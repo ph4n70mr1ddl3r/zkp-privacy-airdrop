@@ -250,8 +250,13 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
        * @param amount Amount of tokens to transfer
        * @dev Uses SafeERC20 to prevent token transfer failures
        * @dev Updates state only after successful transfer verification to prevent reentrancy
+       * @dev IMPORTANT: Only supports standard ERC20 tokens without transfer fees or hooks
+       * @dev Tokens with transfer fees will fail this transfer verification check
        */
     function _transferTokens(address recipient, uint256 amount) internal {
+        if (recipient == address(0)) {
+            revert InvalidRecipient();
+        }
         uint256 balanceBefore = TOKEN.balanceOf(recipient);
         TOKEN.safeTransfer(recipient, amount);
         uint256 balanceAfter = TOKEN.balanceOf(recipient);
@@ -329,11 +334,11 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         return unclaimedAmount;
     }
 
-    function _validateWithdrawalAmount(uint256 amount, uint256 unclaimedAmount) private pure {
+    function _validateWithdrawalAmount(uint256 amount, uint256 unclaimedAmount) private view {
         if (amount > unclaimedAmount) {
             revert WithdrawalExceedsUnclaimed();
         }
-        uint256 maxEmergencyWithdraw = unclaimedAmount / 10;
+        uint256 maxEmergencyWithdraw = (unclaimedAmount * MAX_WITHDRAWAL_PERCENT) / 100;
         if (amount > maxEmergencyWithdraw) {
             revert EmergencyWithdrawalExceedsLimit();
         }
@@ -358,7 +363,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         lastWithdrawalTime = block.timestamp;
         // solhint-enable not-rely-on-time
 
-        if (cumulativeWithdrawn + amount >= unclaimedAmount) {
+        if (cumulativeWithdrawn + amount > unclaimedAmount) {
             revert CumulativeWithdrawalExceedsAvailable();
         }
     }

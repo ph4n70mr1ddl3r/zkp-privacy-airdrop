@@ -422,8 +422,9 @@ impl AppState {
                 redis.get(&exponential_backoff_key).await.ok().flatten();
 
             let base_wait_seconds = 60u64;
-            let multiplier = backoff_count.unwrap_or(0).min(5);
-            let wait_seconds = base_wait_seconds * (1 << multiplier);
+            let multiplier = backoff_count.unwrap_or(0).min(5) as u32;
+            let wait_seconds =
+                base_wait_seconds.saturating_mul(2u32.saturating_pow(multiplier) as u64);
 
             let new_backoff_count = backoff_count.map_or(1, |c| c + 1);
             let _: Result<(), _> = redis
@@ -539,7 +540,7 @@ impl AppState {
         // where a race condition could theoretically occur. However, the contract's nullifier
         // tracking provides a second layer of protection, so any duplicate submissions would
         // be rejected by the blockchain. Future improvement: Consider adding transaction pre-validation
-        // or using a transaction pool to serialize submissions.
+        // or using a transaction pool to serialize submissions with nonce-based ordering.
 
         let tx_hash: ethers::types::H256 = match &claim.proof {
             crate::types_plonk::Proof::Plonk(proof) => {
@@ -719,8 +720,9 @@ impl AppState {
                     let adjustment_multiplier = 100u64.saturating_add(random_factor);
 
                     let adjusted_price = base_gas_price_u128
-                        .saturating_mul(u128::from(adjustment_multiplier))
-                        .saturating_div(100)
+                        .checked_mul(u128::from(adjustment_multiplier))
+                        .and_then(|v| v.checked_div(100))
+                        .unwrap_or(MAX_SAFE_GAS_PRICE)
                         .clamp(MIN_GAS_PRICE_WEI, MAX_SAFE_GAS_PRICE);
 
                     if adjusted_price == 0 {
@@ -794,21 +796,67 @@ impl AppState {
             let tx_key = format!("{key}:tx_hash");
             let timestamp_key = format!("{key}:timestamp");
 
-            redis
-                .set::<_, _, ()>(&tx_key, tx_hash.to_string())
-                .await
-                .map_err(|e| {
-                    tracing::error!("Failed to store tx_hash in Redis: {}", e);
-                    "Internal storage error: failed to record transaction".to_string()
-                })?;
+            let mut retry_count = 0;
+            const MAX_RETRIES: u32 = 3;
 
-            redis
-                .set::<_, _, ()>(&timestamp_key, &timestamp)
-                .await
-                .map_err(|e| {
-                    tracing::error!("Failed to store timestamp in Redis: {}", e);
-                    "Internal storage error: failed to record transaction".to_string()
-                })?;
+            loop {
+                match redis.set::<_, _, ()>(&tx_key, tx_hash.to_string()).await {
+                    Ok(_) => break,
+                    Err(e) if retry_count < MAX_RETRIES => {
+                        retry_count += 1;
+                        tracing::warn!(
+                            "Failed to store tx_hash in Redis (attempt {}/{}): {}, retrying...",
+                            retry_count,
+                            MAX_RETRIES,
+                            e
+                        );
+                        tokio::time::sleep(tokio::time::Duration::from_millis(
+                            100 * retry_count as u64,
+                        ))
+                        .await;
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to store tx_hash in Redis after {} attempts: {}",
+                            MAX_RETRIES,
+                            e
+                        );
+                        return Err(
+                            "Internal storage error: failed to record transaction".to_string()
+                        );
+                    }
+                }
+            }
+
+            retry_count = 0;
+            loop {
+                match redis.set::<_, _, ()>(&timestamp_key, &timestamp).await {
+                    Ok(_) => break,
+                    Err(e) if retry_count < MAX_RETRIES => {
+                        retry_count += 1;
+                        tracing::warn!(
+                            "Failed to store timestamp in Redis (attempt {}/{}): {}, retrying...",
+                            retry_count,
+                            MAX_RETRIES,
+                            e
+                        );
+                        tokio::time::sleep(tokio::time::Duration::from_millis(
+                            100 * retry_count as u64,
+                        ))
+                        .await;
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to store timestamp in Redis after {} attempts: {}",
+                            MAX_RETRIES,
+                            e
+                        );
+                        return Err(
+                            "Internal storage error: failed to record transaction".to_string()
+                        );
+                    }
+                }
+            }
 
             let mut stats = self.stats.write();
             stats.total_claims += 1;

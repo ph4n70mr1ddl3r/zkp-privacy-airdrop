@@ -82,6 +82,10 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
         _validatePLONKProof(proof);
+        
+        if (MERKLE_ROOT == bytes32(0)) {
+            revert InvalidMerkleRoot();
+        }
 
         uint256[3] memory instances;
         instances[0] = uint256(MERKLE_ROOT);
@@ -117,10 +121,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             revert InvalidPLONKProofLength();
         }
 
-        uint256 firstValue = proof.proof[0];
-        bool allSame = true;
-        bool allOnes = true;
-
         for (uint256 i = 0; i < 8; ++i) {
             if (proof.proof[i] == 0) {
                 revert InvalidPLONKProofZero();
@@ -128,17 +128,26 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             if (proof.proof[i] >= BN254_FIELD_PRIME) {
                 revert InvalidPLONKProofOverflow();
             }
-            if (proof.proof[i] == type(uint256).max) {
-                allOnes = false;
-            }
+        }
 
-            if (i > 0 && proof.proof[i] != firstValue) {
+        bool allSame = true;
+        for (uint256 i = 1; i < 8; ++i) {
+            if (proof.proof[i] != proof.proof[0]) {
                 allSame = false;
-                allOnes = false;
+                break;
             }
         }
 
-        if (allSame || allOnes) {
+        bool allMax = true;
+        uint256 maxValue = type(uint256).max;
+        for (uint256 i = 0; i < 8; ++i) {
+            if (proof.proof[i] != maxValue) {
+                allMax = false;
+                break;
+            }
+        }
+
+        if (allSame || allMax) {
             revert InvalidPLONKProofUniform();
         }
     }

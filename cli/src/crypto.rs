@@ -64,7 +64,7 @@ const BN254_SCALAR_FIELD_MODULUS: &str = zkp_airdrop_utils::BN254_FIELD_MODULUS;
 /// Salt used for nullifier generation to prevent precomputation attacks
 /// Matches circuit value at circuits/src/merkle_membership.circom:61-63
 const NULLIFIER_SALT_STR: &str =
-    "879531087681140882214524140197321402574094820969403194906919146516399775874596";
+    "87953108768114088221452414019732140257409482096940319490691914651639977587459";
 
 fn get_bn254_field_modulus() -> &'static num_bigint::BigUint {
     use num_traits::Num;
@@ -391,14 +391,8 @@ pub fn validate_address(address: &str) -> Result<Address> {
         .parse::<Address>()
         .context("Invalid Ethereum address format")?;
 
-    let expected = format!("{addr:#x}");
-    if !address.eq_ignore_ascii_case(&expected) {
-        tracing::warn!(
-            "Address checksum mismatch: provided={}, expected={}. \
-             The address has been normalized to proper EIP-55 checksum format.",
-            address,
-            expected
-        );
+    if addr.is_zero() {
+        anyhow::bail!("Address cannot be zero address");
     }
 
     Ok(addr)

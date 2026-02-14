@@ -61,9 +61,10 @@ impl SecretKey {
 /// Checks for:
 /// - Repeated bytes (e.g., 0xaaaaaa...)
 /// - Sequential bytes (e.g., 0x010203...)
-/// - High frequency of the same byte (>8 occurrences)
+/// - High frequency of same byte (>8 occurrences)
 /// - Known suspicious hex patterns (deadbeef, cafebabe, etc.)
 /// - Alternating patterns (e.g., 0xAA, 0x55, 0xAA, 0x55...)
+/// - Low entropy keys (< 120 bits of entropy)
 pub fn has_weak_key_pattern(key_bytes: &[u8]) -> bool {
     if key_bytes.len() != 32 {
         return true;
@@ -133,8 +134,36 @@ pub fn has_weak_key_pattern(key_bytes: &[u8]) -> bool {
         return true;
     }
 
+    let entropy = calculate_entropy(key_bytes);
+    const MIN_ENTROPY_BITS: f64 = 120.0;
+    if entropy < MIN_ENTROPY_BITS {
+        return true;
+    }
+
     false
 }
+
+fn calculate_entropy(data: &[u8]) -> f64 {
+    use std::collections::HashMap;
+    
+    let mut freq = HashMap::new();
+    let len = data.len() as f64;
+    
+    for &byte in data {
+        *freq.entry(byte).or_insert(0) += 1;
+    }
+    
+    let mut entropy = 0.0;
+    for &count in freq.values() {
+        let p = count as f64 / len;
+        if p > 0.0 {
+            entropy -= p * p.log2();
+        }
+    }
+    
+    entropy
+}
+
 
 impl std::fmt::Debug for SecretKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

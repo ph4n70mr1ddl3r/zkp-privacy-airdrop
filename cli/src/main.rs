@@ -281,7 +281,7 @@ async fn main() -> Result<()> {
         } => {
             if let Err(e) = &result {
                 if !cli.quiet {
-                    eprintln!("{} {}", "Error:".red(), e);
+                    eprintln!("{} {}", "Error:".red(), sanitize_error_message(&e.to_string()));
                 }
                 std::process::exit(1);
             }
@@ -291,5 +291,23 @@ async fn main() -> Result<()> {
             info!("Received interrupt signal, shutting down...");
             std::process::exit(130);
         }
+    }
+}
+
+fn sanitize_error_message(msg: &str) -> String {
+    let mut sanitized = String::new();
+    
+    for c in msg.chars() {
+        match c {
+            '0'..='9' | 'a'..='z' | 'A'..='Z' => sanitized.push(c),
+            ' ' | '.' | ',' | ':' | '-' | '_' | '(' | ')' | '[' | ']' | '{' | '}' => sanitized.push(c),
+            _ => {}
+        }
+    }
+    
+    if sanitized.is_empty() || sanitized.trim().is_empty() {
+        "An error occurred. Please check your inputs.".to_string()
+    } else {
+        sanitized
     }
 }

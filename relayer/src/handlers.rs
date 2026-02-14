@@ -155,8 +155,6 @@ fn sanitize_error_message(error: &str) -> String {
     let sensitive_indicators: std::sync::LazyLock<Vec<regex::Regex>> =
         std::sync::LazyLock::new(|| {
             vec![
-                regex::Regex::new(r"database").unwrap(),
-                regex::Regex::new(r"redis").unwrap(),
                 regex::Regex::new(r"password").unwrap(),
                 regex::Regex::new(r"secret").unwrap(),
                 regex::Regex::new(r"postgresql://").unwrap(),
@@ -167,6 +165,7 @@ fn sanitize_error_message(error: &str) -> String {
         });
 
     let lower = error.to_lowercase();
+
     for re in &*sensitive_indicators {
         if re.is_match(&lower) {
             tracing::warn!("Filtered sensitive error message: error='{}'", error);
@@ -182,6 +181,21 @@ fn sanitize_error_message(error: &str) -> String {
                 error
             );
             return "Internal error occurred. Check logs for details.".to_string();
+        }
+    }
+
+    let technical_indicators: std::sync::LazyLock<Vec<regex::Regex>> =
+        std::sync::LazyLock::new(|| {
+            vec![
+                regex::Regex::new(r"database").unwrap(),
+                regex::Regex::new(r"redis").unwrap(),
+            ]
+        });
+
+    for re in &*technical_indicators {
+        if re.is_match(&lower) {
+            tracing::error!("Technical error (logged for operators): error='{}'", error);
+            return "Service temporarily unavailable. Please try again later.".to_string();
         }
     }
 

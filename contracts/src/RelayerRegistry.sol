@@ -158,6 +158,10 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
             if (address(this).balance < balance) {
                 revert InsufficientContractBalance();
             }
+            
+            (bool success, ) = payable(owner()).call{value: balance}("");
+            require(success, "Transfer to owner failed");
+            
             relayerBalances[relayer] = 0;
             relayerBalances[owner()] += balance;
             emit FundsWithdrawn(relayer, balance);
