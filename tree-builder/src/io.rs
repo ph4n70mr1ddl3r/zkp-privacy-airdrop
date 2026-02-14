@@ -5,7 +5,8 @@ use std::io::{BufRead, BufReader, BufWriter, Read, Write};
 use std::path::Path;
 
 pub fn read_addresses(path: &Path) -> Result<Vec<[u8; 20]>> {
-    let file = File::open(path).context("Failed to open addresses file")?;
+    let canonical = path.canonicalize().context("Failed to canonicalize path")?;
+    let file = File::open(&canonical).context("Failed to open addresses file")?;
 
     let reader = BufReader::new(file);
     let mut addresses = Vec::new();
@@ -67,6 +68,14 @@ pub fn write_tree(tree: &crate::tree::MerkleTree, output: &Path) -> Result<()> {
     let file = File::create(output).context("Failed to create output file")?;
 
     let mut writer = BufWriter::new(file);
+
+    if tree.leaves.len() > u32::MAX as usize {
+        return Err(anyhow::anyhow!(
+            "Tree too large: {} leaves exceeds maximum of {}",
+            tree.leaves.len(),
+            u32::MAX
+        ));
+    }
 
     let header = TreeHeader {
         magic: *b"ZKPT",

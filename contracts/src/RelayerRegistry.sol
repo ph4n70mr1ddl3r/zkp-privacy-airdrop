@@ -67,6 +67,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     error RelayerNotAuthorized();
     error DonationMustBePositive();
     error InsufficientBalance();
+    error InsufficientContractBalance();
     error AmountMustBePositive();
     error TransferFailed();
 
@@ -154,6 +155,9 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
 
         uint256 balance = relayerBalances[relayer];
         if (balance > 0) {
+            if (address(this).balance < balance) {
+                revert InsufficientContractBalance();
+            }
             relayerBalances[relayer] = 0;
             relayerBalances[owner()] += balance;
             emit FundsWithdrawn(relayer, balance);

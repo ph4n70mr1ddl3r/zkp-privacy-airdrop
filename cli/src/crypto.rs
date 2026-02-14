@@ -311,6 +311,15 @@ fn read_key_from_source(
             .context("Failed to read private key from stdin")?;
         buf
     } else if let Some(file) = private_key_file {
+        let metadata = std::fs::metadata(&file).context("Failed to read file metadata")?;
+        const MAX_KEY_FILE_SIZE: u64 = 1024;
+        if metadata.len() > MAX_KEY_FILE_SIZE {
+            anyhow::bail!(
+                "Private key file too large: {} bytes (max {} bytes)",
+                metadata.len(),
+                MAX_KEY_FILE_SIZE
+            );
+        }
         std::fs::read(&file).context(format!(
             "Failed to read private key file: {}",
             file.display()

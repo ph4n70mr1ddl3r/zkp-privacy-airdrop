@@ -65,7 +65,8 @@ pub async fn connect(redis_url: &str) -> Result<ConnectionManager> {
 }
 
 fn calculate_backoff_delay(attempt: u32) -> u64 {
-    let exponential_delay = (BASE_RETRY_DELAY_MS as f64) * 2_f64.powi((attempt - 1) as i32);
+    let safe_exponent = (attempt - 1).min(62);
+    let exponential_delay = (BASE_RETRY_DELAY_MS as f64) * 2_f64.powi(safe_exponent as i32);
     let capped_delay = exponential_delay.min(MAX_RETRY_DELAY_MS as f64);
     let jitter = (capped_delay * JITTER_FACTOR) * (rand::random::<f64>() * 2.0 - 1.0);
     (capped_delay + jitter).max(BASE_RETRY_DELAY_MS as f64) as u64

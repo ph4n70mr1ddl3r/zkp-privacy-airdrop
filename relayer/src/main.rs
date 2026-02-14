@@ -53,13 +53,13 @@ async fn main() -> anyhow::Result<()> {
             .wrap(middleware::NormalizePath::trim())
             .app_data(
                 web::JsonConfig::default()
-                    .limit(204800)
+                    .limit(10240)
                     .error_handler(|err, _req| {
                         actix_web::error::InternalError::from_response(
                             err,
                             HttpResponse::PayloadTooLarge().json(serde_json::json!({
                                 "success": false,
-                                "error": "Request payload too large. Maximum size is 200KB.",
+                                "error": "Request payload too large. Maximum size is 10KB.",
                                 "code": "PAYLOAD_TOO_LARGE"
                             })),
                         )

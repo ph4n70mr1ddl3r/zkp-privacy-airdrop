@@ -37,6 +37,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     error NoUnclaimedTokens();
     error WithdrawalExceedsUnclaimed();
     error WithdrawalExceedsLimit();
+    error EmergencyWithdrawalExceedsLimit();
     error CumulativeWithdrawalExceedsAvailable();
 
     /// @notice Merkle tree root of eligible addresses
@@ -331,6 +332,10 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     function _validateWithdrawalAmount(uint256 amount, uint256 unclaimedAmount) private pure {
         if (amount > unclaimedAmount) {
             revert WithdrawalExceedsUnclaimed();
+        }
+        uint256 maxEmergencyWithdraw = unclaimedAmount / 10;
+        if (amount > maxEmergencyWithdraw) {
+            revert EmergencyWithdrawalExceedsLimit();
         }
     }
 

@@ -94,13 +94,6 @@ pub async fn execute(
         ));
     }
 
-    if parsed_url
-        .host_str()
-        .is_some_and(|h| h.contains("localhost"))
-    {
-        tracing::warn!("Connecting to localhost - ensure this is intentional");
-    }
-
     if relayer_url.len() > MAX_URL_LENGTH {
         return Err(anyhow::anyhow!(
             "Invalid relayer URL: exceeds maximum length of {MAX_URL_LENGTH} characters"
@@ -362,7 +355,7 @@ async fn check_transaction_status(rpc_url: &str, tx_hash: &str) -> bool {
                 .get_transaction_receipt(tx_hash_parsed)
                 .await
             {
-                Ok(Some(_receipt)) => true,
+                Ok(Some(receipt)) => receipt.status == Some(1u64.into()),
                 Ok(None) => false,
                 Err(e) => {
                     tracing::warn!("Failed to check transaction status for {}: {}", tx_hash, e);
