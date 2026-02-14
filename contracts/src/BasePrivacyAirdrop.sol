@@ -39,44 +39,75 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     error WithdrawalExceedsLimit();
     error CumulativeWithdrawalExceedsAvailable();
 
+    /// @notice Merkle tree root of eligible addresses
     bytes32 public immutable MERKLE_ROOT;
 
     uint256 private constant MAX_CLAIM_DEADLINE = 365 days;
 
+    /// @notice Mapping of used nullifiers to prevent double-claims
     mapping(bytes32 => bool) public nullifiers;
 
+    /// @notice ERC20 token being distributed
     IERC20 public immutable TOKEN;
 
+    /// @notice Amount of tokens each eligible address can claim
     uint256 public immutable CLAIM_AMOUNT;
 
+    /// @notice Unix timestamp after which claims are no longer accepted
     uint256 public immutable CLAIM_DEADLINE;
 
+    /// @notice Whether the contract is currently paused
     bool public paused;
 
+    /// @notice Total amount of tokens claimed so far
     uint256 public totalClaimed;
 
+    /// @notice Total tokens withdrawn in current period
     uint256 public totalWithdrawn;
 
+    /// @notice Cumulative tokens withdrawn since deployment
     uint256 public cumulativeWithdrawn;
 
+    /// @notice Timestamp of last emergency withdrawal
     uint256 public lastWithdrawalTime;
 
+    /// @notice Maximum percentage of unclaimed tokens withdrawable per period
     uint256 public immutable MAX_WITHDRAWAL_PERCENT;
 
+    /// @notice Time in seconds between withdrawal periods
     uint256 public immutable WITHDRAWAL_COOLDOWN;
 
+    /// @notice Delay period after claim deadline before emergency withdrawals are available
     uint256 public constant EMERGENCY_WITHDRAWAL_DELAY = 30 days;
 
+    /// @notice Timestamp when contract was deployed
     uint256 public immutable DEPLOY_TIMESTAMP;
 
+    /// @notice Emitted when a claim is successfully processed
+    /// @param nullifier Unique identifier of the claim
+    /// @param recipient Address receiving the tokens
+    /// @param timestamp Time when the claim was processed
     event Claimed(bytes32 indexed nullifier, address indexed recipient, uint256 timestamp);
 
+    /// @notice Emitted when tokens are transferred to a recipient
+    /// @param recipient Address receiving the tokens
+    /// @param amount Amount of tokens transferred
+    /// @param timestamp Time when the transfer occurred
     event TokensTransferred(address indexed recipient, uint256 amount, uint256 timestamp);
 
+    /// @notice Emitted when the contract is paused
+    /// @param account Address that paused the contract
     event Paused(address indexed account);
 
+    /// @notice Emitted when the contract is unpaused
+    /// @param account Address that unpaused the contract
     event Unpaused(address indexed account);
 
+    /// @notice Emitted when emergency withdrawal is executed
+    /// @param recipient Address receiving the withdrawn tokens
+    /// @param amount Amount of tokens withdrawn
+    /// @param cumulativeWithdrawn Total tokens withdrawn since deployment
+    /// @param timestamp Time when the withdrawal occurred
     event EmergencyWithdraw(address indexed recipient, uint256 amount, uint256 cumulativeWithdrawn, uint256 timestamp);
 
     /**
@@ -141,10 +172,10 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
 
     function _validateClaimDeadline(uint256 _claimDeadline) private view {
         // solhint-disable not-rely-on-time
-        if (_claimDeadline <= block.timestamp) {
+        if (_claimDeadline < block.timestamp) {
             revert InvalidClaimDeadline();
         }
-        if (_claimDeadline >= block.timestamp + MAX_CLAIM_DEADLINE) {
+        if (_claimDeadline > block.timestamp + MAX_CLAIM_DEADLINE) {
             revert InvalidClaimDeadline();
         }
         // solhint-enable not-rely-on-time
@@ -263,7 +294,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
 
     function _validateEmergencyWithdrawTiming() private view {
         // solhint-disable not-rely-on-time
-        if (block.timestamp <= CLAIM_DEADLINE + EMERGENCY_WITHDRAWAL_DELAY) {
+        if (block.timestamp < CLAIM_DEADLINE + EMERGENCY_WITHDRAWAL_DELAY) {
             revert EmergencyWithdrawalNotAvailable();
         }
         // solhint-enable not-rely-on-time
@@ -322,7 +353,7 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         lastWithdrawalTime = block.timestamp;
         // solhint-enable not-rely-on-time
 
-        if (cumulativeWithdrawn + amount > unclaimedAmount) {
+        if (cumulativeWithdrawn + amount >= unclaimedAmount) {
             revert CumulativeWithdrawalExceedsAvailable();
         }
     }

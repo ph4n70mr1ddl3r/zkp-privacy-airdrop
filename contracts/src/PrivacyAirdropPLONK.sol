@@ -5,6 +5,7 @@ import {BasePrivacyAirdrop} from "./BasePrivacyAirdrop.sol";
 
 /**
  * @title PrivacyAirdropPLONK
+ * @author ZKP Airdrop Team
  * @notice Privacy-preserving ERC20 token airdrop using PLONK ZK proofs
  * @dev Allows users to claim tokens without revealing their address from Merkle tree
  * Uses universal trusted setup (Perpetual Powers of Tau) instead of per-circuit trusted setup
@@ -22,6 +23,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     error InvalidPLONKProofUniform();
     error PLONKProofVerificationFailed();
 
+    /// @notice PLONK verifier contract address
     IPLONKVerifier public immutable VERIFIER;
     uint256 private constant BN254_FIELD_PRIME =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -119,7 +121,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         bool allSame = true;
         bool allOnes = true;
 
-        for (uint256 i = 0; i < 8; i++) {
+        for (uint256 i = 0; i < 8; ++i) {
             if (proof.proof[i] == 0) {
                 revert InvalidPLONKProofZero();
             }
@@ -158,7 +160,8 @@ function estimateClaimGas() external pure returns (uint256) {
 }
 
 /**
- * @title PLONK Verifier Interface
+ * @title IPLONKVerifier
+ * @author ZKP Airdrop Team
  * @notice Interface for PLONK proof verification
  */
 interface IPLONKVerifier {

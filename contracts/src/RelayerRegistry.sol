@@ -6,6 +6,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title IRelayerRegistry
+ * @author ZKP Airdrop Team
  * @notice Interface for relayer registry contract
  */
 interface IRelayerRegistry {
@@ -55,6 +56,7 @@ interface IRelayerRegistry {
 
 /**
  * @title RelayerRegistry
+ * @author ZKP Airdrop Team
  * @notice Manages authorized relayers and their fund balances
  * @dev Allows relayers to withdraw donated funds and manages authorization
  */
@@ -68,14 +70,31 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     error AmountMustBePositive();
     error TransferFailed();
 
+    /// @notice Default relayer address that receives donations
     address public defaultRelayer;
+    /// @notice Mapping of authorized relayer addresses
     mapping(address => bool) public authorizedRelayers;
+    /// @notice Mapping of relayer addresses to their balance
     mapping(address => uint256) public relayerBalances;
 
+    /// @notice Emitted when a relayer is authorized
+    /// @param relayer Address of the authorized relayer
     event RelayerAuthorized(address indexed relayer);
+    /// @notice Emitted when a relayer is deauthorized
+    /// @param relayer Address of the deauthorized relayer
     event RelayerDeauthorized(address indexed relayer);
+    /// @notice Emitted when a donation is received
+    /// @param donor Address of the donor
+    /// @param amount Amount of ETH donated
     event DonationReceived(address indexed donor, uint256 amount);
+    /// @notice Emitted when a relayer withdraws funds
+    /// @param relayer Address of the withdrawing relayer
+    /// @param amount Amount withdrawn
     event FundsWithdrawn(address indexed relayer, uint256 amount);
+    /// @notice Emitted when a deauthorized relayer's balance is transferred to owner
+    /// @param relayer Address of the deauthorized relayer
+    /// @param owner Address of the contract owner
+    /// @param amount Amount transferred
     event BalanceTransferredToOwner(address indexed relayer, address indexed owner, uint256 amount);
 
     /**

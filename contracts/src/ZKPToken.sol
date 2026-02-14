@@ -7,6 +7,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 /**
  * @title ZKPToken
+ * @author ZKP Airdrop Team
  * @notice ERC20 token for ZKP Privacy Airdrop
  * @dev Standard ERC20 with minting and burning capabilities, with a maximum supply cap
  * Maximum supply: 65,249,064,000 tokens (18 decimals)
@@ -21,12 +22,22 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
     error BurnAmountInvalid();
     error BurnInsufficientBalance();
 
+    /// @notice Maximum supply of ZKP tokens
     uint256 public constant MAX_SUPPLY = 65_249_064_000 * 10**18;
+    /// @notice Timestamp when contract was deployed
     uint256 public immutable DEPLOY_TIMESTAMP;
+    /// @notice Total number of minting operations performed
     uint256 public mintCount;
+    /// @notice Whether token minting is currently paused
     bool public mintingPaused;
     uint8 private constant DECIMALS = 18;
 
+    /// @notice Emitted when new tokens are minted
+    /// @param to Address receiving the minted tokens
+    /// @param amount Amount of tokens minted
+    /// @param totalSupply Total supply after minting
+    /// @param mintId Sequential ID of this mint operation
+    /// @param timestamp Time when minting occurred
     event TokensMinted(
         address indexed to,
         uint256 amount,
@@ -34,9 +45,19 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
         uint256 indexed mintId,
         uint256 timestamp
     );
+    /// @notice Emitted when tokens are burned
+    /// @param from Address burning the tokens
+    /// @param amount Amount of tokens burned
+    /// @param totalSupply Total supply after burning
     event TokensBurned(address indexed from, uint256 amount, uint256 totalSupply);
+    /// @notice Emitted when token minting is paused
+    /// @param account Address that paused minting
     event MintingPaused(address indexed account);
+    /// @notice Emitted when token minting is unpaused
+    /// @param account Address that unpaused minting
     event MintingUnpaused(address indexed account);
+    /// @notice Emitted when maximum supply is reached
+    /// @param finalSupply Total supply when cap is reached
     event MaxSupplyReached(uint256 finalSupply);
 
     /**
@@ -87,7 +108,7 @@ contract ZKPToken is ERC20, Ownable, ReentrancyGuard {
         }
 
         _mint(to, amount);
-        mintCount++;
+        ++mintCount;
         // solhint-disable not-rely-on-time
         emit TokensMinted(to, amount, totalSupply(), mintCount, block.timestamp);
         // solhint-enable not-rely-on-time
