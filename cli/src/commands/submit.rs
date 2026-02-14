@@ -26,13 +26,9 @@ fn sanitize_output(input: &str) -> String {
         return String::new();
     }
 
-    let truncated = if input.len() > 50 {
-        &input[..50]
-    } else {
-        input
-    };
+    let max_display_length = 50;
 
-    truncated
+    let sanitized: String = input
         .chars()
         .filter(|c| {
             c.is_ascii_alphanumeric()
@@ -40,9 +36,18 @@ fn sanitize_output(input: &str) -> String {
                 || *c == '_'
                 || *c == '.'
                 || *c == ':'
-                || *c == '#'
+                || *c == '/'
+                || *c == '?'
+                || *c == '='
+                || *c == '&'
         })
-        .collect::<String>()
+        .collect();
+
+    if sanitized.len() > max_display_length {
+        format!("{}...", &sanitized[..max_display_length])
+    } else {
+        sanitized
+    }
 }
 
 pub async fn execute(
@@ -78,6 +83,23 @@ pub async fn execute(
         tracing::warn!("Connecting to localhost - ensure this is intentional");
     }
 
+    let blocked_hosts = ["169.254.169.254"];
+    if parsed_url
+        .host_str()
+        .is_some_and(|host| blocked_hosts.contains(&host))
+    {
+        return Err(anyhow::anyhow!(
+            "Blocked: relayer URL points to restricted network address"
+        ));
+    }
+
+    if parsed_url
+        .host_str()
+        .is_some_and(|h| h.contains("localhost"))
+    {
+        tracing::warn!("Connecting to localhost - ensure this is intentional");
+    }
+
     if relayer_url.len() > MAX_URL_LENGTH {
         return Err(anyhow::anyhow!(
             "Invalid relayer URL: exceeds maximum length of {MAX_URL_LENGTH} characters"
@@ -86,12 +108,26 @@ pub async fn execute(
 
     validate_address(&recipient).context("Invalid recipient address")?;
 
+    if !proof_path.exists() {
+        return Err(anyhow::anyhow!(
+            "Proof file not found: {}",
+            proof_path.display()
+        ));
+    }
+
     let metadata = std::fs::metadata(&proof_path).context("Failed to read proof file metadata")?;
     if metadata.len() > MAX_PROOF_FILE_SIZE {
         return Err(anyhow::anyhow!(
             "Proof file too large: {} bytes exceeds maximum of {} bytes",
             metadata.len(),
             MAX_PROOF_FILE_SIZE
+        ));
+    }
+
+    if !proof_path.is_file() {
+        return Err(anyhow::anyhow!(
+            "Proof path is not a file: {}",
+            proof_path.display()
         ));
     }
 

@@ -42,7 +42,12 @@ fn main() -> Result<()> {
     rayon::ThreadPoolBuilder::new()
         .num_threads(cli.threads)
         .build_global()
-        .context("Failed to create thread pool")?;
+        .with_context(|| {
+            format!(
+                "Failed to create thread pool with {} threads. Please check your system resources.",
+                cli.threads
+            )
+        })?;
 
     info!("Building Merkle tree from {}", cli.accounts_file.display());
 

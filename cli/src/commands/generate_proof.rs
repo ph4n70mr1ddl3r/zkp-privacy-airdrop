@@ -20,8 +20,10 @@ pub async fn execute(
 ) -> Result<()> {
     if private_key_opt.is_some() {
         eprintln!(
-            "{}: Passing private key via --private-key is deprecated. Use --private-key-file or --private-key-stdin instead.",
-            "WARNING".yellow().bold()
+            "{} {}: Passing private key via --private-key is deprecated and will be removed in a future version. \
+             Use --private-key-file or --private-key-stdin instead for better security.",
+            "⚠️".yellow(),
+            "DEPRECATION WARNING".yellow().bold()
         );
     }
 

@@ -9,17 +9,24 @@ use zeroize::Zeroize;
 ///
 /// # Security Considerations
 ///
-/// ⚠️ **WARNING**: This struct implements `Clone` for serialization purposes only.
-/// Cloning a private key increases its exposure in memory. Always prefer using
-/// references (`&SecretKey`) instead of cloning to minimize sensitive data exposure.
-/// When cloning is unavoidable, ensure clones are dropped promptly.
+/// ⚠️ **CRITICAL WARNING**: This struct implements `Clone` for configuration
+/// serialization/deserialization only. Cloning a private key significantly
+/// increases its exposure in memory. Always prefer using references
+/// (`&SecretKey`) instead of cloning to minimize sensitive data exposure.
+///
+/// **Never log, print, or serialize this struct in production logs or responses.**
+/// When cloning is unavoidable (e.g., during config initialization), ensure
+/// clones are dropped promptly and never leak into error messages or logs.
 ///
 /// # Example
 ///
 /// ```ignore
 /// let key = SecretKey::new("0x1234...".to_string());
-/// // Avoid clones - use by reference:
-/// use_key(&key);  // Pass by reference instead of key.clone()
+/// // ✅ GOOD: Pass by reference
+/// use_key(&key);
+///
+/// // ❌ BAD: Clone unnecessarily
+/// use_key(key.clone());
 /// ```
 #[derive(Serialize, Deserialize, Default)]
 pub struct SecretKey(String);
@@ -481,6 +488,13 @@ impl Config {
                         return Err(anyhow::anyhow!("RELAYER_PRIVATE_KEY cannot be empty"));
                     }
 
+                    if key.len() > 128 {
+                        key.zeroize();
+                        return Err(anyhow::anyhow!(
+                            "RELAYER_PRIVATE_KEY exceeds maximum length (128 characters)"
+                        ));
+                    }
+
                     let mut normalized_key = key.trim().to_lowercase();
                     key.zeroize();
                     drop(key);
@@ -505,8 +519,8 @@ impl Config {
                         decoded.zeroize();
                         return Err(anyhow::anyhow!(
                             "CRITICAL ERROR: Weak private key pattern detected! \
-                             The key appears to have low entropy (sequential or repeated bytes). \
-                             Please use a cryptographically secure random key generator."
+                         The key appears to have low entropy (sequential or repeated bytes). \
+                         Please use a cryptographically secure random key generator."
                         ));
                     }
 

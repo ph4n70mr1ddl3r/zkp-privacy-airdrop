@@ -429,31 +429,8 @@ pub fn validate_merkle_root(merkle_root: &str) -> Result<()> {
 }
 
 fn validate_hex_bytes(input: &str, field_name: &str) -> Result<()> {
-    if input.len() != 66 {
-        return Err(anyhow::anyhow!(
-            "Invalid {} length: expected 66 chars (0x + 64 hex), got {}",
-            field_name,
-            input.len()
-        ));
-    }
-
-    if !input.starts_with("0x") && !input.starts_with("0X") {
-        return Err(anyhow::anyhow!(
-            "Invalid {field_name} format: must start with 0x"
-        ));
-    }
-
-    let decoded =
-        hex::decode(&input[2..]).context(format!("Invalid {field_name}: invalid hex encoding"))?;
-    if decoded.len() != 32 {
-        return Err(anyhow::anyhow!(
-            "Invalid {}: expected 32 bytes, got {}",
-            field_name,
-            decoded.len()
-        ));
-    }
-
-    Ok(())
+    zkp_airdrop_utils::validate_hex_bytes(input, 66, 32, true, field_name)
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 pub fn address_to_field(address: &Address) -> Result<String> {

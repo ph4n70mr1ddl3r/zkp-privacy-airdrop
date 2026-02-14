@@ -164,7 +164,9 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if cli.verbose && cli.quiet {
-        return Err(anyhow::anyhow!("Cannot specify both --verbose and --quiet"));
+        return Err(anyhow::anyhow!(
+            "Cannot specify both --verbose and --quiet. Use one or neither."
+        ));
     }
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
