@@ -20,6 +20,8 @@ pub async fn execute(
     println!("{} {}", "Output:".cyan(), output.display());
     println!("{} {}", "Format:".cyan(), format);
 
+    sanitize_output_path(&output)?;
+
     let client = Client::builder()
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))
         .build()
@@ -107,4 +109,24 @@ fn compute_checksum(path: &std::path::Path) -> Result<String> {
     }
 
     Ok(hex::encode(hasher.finalize()))
+}
+
+fn sanitize_output_path(path: &std::path::Path) -> Result<()> {
+    if path.is_absolute() {
+        return Err(anyhow::anyhow!(
+            "Absolute paths not allowed for security reasons"
+        ));
+    }
+
+    let path_str = path
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("Invalid path: contains non-UTF-8 characters"))?;
+
+    if path_str.contains("..") {
+        return Err(anyhow::anyhow!(
+            "Path traversal not allowed: path contains '..'"
+        ));
+    }
+
+    Ok(())
 }

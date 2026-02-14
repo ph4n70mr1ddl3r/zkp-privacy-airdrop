@@ -34,10 +34,13 @@ pub struct MerklePath {
 
 impl MerkleTree {
     pub fn new(height: u8) -> Self {
+        let max_leaves = 1_usize << height;
+        let max_nodes = max_leaves * 2;
+
         MerkleTree {
             height,
-            leaves: Vec::new(),
-            nodes: Vec::new(),
+            leaves: Vec::with_capacity(max_leaves),
+            nodes: Vec::with_capacity(max_nodes),
             root: [0u8; 32],
         }
     }

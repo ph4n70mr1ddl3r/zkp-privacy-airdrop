@@ -2,8 +2,9 @@ use num_bigint::BigUint;
 use num_traits::{Num, Zero};
 
 /// Minimum entropy score threshold for private key validation
-/// A score of 790 indicates sufficient randomness for cryptographic security
-pub const MIN_ENTROPY_SCORE: u32 = 790;
+/// A score of 1200 indicates sufficient randomness for cryptographic security
+/// (approximately 120 bits of entropy, well above minimum cryptographic standards)
+pub const MIN_ENTROPY_SCORE: u32 = 1200;
 
 /// Validates that a string is a properly formatted hex byte string of expected length.
 ///

@@ -15,6 +15,7 @@ use crate::crypto::{validate_address, validate_merkle_root, validate_nullifier};
 use crate::types_plonk::{Proof, ProofData, SubmitClaimRequest, SubmitClaimResponse};
 
 const HTTP_TIMEOUT_SECONDS: u64 = 30;
+const HTTP_CONNECT_TIMEOUT_SECONDS: u64 = 10;
 const MAX_RETRY_AFTER_SECONDS: u64 = 86400;
 const TRANSACTION_CHECK_INTERVAL_SECONDS: u64 = 5;
 const MAX_URL_LENGTH: usize = 2048;
@@ -188,6 +189,8 @@ pub async fn execute(
 
     let client = Client::builder()
         .timeout(Duration::from_secs(HTTP_TIMEOUT_SECONDS))
+        .connect_timeout(Duration::from_secs(HTTP_CONNECT_TIMEOUT_SECONDS))
+        .pool_idle_timeout(Duration::from_secs(90))
         .build()
         .context("Failed to create HTTP client")?;
     let url = format!("{relayer_url}/api/v1/submit-claim");

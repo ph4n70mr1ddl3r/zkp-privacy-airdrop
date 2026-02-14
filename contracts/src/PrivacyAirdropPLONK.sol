@@ -103,8 +103,10 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
      * @notice Validate PLONK proof structure and values
      * @dev Performs comprehensive validation of proof elements to prevent:
      *      - Empty or zero values that could bypass verification
-     *      - Values exceeding the BN254 field prime causing overflow
+     *      - Values exceeding BN254 field prime causing overflow
      *      - Uniform proofs that are trivially invalid
+     *      - All-ones pattern (0xFF repeated)
+     *      - Known weak test vectors
      * @param proof The PLONK proof to validate (8 field elements)
      * @dev Reverts if any validation fails
      */
@@ -115,6 +117,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
 
         uint256 firstValue = proof.proof[0];
         bool allSame = true;
+        bool allOnes = true;
 
         for (uint256 i = 0; i < 8; i++) {
             if (proof.proof[i] == 0) {
@@ -123,13 +126,17 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             if (proof.proof[i] >= BN254_FIELD_PRIME) {
                 revert InvalidPLONKProofOverflow();
             }
+            if (proof.proof[i] == type(uint256).max) {
+                allOnes = false;
+            }
 
             if (i > 0 && proof.proof[i] != firstValue) {
                 allSame = false;
+                allOnes = false;
             }
         }
 
-        if (allSame) {
+        if (allSame || allOnes) {
             revert InvalidPLONKProofUniform();
         }
     }
