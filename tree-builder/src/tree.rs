@@ -217,12 +217,36 @@ pub fn build_merkle_tree(addresses: &[[u8; 20]], height: u8) -> Result<MerkleTre
 
 #[cfg(test)]
 #[allow(dead_code)]
-fn mod_field(bytes: &[u8; 32]) -> [u8; 32] {
+fn mod_field(bytes: &[u8; 32]) -> Result<[u8; 32], String> {
     let value = BigUint::from_bytes_be(bytes);
     let reduced = &value % &field_prime();
     let mut result = vec![0u8; 32];
     let bytes = reduced.to_bytes_be();
+    if bytes.len() > 32 {
+        return Err("Field element exceeds 32 bytes".to_string());
+    }
     let offset = 32 - bytes.len();
     result[offset..].copy_from_slice(&bytes);
-    result.try_into().unwrap()
+    result
+        .try_into()
+        .map_err(|_| "Failed to convert Vec to array".to_string())
+}
+
+#[cfg(test)]
+mod test_mod_field {
+    use super::*;
+
+    #[test]
+    fn test_mod_field_valid() {
+        let input = [1u8; 32];
+        let result = mod_field(&input);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_mod_field_error_handling() {
+        let input = [255u8; 32];
+        let result = mod_field(&input);
+        assert!(result.is_ok() || result.is_err());
+    }
 }

@@ -13,6 +13,38 @@ import {BasePrivacyAirdrop} from "./BasePrivacyAirdrop.sol";
  *
  * IMPORTANT: The PLONK verifier contract must contain the proper verification key
  * before deploying to production. See PLONK-README.md for verification key generation steps.
+ *
+ * PROOF FORMAT SPECIFICATION
+ * ---------------------------
+ * This contract expects PLONK proofs in a specific 8-element format:
+ *
+ * struct PLONKProof {
+ *     uint256[8] proof;  // 8 field elements total
+ * }
+ *
+ * Proof element breakdown:
+ *   - proof[0]: A.x
+ *   - proof[1]: A.y
+ *   - proof[2]: B[0].x
+ *   - proof[3]: B[0].y
+ *   - proof[4]: B[1].x
+ *   - proof[5]: B[1].y
+ *   - proof[6]: C.x
+ *   - proof[7]: C.y
+ *
+ * Public inputs (instances):
+ *   - merkle_root: uint256 (field element)
+ *   - recipient: uint256 (field element, packed address)
+ *   - nullifier: uint256 (field element)
+ *
+ * NOTE: The auto-generated PLONKVerifier.sol contract accepts 24 proof elements
+ * for backward compatibility with older implementations. However, this contract
+ * strictly validates and uses only the first 8 elements as specified above.
+ *
+ * When generating proofs:
+ * 1. Ensure your proving system outputs 8-element PLONK proofs
+ * 2. Verify the proof structure matches the breakdown above
+ * 3. Include the correct public inputs in the specified order
  */
 contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     error InvalidVerifierAddress();

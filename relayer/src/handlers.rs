@@ -210,39 +210,11 @@ pub fn is_valid_address(address: &str) -> bool {
 }
 
 pub fn is_valid_nullifier(nullifier: &str) -> bool {
-    is_valid_hex_bytes(nullifier, 66, true)
+    zkp_airdrop_utils::validate_hex_bytes(nullifier, 66, 32, true, "nullifier").is_ok()
 }
 
 pub fn is_valid_merkle_root(merkle_root: &str) -> bool {
-    is_valid_hex_bytes(merkle_root, 66, true)
-}
-
-fn is_valid_hex_bytes(input: &str, expected_len: usize, reject_zero: bool) -> bool {
-    if input.len() != expected_len {
-        return false;
-    }
-
-    if !input.starts_with("0x") && !input.starts_with("0X") {
-        return false;
-    }
-
-    let hex = &input[2..];
-
-    let bytes = match hex::decode(hex) {
-        Ok(b) => b,
-        Err(_) => return false,
-    };
-
-    if bytes.len() != 32 {
-        return false;
-    }
-
-    if !reject_zero {
-        return true;
-    }
-
-    let zero_value = [0u8; 32];
-    bytes != zero_value
+    zkp_airdrop_utils::validate_hex_bytes(merkle_root, 66, 32, true, "merkle_root").is_ok()
 }
 
 /// Health check endpoint to monitor relayer service status.
