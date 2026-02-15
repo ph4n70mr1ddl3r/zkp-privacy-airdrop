@@ -1,10 +1,12 @@
+pub mod constants;
+
+pub use constants::{
+    BN254_FIELD_MODULUS, MAX_GAS_RANDOMIZATION_PERCENT, MAX_PROOF_FILE_SIZE, MAX_TREE_DEPTH,
+    MAX_TREE_LEAVES, MIN_ENTROPY_SCORE, PLONK_PROOF_ELEMENTS,
+};
+
 use num_bigint::BigUint;
 use num_traits::{Num, Zero};
-
-/// Minimum entropy score threshold for private key validation
-/// A score of 1200 indicates sufficient randomness for cryptographic security
-/// (approximately 120 bits of entropy, well above minimum cryptographic standards)
-pub const MIN_ENTROPY_SCORE: u32 = 1200;
 
 /// Validates that a string is a properly formatted hex byte string of expected length.
 ///
@@ -94,10 +96,6 @@ pub fn validate_hex_bytes(
 
     Ok(())
 }
-
-/// BN254 scalar field modulus
-pub const BN254_FIELD_MODULUS: &str =
-    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
 /// Calculates entropy score for byte array to detect weak private keys.
 ///

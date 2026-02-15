@@ -4,8 +4,7 @@ use num_bigint::BigUint;
 use num_traits::{Num, Zero};
 use std::sync::OnceLock;
 
-const FIELD_PRIME: &str =
-    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
+const FIELD_PRIME: &str = zkp_airdrop_utils::BN254_FIELD_MODULUS;
 
 /// Nullifier salt constant - must match the value used in circuit
 #[cfg(test)]

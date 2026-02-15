@@ -16,7 +16,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
-use zkp_airdrop_utils::sanitize_nullifier;
+use zkp_airdrop_utils::{sanitize_nullifier, MAX_GAS_RANDOMIZATION_PERCENT};
 
 mod privacy_airdrop_plonk {
     ethers::contract::abigen!(PrivacyAirdropPLONK, "./PrivacyAirdropPLONK.json");
@@ -113,10 +113,10 @@ const MAX_BASE_GAS_PRICE_WEI: u128 = 5_000_000_000_000;
 // This is the internal limit used in gas price randomization
 // Note: This is different from config.rs MAX_SAFE_GAS_PRICE (200 gwei) which validates user config
 const MAX_SAFE_GAS_PRICE: u128 = 500_000_000_000;
-// Maximum gas randomization percentage (10%)
+// Maximum gas randomization percentage (20%)
 // This is the internal limit for randomization factor calculation
 // Note: This is different from config.rs MAX_GAS_RANDOMIZATION (0.20 / 20%) which validates user config
-const MAX_GAS_RANDOMIZATION: u64 = 10;
+const MAX_GAS_RANDOMIZATION: u64 = MAX_GAS_RANDOMIZATION_PERCENT;
 
 #[derive(Clone, Copy)]
 struct BalanceCache {

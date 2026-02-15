@@ -159,12 +159,13 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
             if (address(this).balance < balance) {
                 revert InsufficientContractBalance();
             }
-            
+
             (bool success, ) = payable(owner()).call{value: balance}("");
-            
+
             if (!success) {
                 revert OwnerTransferFailed();
             }
+        }
 
         emit RelayerDeauthorized(relayer);
     }
