@@ -70,6 +70,7 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
     error InsufficientContractBalance();
     error AmountMustBePositive();
     error TransferFailed();
+    error OwnerTransferFailed();
 
     /// @notice Default relayer address that receives donations
     address public defaultRelayer;
@@ -160,13 +161,10 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
             }
             
             (bool success, ) = payable(owner()).call{value: balance}("");
-            require(success, "Transfer to owner failed");
             
-            relayerBalances[relayer] = 0;
-            relayerBalances[owner()] += balance;
-            emit FundsWithdrawn(relayer, balance);
-            emit BalanceTransferredToOwner(relayer, owner(), balance);
-        }
+            if (!success) {
+                revert OwnerTransferFailed();
+            }
 
         emit RelayerDeauthorized(relayer);
     }
