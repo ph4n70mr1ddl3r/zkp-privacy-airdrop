@@ -145,14 +145,18 @@ pub fn has_weak_key_pattern(key_bytes: &[u8]) -> bool {
 
 fn calculate_entropy(data: &[u8]) -> f64 {
     use std::collections::HashMap;
-    
+
+    if data.is_empty() {
+        return 0.0;
+    }
+
     let mut freq = HashMap::new();
     let len = data.len() as f64;
-    
+
     for &byte in data {
         *freq.entry(byte).or_insert(0) += 1;
     }
-    
+
     let mut entropy = 0.0;
     for &count in freq.values() {
         let p = count as f64 / len;
@@ -160,10 +164,9 @@ fn calculate_entropy(data: &[u8]) -> f64 {
             entropy -= p * p.log2();
         }
     }
-    
-    entropy
-}
 
+    entropy * len
+}
 
 impl std::fmt::Debug for SecretKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
