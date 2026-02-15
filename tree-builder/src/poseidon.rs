@@ -10,10 +10,8 @@ const FIELD_PRIME: &str = zkp_airdrop_utils::BN254_FIELD_MODULUS;
 #[cfg(test)]
 const NULLIFIER_SALT: u64 = 8795310876811408822u64;
 
-#[allow(dead_code)]
-fn field_prime() -> Result<BigUint, String> {
-    BigUint::from_str_radix(FIELD_PRIME, 10)
-        .map_err(|e| format!("Invalid field prime constant: {}", e))
+fn field_prime() -> BigUint {
+    BigUint::from_str_radix(FIELD_PRIME, 10).expect("Invalid field prime constant")
 }
 
 /// Poseidon hash for 3 inputs (t=3) with 64 rounds
@@ -26,8 +24,8 @@ pub fn poseidon_hash(inputs: &[Fr]) -> Result<Fr, String> {
         ));
     }
 
-    let round_keys = get_poseidon_round_constants()?;
-    let mds_matrix = get_poseidon_mds_matrix()?;
+    let round_keys = get_poseidon_round_constants();
+    let mds_matrix = get_poseidon_mds_matrix();
 
     let mut state = inputs.to_vec();
 
@@ -52,8 +50,8 @@ pub fn poseidon_hash(inputs: &[Fr]) -> Result<Fr, String> {
 
 /// Generate Poseidon round constants
 /// Uses a deterministic seed based on the hash of "poseidon"
-fn get_poseidon_round_constants() -> Result<Vec<Vec<Fr>>, String> {
-    static ROUND_CONSTANTS: OnceLock<Result<Vec<Vec<Fr>>, String>> = OnceLock::new();
+fn get_poseidon_round_constants() -> Vec<Vec<Fr>> {
+    static ROUND_CONSTANTS: OnceLock<Vec<Vec<Fr>>> = OnceLock::new();
 
     ROUND_CONSTANTS
         .get_or_init(|| {
@@ -83,20 +81,19 @@ fn get_poseidon_round_constants() -> Result<Vec<Vec<Fr>>, String> {
                 constants.push(round_consts);
             }
 
-            Ok(constants)
+            constants
         })
         .clone()
 }
 
 /// Get Poseidon MDS matrix (t=3)
 /// Uses the standard MDS matrix from the Poseidon paper
-fn get_poseidon_mds_matrix() -> Result<Vec<Vec<Fr>>, String> {
-    static MDS_MATRIX: OnceLock<Result<Vec<Vec<Fr>>, String>> = OnceLock::new();
+fn get_poseidon_mds_matrix() -> Vec<Vec<Fr>> {
+    static MDS_MATRIX: OnceLock<Vec<Vec<Fr>>> = OnceLock::new();
 
     MDS_MATRIX
         .get_or_init(|| {
-            let modulus = BigUint::from_str_radix(FIELD_PRIME, 10)
-                .map_err(|e| format!("Invalid field prime: {}", e))?;
+            let modulus = field_prime();
 
             let mds_values = [
                 ["5", "7", "10", "13", "14"],
@@ -109,19 +106,15 @@ fn get_poseidon_mds_matrix() -> Result<Vec<Vec<Fr>>, String> {
                 .map(|row| {
                     row.iter()
                         .map(|s| {
-                            let val = BigUint::from_str_radix(s, 10)
-                                .map_err(|e| format!("Invalid MDS value '{}': {}", s, e))?;
+                            let val = BigUint::from_str_radix(s, 10).expect("Invalid MDS constant");
                             let inv = val
                                 .modinv(&modulus)
-                                .ok_or_else(|| "Failed to compute modular inverse".to_string())?;
+                                .expect("Failed to compute modular inverse for MDS constant");
                             let bytes = inv.to_bytes_be();
-                            if bytes.len() > 32 {
-                                return Err("MDS value exceeds 32 bytes".to_string());
-                            }
                             let mut padded = [0u8; 32];
                             let offset = 32 - bytes.len();
                             padded[offset..].copy_from_slice(&bytes);
-                            Ok(Fr::from_be_bytes_mod_order(&padded))
+                            Fr::from_be_bytes_mod_order(&padded)
                         })
                         .collect()
                 })
@@ -207,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_field_prime_constant() {
-        let prime = field_prime().expect("Field prime constant should be valid");
+        let prime = field_prime();
         assert_eq!(
             prime.to_str_radix(10),
             "21888242871839275222246405745257275088548364400416034343698204186575808495617"
