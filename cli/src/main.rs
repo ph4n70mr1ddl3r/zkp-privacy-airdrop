@@ -296,15 +296,17 @@ async fn main() -> Result<()> {
 
 fn sanitize_error_message(msg: &str) -> String {
     let mut sanitized = String::new();
-    
+
     for c in msg.chars() {
         match c {
             '0'..='9' | 'a'..='z' | 'A'..='Z' => sanitized.push(c),
-            ' ' | '.' | ',' | ':' | '-' | '_' | '(' | ')' | '[' | ']' | '{' | '}' => sanitized.push(c),
+            ' ' | '.' | ',' | ':' | '-' | '_' | '(' | ')' | '[' | ']' | '{' | '}' => {
+                sanitized.push(c)
+            }
             _ => {}
         }
     }
-    
+
     if sanitized.is_empty() || sanitized.trim().is_empty() {
         "An error occurred. Please check your inputs.".to_string()
     } else {

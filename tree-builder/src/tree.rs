@@ -60,6 +60,9 @@ impl MerkleTree {
         self.build_tree();
     }
 
+    /// Builds the Merkle tree from inserted leaves using parallel hashing.
+    /// This should be called after all leaves have been inserted.
+    /// The tree is built bottom-up, hashing pairs of nodes at each level.
     fn build_tree(&mut self) {
         if self.leaves.is_empty() {
             self.root = [0u8; 32];
@@ -90,9 +93,23 @@ impl MerkleTree {
                 .collect();
         }
 
-        self.root = *level.first().unwrap_or(&[0u8; 32]);
+        self.root = level.first().copied().unwrap_or([0u8; 32]);
     }
 
+    /// Gets the Merkle proof path for a leaf at the given index.
+    ///
+    /// The Merkle path consists of sibling nodes needed to verify that the leaf
+    /// is part of the tree. This is used by claimants to prove their address
+    /// is in the eligible list without revealing which address.
+    ///
+    /// # Arguments
+    /// * `index` - The index of the leaf in the tree
+    ///
+    /// # Returns
+    /// A `MerklePath` containing siblings and direction indicators
+    ///
+    /// # Errors
+    /// Returns an error if the index is out of bounds
     pub fn get_path(&self, index: usize) -> Result<MerklePath, String> {
         if index >= self.leaves.len() {
             return Err(format!(
@@ -144,6 +161,17 @@ impl MerkleTree {
         Ok(MerklePath { siblings, indices })
     }
 
+    /// Verifies that a leaf is part of the tree using its Merkle path.
+    ///
+    /// This function recomputes the root hash by hashing the leaf with
+    /// its siblings along the path, then compares the result to the stored root.
+    ///
+    /// # Arguments
+    /// * `leaf` - The 32-byte leaf hash to verify
+    /// * `path` - The Merkle path containing siblings and direction indicators
+    ///
+    /// # Returns
+    /// `true` if the leaf is valid and the computed root matches the stored root
     pub fn verify_path(&self, leaf: &[u8; 32], path: &MerklePath) -> bool {
         let mut current = *leaf;
 
