@@ -52,6 +52,16 @@ fn validate_private_key_source(
     Ok(())
 }
 
+fn validate_format_parameter(format: &str) -> Result<()> {
+    if format != "json" {
+        return Err(anyhow::anyhow!(
+            "Invalid format '{}'. Only 'json' format is currently supported.",
+            format
+        ));
+    }
+    Ok(())
+}
+
 #[derive(Parser)]
 #[command(name = "zkp-airdrop")]
 #[command(about = "ZKP Privacy Airdrop CLI", long_about = None)]
@@ -87,6 +97,8 @@ enum Commands {
         output: Option<PathBuf>,
         #[arg(long, default_value = "json")]
         format: String,
+        #[arg(long, default_value = "120")]
+        timeout: u64,
     },
     GenerateProofPlonk {
         #[arg(long)]
@@ -103,6 +115,8 @@ enum Commands {
         output: Option<PathBuf>,
         #[arg(long, default_value = "json")]
         format: String,
+        #[arg(long, default_value = "120")]
+        timeout: u64,
     },
     VerifyProof {
         #[arg(long)]
@@ -207,8 +221,10 @@ async fn main() -> Result<()> {
                     merkle_tree,
                     output,
                     format,
+                    timeout,
                 } => {
                     validate_private_key_source(&private_key, &private_key_file, private_key_stdin)?;
+                    validate_format_parameter(&format)?;
                     commands::generate_proof::execute(
                         private_key,
                         private_key_file,
@@ -217,6 +233,7 @@ async fn main() -> Result<()> {
                         merkle_tree,
                         output,
                         format,
+                        timeout,
                         &config,
                     )
                     .await
@@ -229,8 +246,10 @@ async fn main() -> Result<()> {
                     merkle_tree,
                     output,
                     format,
+                    timeout,
                 } => {
                     validate_private_key_source(&private_key, &private_key_file, private_key_stdin)?;
+                    validate_format_parameter(&format)?;
                     commands::generate_proof_plonk::execute(
                         private_key,
                         private_key_file,
@@ -239,6 +258,7 @@ async fn main() -> Result<()> {
                         merkle_tree,
                         output,
                         format,
+                        timeout,
                         "plonk".to_string(),
                         &config,
                     )

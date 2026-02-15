@@ -15,6 +15,7 @@ pub async fn execute(
     merkle_tree: String,
     output: Option<PathBuf>,
     _format: String,
+    _timeout: u64,
     proof_system: String,
     config: &Config,
 ) -> Result<()> {

@@ -59,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
                             err,
                             HttpResponse::PayloadTooLarge().json(serde_json::json!({
                                 "success": false,
-                                "error": "Request payload too large. Maximum size is 10KB.",
+                                "error": "Request payload too large. Maximum size is 10240 bytes (10KB).",
                                 "code": "PAYLOAD_TOO_LARGE"
                             })),
                         )

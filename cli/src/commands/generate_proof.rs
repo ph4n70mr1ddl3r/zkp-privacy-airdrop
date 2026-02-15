@@ -16,6 +16,7 @@ pub async fn execute(
     merkle_tree: String,
     _output: Option<PathBuf>,
     _format: String,
+    _timeout: u64,
     _config: &Config,
 ) -> Result<()> {
     if private_key_opt.is_some() {

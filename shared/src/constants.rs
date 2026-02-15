@@ -47,6 +47,7 @@ mod tests {
     use num_traits::Zero;
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_constants_are_valid() {
         // Verify field modulus is a valid prime
         let modulus: num_bigint::BigUint = BN254_FIELD_MODULUS
