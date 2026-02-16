@@ -39,6 +39,13 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
     error WithdrawalExceedsLimit();
     error EmergencyWithdrawalExceedsLimit();
     error CumulativeWithdrawalExceedsAvailable();
+    error InvalidTokenForRecovery();
+
+    /// @notice Emitted when accidentally sent tokens are recovered
+    /// @param token Address of the recovered token
+    /// @param recipient Address receiving the recovered tokens
+    /// @param amount Amount of tokens recovered
+    event TokenRecovery(address indexed token, address indexed recipient, uint256 amount);
 
     /// @notice Merkle tree root of eligible addresses
     bytes32 public immutable MERKLE_ROOT;
@@ -366,5 +373,22 @@ abstract contract BasePrivacyAirdrop is ReentrancyGuard, Ownable {
         if (cumulativeWithdrawn + amount > unclaimedAmount) {
             revert CumulativeWithdrawalExceedsAvailable();
         }
+    }
+
+    function recoverTokens(address token, address recipient) external onlyOwner {
+        if (token == address(TOKEN)) {
+            revert InvalidTokenForRecovery();
+        }
+        if (recipient == address(0)) {
+            revert InvalidRecipient();
+        }
+
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        if (balance == 0) {
+            revert NoContractBalance();
+        }
+
+        IERC20(token).safeTransfer(recipient, balance);
+        emit TokenRecovery(token, recipient, balance);
     }
 }

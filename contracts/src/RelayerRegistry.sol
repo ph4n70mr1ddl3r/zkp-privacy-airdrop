@@ -147,14 +147,17 @@ contract RelayerRegistry is IRelayerRegistry, ReentrancyGuard, Ownable {
      * @notice Deauthorize a relayer
      * @param relayer Address of relayer to deauthorize
      * @dev Only callable by owner, transfers remaining balance to owner
+     * @dev Uses nonReentrant to prevent reentrancy attacks
      */
-    function deauthorizeRelayer(address relayer) external onlyOwner validAddress(relayer) {
+    function deauthorizeRelayer(address relayer) external onlyOwner validAddress(relayer) nonReentrant {
         if (!authorizedRelayers[relayer]) {
             revert RelayerNotAuthorized();
         }
-        authorizedRelayers[relayer] = false;
 
         uint256 balance = relayerBalances[relayer];
+        authorizedRelayers[relayer] = false;
+        relayerBalances[relayer] = 0;
+
         if (balance > 0) {
             if (address(this).balance < balance) {
                 revert InsufficientContractBalance();

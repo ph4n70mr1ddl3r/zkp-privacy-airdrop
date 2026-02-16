@@ -49,9 +49,7 @@ import {BasePrivacyAirdrop} from "./BasePrivacyAirdrop.sol";
 contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
     error InvalidVerifierAddress();
     error InvalidPLONKProofLength();
-    error InvalidPLONKProofZero();
     error InvalidPLONKProofOverflow();
-    error InvalidPLONKProofAllZeros();
     error InvalidPLONKProofUniform();
     error PLONKProofVerificationFailed();
 
@@ -114,10 +112,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         address recipient
     ) external nonReentrant validClaim(recipient, nullifier) {
         _validatePLONKProof(proof);
-        
-        if (MERKLE_ROOT == bytes32(0)) {
-            revert InvalidMerkleRoot();
-        }
 
         uint256[3] memory instances;
         instances[0] = uint256(MERKLE_ROOT);
@@ -154,9 +148,6 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
         }
 
         for (uint256 i = 0; i < 8; ++i) {
-            if (proof.proof[i] == 0) {
-                revert InvalidPLONKProofZero();
-            }
             if (proof.proof[i] >= BN254_FIELD_PRIME) {
                 revert InvalidPLONKProofOverflow();
             }
@@ -170,16 +161,7 @@ contract PrivacyAirdropPLONK is BasePrivacyAirdrop {
             }
         }
 
-        bool allMax = true;
-        uint256 maxValue = type(uint256).max;
-        for (uint256 i = 0; i < 8; ++i) {
-            if (proof.proof[i] != maxValue) {
-                allMax = false;
-                break;
-            }
-        }
-
-        if (allSame || allMax) {
+        if (allSame) {
             revert InvalidPLONKProofUniform();
         }
     }
