@@ -93,7 +93,12 @@ impl MerkleTree {
                 .collect();
         }
 
-        self.root = level.first().copied().unwrap_or([0u8; 32]);
+        self.root = if let Some(&root) = level.first() {
+            root
+        } else {
+            // Tree was built but has no root (should not happen with proper initialization)
+            [0u8; 32]
+        };
     }
 
     /// Gets the Merkle proof path for a leaf at the given index.

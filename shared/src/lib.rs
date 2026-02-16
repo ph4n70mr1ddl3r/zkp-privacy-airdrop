@@ -1,9 +1,11 @@
 pub mod constants;
+pub mod errors;
 
 pub use constants::{
     BN254_FIELD_MODULUS, MAX_GAS_RANDOMIZATION_PERCENT, MAX_PROOF_FILE_SIZE, MAX_TREE_DEPTH,
     MAX_TREE_LEAVES, MIN_ENTROPY_SCORE, PLONK_PROOF_ELEMENTS,
 };
+pub use errors::{ZkpError, ZkpResult};
 
 use num_bigint::BigUint;
 use num_traits::{Num, Zero};
