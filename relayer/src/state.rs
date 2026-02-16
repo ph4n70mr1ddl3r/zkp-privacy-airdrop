@@ -353,11 +353,18 @@ impl AppState {
             return false;
         }
 
-        if root.len() < 2 {
+        if root.len() != 66 {
             tracing::error!(
-                "Merkle tree root must be at least 2 characters, got {}",
+                "Merkle tree root must be 66 characters (0x + 64 hex), got {}",
                 root.len()
             );
+            return false;
+        }
+
+        // Check for zero root (invalid)
+        let zero_root = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        if root == zero_root {
+            tracing::error!("Merkle tree root cannot be zero");
             return false;
         }
 
@@ -365,6 +372,11 @@ impl AppState {
             Ok(bytes) => {
                 if bytes.len() != 32 {
                     tracing::error!("Merkle tree root must be 32 bytes, got {}", bytes.len());
+                    return false;
+                }
+                // Verify all bytes are not zero
+                if bytes.iter().all(|&b| b == 0) {
+                    tracing::error!("Merkle tree root cannot be all zeros");
                     return false;
                 }
             }

@@ -80,6 +80,9 @@ impl MerkleTree {
                 return;
             }
 
+            // Intentional clone: We need to store the current level in nodes for path generation
+            // while consuming the level for the next iteration. Rayon parallel operations require
+            // ownership, so we clone here before the parallel hash operations.
             level = level
                 .par_chunks(2)
                 .map(|pair| {
@@ -248,6 +251,8 @@ pub fn build_merkle_tree(addresses: &[[u8; 20]], height: u8) -> Result<MerkleTre
     Ok(tree)
 }
 
+// Field element reduction for testing - not used in production
+// This is only used by test_mod_field tests below
 #[cfg(test)]
 #[allow(dead_code)]
 fn mod_field(bytes: &[u8; 32]) -> Result<[u8; 32], String> {
