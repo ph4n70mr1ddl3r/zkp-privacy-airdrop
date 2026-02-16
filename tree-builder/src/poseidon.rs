@@ -4,14 +4,19 @@ use num_bigint::BigUint;
 use num_traits::{Num, Zero};
 use std::sync::OnceLock;
 
-const FIELD_PRIME: &str = zkp_airdrop_utils::BN254_FIELD_MODULUS;
+use zkp_airdrop_utils::BN254_FIELD_MODULUS;
 
 /// Nullifier salt constant - must match the value used in circuit
 #[cfg(test)]
 const NULLIFIER_SALT: u64 = 8795310876811408822u64;
 
-fn field_prime() -> BigUint {
-    BigUint::from_str_radix(FIELD_PRIME, 10).expect("Invalid field prime constant")
+static FIELD_PRIME_BIGUINT: OnceLock<BigUint> = OnceLock::new();
+
+fn field_prime() -> &'static BigUint {
+    FIELD_PRIME_BIGUINT.get_or_init(|| {
+        BigUint::from_str_radix(BN254_FIELD_MODULUS, 10)
+            .expect("Invalid field prime constant: must be valid decimal")
+    })
 }
 
 /// Poseidon hash for 3 inputs (t=3) with 64 rounds
@@ -88,6 +93,10 @@ fn get_poseidon_round_constants() -> Vec<Vec<Fr>> {
 
 /// Get Poseidon MDS matrix (t=3)
 /// Uses the standard MDS matrix from the Poseidon paper
+///
+/// Note: The MDS values (5, 7, 10, 13, 14) are standard Poseidon constants
+/// that are mathematically guaranteed to be invertible modulo a prime.
+/// The expect() calls are safe because these are verified constants.
 fn get_poseidon_mds_matrix() -> Vec<Vec<Fr>> {
     static MDS_MATRIX: OnceLock<Vec<Vec<Fr>>> = OnceLock::new();
 
@@ -95,6 +104,7 @@ fn get_poseidon_mds_matrix() -> Vec<Vec<Fr>> {
         .get_or_init(|| {
             let modulus = field_prime();
 
+            // Standard Poseidon MDS matrix values (verified constants)
             let mds_values = [
                 ["5", "7", "10", "13", "14"],
                 ["7", "10", "13", "14", "5"],
@@ -106,10 +116,11 @@ fn get_poseidon_mds_matrix() -> Vec<Vec<Fr>> {
                 .map(|row| {
                     row.iter()
                         .map(|s| {
-                            let val = BigUint::from_str_radix(s, 10).expect("Invalid MDS constant");
+                            let val = BigUint::from_str_radix(s, 10)
+                                .expect("Invalid MDS constant: must be valid decimal");
                             let inv = val
-                                .modinv(&modulus)
-                                .expect("Failed to compute modular inverse for MDS constant");
+                                .modinv(modulus)
+                                .expect("Failed to compute modular inverse for MDS constant: constant must be invertible");
                             let bytes = inv.to_bytes_be();
                             let mut padded = [0u8; 32];
                             let offset = 32 - bytes.len();

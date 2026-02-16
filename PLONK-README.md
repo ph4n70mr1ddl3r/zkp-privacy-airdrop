@@ -1,7 +1,34 @@
 # PLONK Implementation - Quick Start Guide
 
 **Status**: Week 1 Complete ✅ | Week 2 Ready | Week 3 Pending
-**Last Updated**: 2026-02-08
+**Last Updated**: 2026-02-16
+
+---
+
+## Proof Format Documentation
+
+### PLONK Proof Structure
+
+This implementation uses **8-element PLONK proofs** as defined in the interface:
+
+```
+Proof = [p_a, p_b, p_c, p_z, p_t, w, pub_input, nullifier_hash]
+```
+
+| Element | Size | Description |
+|---------|------|-------------|
+| `p_a` | 48 bytes | Proof point A (G1) |
+| `p_b` | 96 bytes | Proof point B (G2) |
+| `p_c` | 48 bytes | Proof point C (G1) |
+| `p_z` | 48 bytes | Evaluation challenge (G1) |
+| `p_t` | 48 bytes | Evaluation (G1) |
+| `w` | 32 bytes | Witness (scalar) |
+| `pub_input` | 32 bytes | Public input (scalar) |
+| `nullifier_hash` | 32 bytes | Nullifier hash (scalar) |
+
+**Total proof size**: ~384 bytes (8 field elements)
+
+> **Note**: The auto-generated `PLONKVerifier.sol` from some tooling may accept 24 elements. This implementation uses the 8-element format as specified in `IPLONKVerifier` interface. The 24-element format is from an older/different PLONK variant and is not used here.
 
 ---
 
