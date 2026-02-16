@@ -168,6 +168,9 @@ fn field_to_bytes_be(field: &Fr) -> [u8; 32] {
     result
 }
 
+/// Hash domain separator for testing purposes only.
+/// This function is not used in production - it exists for unit tests that verify
+/// Poseidon hash behavior with arbitrary byte inputs.
 #[cfg(test)]
 #[allow(dead_code)]
 pub fn hash_domain(input: &[u8]) -> Result<[u8; 32], String> {

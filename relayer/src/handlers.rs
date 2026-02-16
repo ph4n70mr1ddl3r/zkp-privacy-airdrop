@@ -9,39 +9,49 @@ use tracing::{error, info, warn};
 static SENSITIVE_PATTERNS: std::sync::LazyLock<Vec<(Regex, &'static str)>> =
     std::sync::LazyLock::new(|| {
         vec![
+        // Private keys: matches "private_key", "priv_key" followed by 64 hex chars
         (
             Regex::new(r"(?i)(private[-_]?key|priv[-_]?key)[\s:=]+[0-9a-f]{64}").unwrap(),
             "private key",
         ),
+        // Secret keys: matches "secret_key" followed by base64-like strings (20+ chars)
         (
             Regex::new(r"(?i)secret[_-]?key[\s:=]+[a-z0-9\-._~+/]{20,}").unwrap(),
             "secret key",
         ),
+        // Seed phrases/mnemonics: matches 12+ word sequences (BIP39 standard)
         (Regex::new(r"(?i)(mnemonic|seed)[\s:=]+[a-z]{12,}").unwrap(), "seed/mnemonic"),
+        // API keys: matches "api_key" followed by alphanumeric strings (16+ chars)
         (
             Regex::new(r"(?i)api[_-]?key[\s:=]+[a-z0-9\-._~+/]{16,}").unwrap(),
             "API key",
         ),
+        // Authentication tokens: access_token, refresh_token, auth_token
         (
             Regex::new(r"(?i)(access[_-]?token|refresh[_-]?token|auth[_-]?token)[\s:=]+[a-z0-9\-._~+/]{20,}").unwrap(),
             "auth token",
         ),
+        // Passwords: matches "password", "passwd", "pwd" assignments
         (
             Regex::new(r"(?i)(password|passwd|pwd)[\s:=]+\S+").unwrap(),
             "password",
         ),
+        // Authorization headers: Bearer tokens in Authorization header format
         (
             Regex::new(r"(?i)authorization[\s:]+bearer\s+[a-z0-9\-._~+/]{20,}").unwrap(),
             "auth header",
         ),
+        // Private key indicators: matches "pk=" followed by 64 hex chars
         (
             Regex::new(r"(?i)pk[_=][a-z0-9]{64}").unwrap(),
             "private key indicator",
         ),
+        // JWT tokens: standard JWT format (three base64 segments separated by dots)
         (
             Regex::new(r"(?i)(jwt|bearer)[\s:=]+[a-z0-9\-._~+/]+\.[a-z0-9\-._~+/]+\.[a-z0-9\-._~+/]+").unwrap(),
             "JWT token",
         ),
+        // Base64 encoded secrets: matches "base64:" followed by 40+ chars
         (
             Regex::new(r"(?i)base64[:\s]*[a-z0-9+/]{40,}={0,2}").unwrap(),
             "base64 encoded secret",
