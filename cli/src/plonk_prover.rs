@@ -7,6 +7,9 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use zeroize::Zeroize;
 
+#[cfg(test)]
+use zkp_airdrop_utils::is_valid_field_element;
+
 use crate::crypto::{address_to_field, derive_address, generate_nullifier};
 use crate::tree::MerkleTree;
 use std::time::Instant;
@@ -122,6 +125,19 @@ impl InternalPlonkProof {
             return Err("PlonkProof::to_flat_array called on empty proof".to_string());
         }
         Ok(proof_vec)
+    }
+
+    #[cfg(test)]
+    /// Validate proof elements are valid field elements
+    pub fn validate_field_elements(&self) -> Result<(), String> {
+        let elements = self.to_flat_array()?;
+        for (i, element) in elements.iter().enumerate() {
+            let padded = format!("0x{:0>64}", element.trim_start_matches("0x"));
+            if !is_valid_field_element(&padded) {
+                return Err(format!("Invalid field element at index {}: {}", i, element));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -257,12 +273,18 @@ mod tests {
 
     #[test]
     fn test_plonk_proof_structure() {
-        let proof = InternalPlonkProof::minimal();
+        let one = F::from(1u64);
+        let proof = InternalPlonkProof {
+            a: [one, one],
+            b: [[one, one], [one, one]],
+            c: [one, one],
+        };
 
         assert_eq!(proof.a.len(), 2);
         assert_eq!(proof.b.len(), 2);
         assert_eq!(proof.c.len(), 2);
         assert_eq!(proof.to_flat_array().unwrap().len(), 8);
+        proof.validate_field_elements().unwrap();
     }
 
     #[test]
