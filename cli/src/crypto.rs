@@ -359,6 +359,13 @@ fn decode_and_validate_key(key_buf: &[u8]) -> Result<Vec<u8>> {
         anyhow::bail!("Private key cannot be empty after removing prefix");
     }
 
+    if hex_str.len() != 64 {
+        anyhow::bail!(
+            "Private key hex string must be 64 characters (32 bytes), got {} characters",
+            hex_str.len()
+        );
+    }
+
     let key_bytes =
         hex::decode(hex_str).map_err(|e| anyhow::anyhow!("Invalid hex private key: {e}"))?;
 

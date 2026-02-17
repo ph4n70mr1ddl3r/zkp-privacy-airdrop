@@ -130,6 +130,24 @@ fn validate_claim_input(
         }));
     }
 
+    let proof_size = claim.proof.estimated_size_bytes();
+    const MAX_PROOF_SIZE: usize = 10 * 1024 * 1024;
+    if proof_size > MAX_PROOF_SIZE {
+        warn!(
+            "Proof size {} exceeds maximum {}",
+            proof_size, MAX_PROOF_SIZE
+        );
+        return Err(HttpResponse::BadRequest().json(ErrorResponse {
+            success: false,
+            error: format!(
+                "Proof size exceeds maximum allowed size of {} bytes",
+                MAX_PROOF_SIZE
+            ),
+            code: Some("PROOF_TOO_LARGE".to_string()),
+            retry_after: None,
+        }));
+    }
+
     Ok(())
 }
 

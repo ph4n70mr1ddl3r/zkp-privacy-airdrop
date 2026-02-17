@@ -147,6 +147,12 @@ pub fn generate_plonk_proof(
         .get_path(&address_hash)
         .context("Failed to get Merkle path")?;
 
+    if merkle_path.is_empty() {
+        return Err(anyhow::anyhow!(
+            "Merkle path is empty - address not found in tree"
+        ));
+    }
+
     // Step 4: Compute nullifier
     let nullifier_bytes =
         generate_nullifier(private_key).context("Failed to generate nullifier")?;

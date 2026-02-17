@@ -60,6 +60,17 @@ pub async fn execute(
         );
     }
 
+    let metadata =
+        std::fs::metadata(&canonical_path).context("Failed to read merkle tree file metadata")?;
+    const MAX_TREE_FILE_SIZE: u64 = 10 * 1024 * 1024 * 1024;
+    if metadata.len() > MAX_TREE_FILE_SIZE {
+        anyhow::bail!(
+            "Merkle tree file too large: {} bytes (max {} bytes)",
+            metadata.len(),
+            MAX_TREE_FILE_SIZE
+        );
+    }
+
     let merkle_tree = crate::tree::MerkleTree::from_file(&canonical_path)
         .context("Failed to load Merkle tree file")?;
 
