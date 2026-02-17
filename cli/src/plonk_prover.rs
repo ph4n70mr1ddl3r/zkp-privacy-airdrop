@@ -101,6 +101,7 @@ impl From<PlonkProofData> for crate::types_plonk::ProofData {
 
 impl InternalPlonkProof {
     #[cfg(test)]
+    #[allow(dead_code)]
     /// Create a minimal Plonk proof for testing
     ///
     /// # Warning
